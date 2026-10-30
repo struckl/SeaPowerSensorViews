@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radar scope – mockup (invented data)</title>
+<style>body{margin:0;padding:16px;background:#e9edf0;font:14px/1.5 system-ui,sans-serif;color:#222;max-width:700px}.sr-only{position:absolute;left:-9999px}
+svg .ts{font:12px system-ui,sans-serif;fill:#555}</style></head><body>
+<h2 class="sr-only">Mockup of a radar scope for the selected ship with range rings, a sweeping beam, contacts fading with age, a blind arc aft, a radar horizon ring that follows a target altitude slider, and radar warning and jam strobes.</h2>
+<style>
+@keyframes sw{to{transform:rotate(360deg)}}
+@keyframes bl{0%{opacity:1}100%{opacity:.2}}
+.sweep{transform-origin:190px 190px}
+.bp{opacity:.2}
+@media (prefers-reduced-motion:no-preference){.sweep{animation:sw 4s linear infinite}.bp{animation:bl 4s linear infinite}}
+.rp{background:#11161b;border:1px solid #2a343d;border-radius:10px;color:#d5dde4;font-size:12px;overflow:hidden}
+.rp .tb{background:#1b2229;padding:7px 12px;color:#9fb0bd;display:flex;justify-content:space-between}
+.row{display:flex;flex-wrap:wrap}
+.pan{flex:1;min-width:230px;padding:10px 12px}
+.pan p{margin:0 0 6px;line-height:1.5;color:#c3ced7}
+.pan b{font-weight:500;color:#e8eef3}
+.ctl{padding:8px 12px;border-top:1px solid #2a343d;display:flex;align-items:center;gap:10px}
+.ctl input{flex:1}
+</style>
+<div class="rp">
+  <div class="tb"><span>Radar scope · Horne CG-30 · SPY-1</span><span>range 60 nm · heading up</span></div>
+  <div class="row">
+    <svg width="380" height="380" viewBox="0 0 380 380" style="flex:0 0 auto;max-width:100%">
+      <circle cx="190" cy="190" r="172" fill="#0b1410" stroke="#2a4a3a" stroke-width="1"/>
+      <g fill="none" stroke="#1f3a2d" stroke-width="0.7"><circle cx="190" cy="190" r="43"/><circle cx="190" cy="190" r="86"/><circle cx="190" cy="190" r="129"/></g>
+      <g stroke="#1f3a2d" stroke-width="0.7"><line x1="190" y1="18" x2="190" y2="362"/><line x1="18" y1="190" x2="362" y2="190"/><line x1="68" y1="68" x2="312" y2="312"/><line x1="312" y1="68" x2="68" y2="312"/></g>
+      <path d="M190 190 L168 20 A172 172 0 0 1 213 20Z" transform="rotate(180 190 190)" fill="#3a2a10" fill-opacity="0.7"/>
+      <text class="ts" style="fill:#7f9a8b" x="194" y="64">15</text><text class="ts" style="fill:#7f9a8b" x="194" y="107">30</text><text class="ts" style="fill:#7f9a8b" x="194" y="150">45</text>
+      <text class="ts" style="fill:#9fb0bd" x="183" y="12">000</text><text class="ts" style="fill:#9fb0bd" x="350" y="194">090</text><text class="ts" style="fill:#9fb0bd" x="183" y="376">180</text><text class="ts" style="fill:#9fb0bd" x="2" y="194">270</text>
+      <circle id="hz" cx="190" cy="190" r="116" fill="none" stroke="#f5b83d" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <g class="sweep"><path d="M190 190 L190 18 A172 172 0 0 1 238 25Z" fill="#59d68a" fill-opacity="0.16"/><line x1="190" y1="190" x2="190" y2="18" stroke="#59d68a" stroke-width="1.5"/></g>
+      <polygon points="190,181 197,197 183,197" fill="#5aa9ff"/>
+      <g class="bp" style="animation-delay:0.87s"><polygon points="268,164 277,173 268,182 259,173" fill="#ff5a4d"/></g>
+      <text class="ts" style="fill:#ffb3aa" x="284" y="177">7003</text>
+      <g class="bp" style="animation-delay:0.36s"><polygon points="257,74 266,83 257,92 248,83" fill="#ff5a4d"/><rect x="249" y="75" width="16" height="16" fill="none" stroke="#ff6b5e" stroke-width="1.5"/></g>
+      <text class="ts" style="fill:#ffb3aa" x="274" y="88">7008 · lock</text>
+      <line x1="190" y1="190" x2="303" y2="60" stroke="#b48cf2" stroke-width="1" stroke-dasharray="3 4"/>
+      <text class="ts" style="fill:#c4a3f5" x="296" y="48">7014 · ESM</text>
+      <g class="bp" style="animation-delay:2.36s"><circle cx="142" cy="265" r="4" fill="#d5dde4"/></g>
+      <text class="ts" style="fill:#d5dde4" x="60" y="283">7019 · low</text>
+      <polygon points="34,232 14,224 16,242" fill="#ff5a4d"/>
+      <text class="ts" style="fill:#ffb3aa" x="38" y="256">painted 255°</text>
+      <line x1="42" y1="101" x2="66" y2="115" stroke="#f5b83d" stroke-width="2.5" stroke-dasharray="4 3"/>
+      <text class="ts" style="fill:#f5b83d" x="60" y="92">jam 301°</text>
+    </svg>
+    <div class="pan">
+      <p><b>Contacts on this radar</b></p>
+      <p>7003 · surface, hostile · 078° · 28 nm</p>
+      <p>7008 · air, hostile · 032° · 44 nm · locked</p>
+      <p>7019 · air, unknown · 213° · 31 nm</p>
+      <p style="margin-top:10px"><b>Bearing only</b></p>
+      <p>7014 · ESM · 041° · range unknown</p>
+      <p style="margin-top:10px"><b>Warnings</b></p>
+      <p style="color:#ff9d92">Radar painting you from 255°</p>
+      <p style="color:#f5b83d">Jamming from 301°</p>
+      <p style="margin-top:10px;color:#9fb0bd">Brown sector aft: the mast blocks the beam. Dashed ring: radar horizon for the chosen target altitude.</p>
+    </div>
+  </div>
+  <div class="ctl"><span>Target altitude</span><input type="range" id="alt" min="0" max="3" step="0.01" value="1.7"><span id="altout" style="min-width:210px;text-align:right"></span></div>
+</div>
+<script>
+const alts=[30,500,5000,35000];
+function fmt(x){return x<1000?Math.round(x)+' ft':(Math.round(x/100)/10).toLocaleString()+' k ft'}
+function upd(){
+  const v=parseFloat(document.getElementById('alt').value),i=Math.min(2,Math.floor(v)),f=v-i;
+  const h=Math.exp(Math.log(alts[i])*(1-f)+Math.log(alts[i+1])*f);
+  const nm=1.23*(Math.sqrt(120)+Math.sqrt(h));
+  const r=Math.min(nm,60)*2.867;
+  document.getElementById('hz').setAttribute('r',r.toFixed(1));
+  document.getElementById('altout').textContent=fmt(h)+' → radar horizon '+(nm>60?'beyond scope':Math.round(nm)+' nm');
+}
+document.getElementById('alt').addEventListener('input',upd);upd();
+</script>
+</body></html>

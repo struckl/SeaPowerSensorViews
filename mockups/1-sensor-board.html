@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sensor board – mockup (invented data)</title>
+<style>body{margin:0;padding:16px;background:#e9edf0;font:14px/1.5 system-ui,sans-serif;color:#222;max-width:700px}.sr-only{position:absolute;left:-9999px}</style></head><body>
+<h2 class="sr-only">Mockup of a sensor board: a grid of own ships against contacts showing which sensor holds each contact and how old the fix is, plus the selected ship's sensor list.</h2>
+<style>
+.sb{background:#11161b;border:1px solid #2a343d;border-radius:10px;overflow:hidden;color:#d5dde4;font-size:13px}
+.sb .tb{background:#1b2229;padding:7px 12px;display:flex;justify-content:space-between;font-size:12px;color:#9fb0bd}
+.sb table{width:100%;border-collapse:collapse;table-layout:fixed}
+.sb th{font-weight:500;font-size:12px;color:#9fb0bd;text-align:left;padding:8px 8px 6px;border-bottom:1px solid #2a343d}
+.sb td{padding:7px 8px;border-bottom:1px solid #1e272e;vertical-align:middle}
+.sb tr.sel td{background:#182530}
+.sb td.n{font-weight:500;color:#e8eef3}
+.sb td.n small{display:block;font-weight:400;font-size:11px;color:#7f909d}
+.c{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:2px 6px;font-size:12px;font-weight:500;margin:1px 3px 1px 0;border:1px solid}
+.c i{font-style:normal;font-weight:400;font-size:11px;opacity:.8}
+.R{color:#f5b83d;border-color:#7a5a17;background:#2a2212}
+.E{color:#c4a3f5;border-color:#5b4488;background:#241c33}
+.S{color:#58d6bd;border-color:#1f6d5e;background:#12302b}
+.A{color:#8fdcff;border-color:#2f7292;background:#12293a}
+.V{color:#a8dc78;border-color:#4a7226;background:#1d2a14}
+.F{color:#ff7a6b;border-color:#9c3a30;background:#341816}
+.old{opacity:.45}
+.none{color:#4b5963}
+.lg{display:flex;flex-wrap:wrap;gap:10px;padding:8px 12px;border-top:1px solid #2a343d;font-size:11px;color:#7f909d}
+.sg{display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr;gap:0;padding:0}
+.sg div{padding:6px 12px;border-top:1px solid #1e272e;font-size:12px}
+.on{color:#6fcf8a}.off{color:#7f909d}.bad{color:#ff7a6b}
+</style>
+<div class="sb">
+  <div class="tb"><span>Sensor board</span><span>Contacts held by your side: 4</span></div>
+  <table>
+    <colgroup><col style="width:21%"><col style="width:19.75%"><col style="width:19.75%"><col style="width:19.75%"><col style="width:19.75%"></colgroup>
+    <tr><th>Your units</th><th>7003 · surface<br><span style="color:#ff7a6b">hostile</span></th><th>7008 · air<br><span style="color:#ff7a6b">hostile</span></th><th>7011 · submarine<br><span style="color:#d5dde4">unknown</span></th><th>7014 · air<br><span style="color:#ff7a6b">hostile</span></th></tr>
+    <tr class="sel"><td class="n">Horne<small>CG-30 · selected</small></td>
+      <td><span class="c R">R <i>1 s</i></span><span class="c E old">E <i>3 s</i></span></td>
+      <td><span class="c R">R <i>2 s</i></span><span class="c F">F <i>lock</i></span></td>
+      <td class="none">–</td>
+      <td><span class="c E old">E <i>bearing, 5 s</i></span></td></tr>
+    <tr><td class="n">Standley<small>CG-32</small></td>
+      <td><span class="c V">V <i>2 s</i></span></td>
+      <td><span class="c R">R <i>1 s</i></span></td>
+      <td class="none">–</td><td class="none">–</td></tr>
+    <tr><td class="n">Darkstar 1-1<small>P-3C</small></td>
+      <td><span class="c R">R <i>1 s</i></span></td>
+      <td class="none">–</td>
+      <td><span class="c S old">S <i>bearing, 12 s</i></span></td>
+      <td class="none">–</td></tr>
+    <tr><td class="n">Kingfish 1-1<small>SH-2F</small></td>
+      <td class="none">–</td><td class="none">–</td>
+      <td><span class="c A">A <i>1 s</i></span><span class="c S">S <i>2 s</i></span></td>
+      <td class="none">–</td></tr>
+  </table>
+  <div class="lg">
+    <span><span class="c R">R</span>search radar</span><span><span class="c F">F</span>fire control</span><span><span class="c E">E</span>ESM</span>
+    <span><span class="c S">S</span>passive sonar</span><span><span class="c A">A</span>active sonar</span><span><span class="c V">V</span>visual / IR</span>
+    <span>Faded chip = fix older than 3 s</span>
+  </div>
+  <div class="tb" style="border-top:1px solid #2a343d">Horne · sensors</div>
+  <div class="sg">
+    <div>SPY-1 air search</div><div class="on">on</div><div>360°</div><div>1 of 3 channels busy</div>
+    <div>SPS-73 surface search</div><div class="on">on</div><div>360°</div><div>–</div>
+    <div>SQS-53 sonar</div><div class="on">passive</div><div>baffles 120° aft</div><div>0 contacts</div>
+    <div>SLQ-32 ESM</div><div class="on">on</div><div>360°</div><div>1 emitter seen</div>
+    <div>Mk 99 fire control</div><div class="bad">locking 7008</div><div>±60°</div><div>2 of 2 channels</div>
+    <div>Emissions control</div><div class="off">normal</div><div>–</div><div>–</div>
+  </div>
+</div>
+</body></html>

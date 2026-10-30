@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sonar display – mockup (invented data)</title>
+<style>body{margin:0;padding:16px;background:#e9edf0;font:14px/1.5 system-ui,sans-serif;color:#222;max-width:700px}.sr-only{position:absolute;left:-9999px}
+svg .ts{font:12px system-ui,sans-serif;fill:#555}</style></head><body>
+<h2 class="sr-only">Mockup of a sonar display: a scrolling bearing-over-time waterfall with traces brightening with signal strength, a shaded baffle sector, and a depth strip showing the surface, thermal layer, own depth, towed array and seabed. A slider changes own speed and with it the noise floor.</h2>
+<style>
+.sn{background:#11161b;border:1px solid #2a343d;border-radius:10px;color:#d5dde4;font-size:12px;overflow:hidden}
+.sn .tb{background:#1b2229;padding:7px 12px;color:#9fb0bd;display:flex;justify-content:space-between}
+.sr{display:flex;flex-wrap:wrap;gap:14px;padding:10px 12px}
+.wf{position:relative;width:360px;max-width:100%}
+.ax{display:flex;justify-content:space-between;color:#9fb0bd;margin-bottom:3px}
+canvas{display:block;width:360px;height:250px;border:1px solid #2a343d;background:#0a1a1d}
+.bf{position:absolute;top:19px;left:120px;width:120px;height:250px;background:rgba(10,12,14,.55);display:flex;align-items:flex-start;justify-content:center;color:#7f909d;padding-top:6px;box-sizing:border-box}
+.tag{position:absolute;transform:translateX(-50%);color:#58d6bd;font-size:11px;background:#11161b;padding:1px 4px;border-radius:3px;border:1px solid #1f6d5e}
+.ctl{padding:8px 12px;border-top:1px solid #2a343d;display:flex;align-items:center;gap:10px}
+.ctl input{flex:1}
+</style>
+<div class="sn">
+  <div class="tb"><span>Sonar · Kilo 1 · passive, bow array + towed array</span><span>heading 000° · time runs down</span></div>
+  <div class="sr">
+    <div class="wf">
+      <div class="ax"><span>000</span><span>090</span><span>180</span><span>270</span><span>360</span></div>
+      <canvas id="wf" width="360" height="250"></canvas>
+      <div class="bf">baffles · no hearing</div>
+      <div class="tag" style="left:42px;top:44px">7011</div>
+      <div class="tag" style="left:131px;top:44px;color:#c3ced7;border-color:#3a4650">7016?</div>
+    </div>
+    <svg width="230" height="276" viewBox="0 0 230 276" style="flex:0 0 auto">
+      <rect x="0" y="0" width="230" height="276" fill="#0d1a24"/>
+      <rect x="0" y="0" width="230" height="8" fill="#1e4b6b"/>
+      <path d="M0 8 Q15 4 30 8 T60 8 T90 8 T120 8 T150 8 T180 8 T210 8 T240 8" fill="none" stroke="#5ab0e6" stroke-width="1"/>
+      <rect x="0" y="8" width="230" height="44" fill="#133246" opacity="0.5"/>
+      <line x1="0" y1="52" x2="230" y2="52" stroke="#58d6bd" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <path d="M0 250 L40 244 L90 252 L140 246 L190 253 L230 247 L230 276 L0 276Z" fill="#3a3326" stroke="#6b5d42" stroke-width="1"/>
+      <polygon points="30,32 46,38 30,44" fill="#5aa9ff"/>
+      <line x1="30" y1="38" x2="14" y2="38" stroke="#5aa9ff" stroke-width="1"/>
+      <path d="M14 38 L-2 38" stroke="#5aa9ff" stroke-width="1"/>
+      <line x1="30" y1="40" x2="66" y2="60" stroke="#8fdcff" stroke-width="1.5"/>
+      <rect x="64" y="58" width="8" height="8" fill="#8fdcff"/>
+      <text class="ts" style="fill:#9fb0bd" x="6" y="24">mixed water</text>
+      <text class="ts" style="fill:#58d6bd" x="120" y="47">layer 110 m</text>
+      <text class="ts" style="fill:#5aa9ff" x="80" y="36">Kilo 1 · 75 m</text>
+      <text class="ts" style="fill:#8fdcff" x="80" y="76">towed array · 130 m</text>
+      <text class="ts" style="fill:#c3ced7" x="12" y="130">Array below the layer hears</text>
+      <text class="ts" style="fill:#c3ced7" x="12" y="146">what the hull array above misses.</text>
+      <text class="ts" style="fill:#9fb0bd" x="6" y="238">seabed 620 m</text>
+    </svg>
+  </div>
+  <div class="ctl"><span>Own speed</span><input type="range" id="spd" min="4" max="20" step="1" value="6"><span id="sout" style="min-width:150px;text-align:right"></span></div>
+</div>
+<script>
+const cv=document.getElementById('wf'),cx=cv.getContext('2d');
+cx.fillStyle='#0a1a1d';cx.fillRect(0,0,360,250);
+let t=0;
+const tr=[{b:42,s:0.9,w:1.6,d:0.05,p:0.9},{b:131,s:0.5,w:1.4,d:0.03,p:0.6},{b:255,s:0.3,w:1.4,d:0.04,p:0.8},{b:196,s:0.8,w:1.5,d:0.02,p:0.7}];
+function col(v){v=Math.max(0,Math.min(1,v));
+ const r=Math.round(10+v*v*230),g=Math.round(26+v*210),b=Math.round(29+v*180);return [r,g,b]}
+function row(){
+  const sp=parseFloat(document.getElementById('spd').value);
+  const nf=0.1+(sp-4)/16*0.4;
+  const img=cx.createImageData(360,1);
+  for(let x=0;x<360;x++){
+    let v=nf*(0.55+Math.random()*0.7);
+    for(const q of tr){
+      const b=q.b+Math.sin(t*0.01+q.p*6)*6+q.d*t*0.02;
+      let dx=Math.abs(x-b);if(dx>180)dx=360-dx;
+      let s=q.s*(0.75+0.25*Math.sin(t*0.05+q.p*9));
+      if(x>=120&&x<240)s*=0.12;
+      v+=s*Math.exp(-dx*dx/(2*q.w*q.w))*(0.8+Math.random()*0.4);
+    }
+    const c=col(v),i=x*4;img.data[i]=c[0];img.data[i+1]=c[1];img.data[i+2]=c[2];img.data[i+3]=255;
+  }
+  cx.drawImage(cv,0,1);cx.putImageData(img,0,0);t++;
+}
+for(let k=0;k<250;k++)row();
+setInterval(row,110);
+function lab(){const sp=document.getElementById('spd').value;document.getElementById('sout').textContent=sp+' kt · '+(sp<9?'quiet':sp<15?'noisier':'noisy: faint traces drown')}
+document.getElementById('spd').addEventListener('input',lab);lab();
+</script>
+</body></html>
