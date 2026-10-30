@@ -1,6 +1,6 @@
 # Radar, ESM and visual/IR – what a mod can read and call
 
-Source: a code-reading sub-agent, 2026-10-28, on the decompiled **0.8.7** sources (`E:\Project\Comms & Causes\_decomp\Seapower-Scripts\Seapower\`,
+Source: a code-reading sub-agent, 2026-10-28, on the decompiled **0.8.7** sources (`E:\Project\Mods\Sea Power Lab\_decomp\Seapower-Scripts\Seapower\`,
 same content as `_gamerefs/decomp-0.8.7`). Paths below are relative to `Seapower\`. **Line numbers are 0.8.7; the globe build (`_gamerefs/decomp-beta`)
 is shifted by roughly +30.** Spot-checked in both builds: `RadarCalculator.GetFCRDetectionRange`, `getRadarHorizon`, `TerrainUtils.IsLineOfSightBetween(GeoPosition,…)`,
 `ObjectBase._rwrBearings`, `ObjectBase.PlottingTable`. Everything else: re-check before relying on it.

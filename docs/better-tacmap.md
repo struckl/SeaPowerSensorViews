@@ -1,7 +1,7 @@
 # Better TacMap (Steam Workshop 3768036424) – notes
 
 Looked at 2026-10-28: the Workshop page and changelog page (anonymous fetch) and the installed/decompiled copy
-(`E:\Games\steamapps\workshop\content\1286220\3768036424\`, decompile in `E:\Project\Comms & Causes\_decomp\ws_BetterTacMap`, **for understanding only**).
+(`E:\Games\steamapps\workshop\content\1286220\3768036424\`, decompile in `E:\Project\Mods\Sea Power Lab\_decomp\ws_BetterTacMap`, **for understanding only**).
 
 - **Author:** Bananaduck (Steam profile 76561198076223373). Requires Anchor Chain. Mod type Scripting. ~175 KB.
 - **Stats (when read):** 5,649 subscribers, 341 favourites, 116 ratings, 40 comments. Posted 19 Jul, last updated 18 Oct (no year shown; changelog shows only dates). Installed copy built 18 Oct, `ApproximateVersion=0.8.5`.

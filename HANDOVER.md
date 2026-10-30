@@ -40,7 +40,7 @@ radar horizon, sonar range) are fine: the game's own Sensor Info window already 
 Details in `docs/better-tacmap.md`. Short version: by Bananaduck, ~5,600 subscribers, needs Anchor Chain. Right-click threat circles
 and firing arcs, info labels (TTG, depth, speed, altitude), distress beacons, waypoint TTG, intercept solver, scaled ship
 silhouettes. **No licence stated → all rights reserved; do not copy or fork its code** (a decompiled copy exists in
-`E:\Project\Comms & Causes\_decomp\ws_BetterTacMap` for understanding only). It plugs into the game's map layer system, which
+`E:\Project\Mods\Sea Power Lab\_decomp\ws_BetterTacMap` for understanding only). It plugs into the game's map layer system, which
 changed in the globe build, and Steam shows "removed … incompatible with Sea Power" banners on its page (an anonymous fetch could not
 tell whether it is live). It covers weapons/kinematics; Sensor Views covers sensors/detection – complementary, almost no overlap
 (only weapon-range circles and a small "above/below the layer" note for submarines). Later a combined view (coverage next to threat
@@ -148,7 +148,7 @@ thread first; `Environment.getXLayerAttenuation()` reseeds `UnityEngine.Random` 
 
 - **SeaPowerTopo** (public, 1.4.1, Workshop 3826122523) already contains everything built in the preceding conversation: pre-drawn mission-area
   layers, parallel colouring, the submarine thermal-layer / keel-clearance overlay (`Terrain/LayerMap.cs`, `Render/Cutout.cs`, `OverlayRenderer.cs`) and the
-  globe/flat split (`GameApi.cs`). The old copies in `E:\Project\Comms & Causes\…\worktrees\…` (branches `claude/topo-wide-surround`, `claude/popout-free-windows`) are superseded.
+  globe/flat split (`GameApi.cs`). The old copies in `E:\Project\Mods\Sea Power Lab\…\worktrees\…` (branches `claude/topo-wide-surround`, `claude/popout-free-windows`) are superseded.
 - **SeaPowerPopOut** (public, Workshop 3826396311): see-through pop-out monitor, pointer fix, wide resize corners, snapping – in its repo.
 - **SeaPowerBorders** public since 2026-10-28; **SeaPowerRadio** hotfix 1.0.5 live. Memory notes of these live in
   `C:\Users\sgtmr\.claude\projects\E--Project-Mods-Sea-Power\memory\` (`sea-power-workspace.md`, `game-update-2026-10-27.md`, `both-game-versions-rule.md`, …).
