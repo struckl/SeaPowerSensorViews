@@ -3,9 +3,12 @@
 Written 2026-10-30 by the Claude session that did the analysis (it is switching accounts; this file is everything the next
 session needs). Read this file first, then `docs/`, then open `mockups/index.html` in a browser.
 
-**Status: nothing is built yet.** No code, no GitHub repo, no Workshop item, nothing deployed, `mods.json` not updated. This
-folder holds research, mockups and a plan. Lukas's last question was "should we start with the sensor board?" – he had not
-answered yet when this was written; my recommendation (below) is yes.
+**Status (2026-11-02): M0-M3 are written, nothing is run in the game.** The scaffold (`src/SeaPowerSensorViews`, `tools/package.ps1`,
+`docs/windows.md`, `docs/testing.md`), the `SensorPicture` data layer (`Data/`), and the three window views (sensor board, radar scope,
+sonar display; `Ui/`) build against both games' assemblies and pass `modtool compat` with ONE DLL. The mod is registered in `../mods.json`
+(no Workshop id, `tested_in_game` empty); no GitHub repo exists yet. **Not built:** M4 map lines, M5 coverage (`Map/` holds only the
+`IMapOverlay` hook). How the windows are hosted and styled: `docs/windows.md`. What to look at first in the game: `docs/testing.md`
+("Not verified offline"). Lukas's answer on the board-first order: the three windows were done in one round.
 
 ## 1. What Lukas wants (his words, shortened)
 

@@ -1,11 +1,45 @@
-# Sea Power: Rats Sensor Views
+# Sea Power: R.A.T.S. Sensor Views
 
-Planned mod for [Sea Power](https://store.steampowered.com/app/1286220/): see **which unit sees which contact with which sensor** –
-a sensor board, a radar scope, a sonar display, sensor lines on the map and sensor coverage – as normal game windows that pop out to a
-second monitor with Sea Power Pop-Out Windows.
+*Reconnaissance, Acoustics, Terrain & Signals*
 
-**Status: planning.** Research and mockups only, no code yet. Start with [HANDOVER.md](HANDOVER.md).
+A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowered.com/app/1286220/) that shows **which of your
+units sees which contact with which sensor**, in three windows that look and behave like the game's own - and pop out to a second
+monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757).
 
-- [HANDOVER.md](HANDOVER.md) – goal, decisions, rules, plan, open questions
-- [docs/](docs/) – what the game's sensor model offers (radar/ESM/visual, sonar), Better TacMap notes
-- [mockups/index.html](mockups/index.html) – the five views as standalone pages (invented data)
+**Status: 0.1.0, in development, not released.** The three windows are written and checked against the game's assemblies offline;
+nothing has been run in the game yet.
+
+- **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
+  F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD) with the age of the freshest fix; a lower-case
+  letter means bearing only; dimmed letters are sensors that lost the contact a moment ago. Click a cell for bearing, range and fix
+  age per sensor. Below: the selected unit's sensors with on / off, damage, arcs and EMCON.
+- **Radar scope** - a scope centred on the selected unit with the contacts its radars and eyes hold, fading with the age of the
+  last fix; the blind arcs of its search radars; the radar horizon against a target altitude you set with a slider; ESM and passive
+  sonar bearing lines; strobes for radars warning you (RWR) and jammers; a ring and "LOCK" for contacts held by a fire-control radar.
+  The sweep line follows the antenna and is decoration only.
+- **Sonar display** - bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, the baffle sector,
+  the unit's own noise at its speed, and a depth strip with the thermal layer, own depth, the towed array and the seabed.
+
+Everything is **display only**. The windows show what your units' sensors already report to the game's plotting table (track
+bearing, range and age estimates); they change nothing in a mission, and the mission's own rules decide what a sensor can detect.
+They never show a contact's real position, only the estimates your sensors have. The radar horizon ring and the depth strip use
+the game's own radar-horizon function, thermal-layer data and terrain depth for your own unit; the horizon is computed for a
+target altitude you choose, not for a hidden contact.
+
+## Opening the windows
+
+- Three small buttons - **Board**, **Scope**, **Sonar** - at the right end of the bottom bar, next to the game's window toggles;
+  they light up while their window is open.
+- Hot keys (configurable): `Ctrl+F4` board, `Ctrl+F6` scope, `Ctrl+F8` sonar.
+
+The windows use the game's own window layout (title bar, close button, resizing); with Pop-Out Windows they get its pop-out button.
+Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
+
+## Build
+
+`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. One DLL is meant to serve
+the flat 0.8.7 map and the 3D-globe build; it is checked offline against the assemblies of both and has not been run in the game yet.
+How the windows are hosted: [docs/windows.md](docs/windows.md). Test list: [docs/testing.md](docs/testing.md). Notes and plan:
+[HANDOVER.md](HANDOVER.md).
+
+MIT licence. *R.A.T.S. - Ratte's Assorted Tactical Systems*
