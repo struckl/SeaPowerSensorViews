@@ -60,7 +60,7 @@ internal static class Settings
         LinesWho = file.Bind("4. Map: sensor lines", "Units shown", "All, selected bright",
             new ConfigDescription("All own units' lines (the selected unit's bright, the others dimmed), or only the selected unit's.",
                 new AcceptableValueList<string>("All, selected bright", "Selected only")));
-        DimOpacity = file.Bind("4. Map: sensor lines", "Opacity of the other units' lines", 0.35f,
+        DimOpacity = file.Bind("4. Map: sensor lines", "Dimmed line opacity", 0.35f,
             new ConfigDescription("0 = invisible, 1 = as bright as the selected unit's.", new AcceptableValueRange<float>(0f, 1f)));
         LineWidth = file.Bind("4. Map: sensor lines", "Line weight", 1f,
             new ConfigDescription("Multiplier on the game's own line weight (its map styling ini uses 1 pixel).", new AcceptableValueRange<float>(0.5f, 4f)));

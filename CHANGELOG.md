@@ -2,6 +2,7 @@
 
 ## 0.2.0 - unreleased
 
+- Fix: the mod did not start (no bar buttons) because one config key held an apostrophe, which BepInEx refuses; the key is now *Dimmed line opacity*.
 - **Map layers** in the map's Layers menu: *Sensor lines (who sees what)* and *Sensor coverage (selected unit)* (not yet run in the game).
   - Sensor lines: from each own unit to the place each of its sensors puts a contact (track estimates only). Search radar amber, fire-control
     lock thick red and labelled, active sonar blue, visual dotted grey; ESM and passive sonar as a bearing line with a wedge. The selected
