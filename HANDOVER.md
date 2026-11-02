@@ -3,12 +3,13 @@
 Written 2026-10-30 by the Claude session that did the analysis (it is switching accounts; this file is everything the next
 session needs). Read this file first, then `docs/`, then open `mockups/index.html` in a browser.
 
-**Status (2026-11-02): M0-M3 are written, nothing is run in the game.** The scaffold (`src/SeaPowerSensorViews`, `tools/package.ps1`,
-`docs/windows.md`, `docs/testing.md`), the `SensorPicture` data layer (`Data/`), and the three window views (sensor board, radar scope,
-sonar display; `Ui/`) build against both games' assemblies and pass `modtool compat` with ONE DLL. The mod is registered in `../mods.json`
-(no Workshop id, `tested_in_game` empty); no GitHub repo exists yet. **Not built:** M4 map lines, M5 coverage (`Map/` holds only the
-`IMapOverlay` hook). How the windows are hosted and styled: `docs/windows.md`. What to look at first in the game: `docs/testing.md`
-("Not verified offline"). Lukas's answer on the board-first order: the three windows were done in one round.
+**Status (2026-11-03): M0-M5 are written, nothing is run in the game.** M0-M3 (scaffold, `SensorPicture`, board / scope / sonar windows) were
+reviewed and pushed. M4 (sensor lines) and M5 (coverage) are `Map/` (`MapSet`, `MapView`, `LineBuilder`, `CoverageJob`, `Styles`) plus the Layers-menu
+entries (`LayerEntry`, `GameApi`); they needed the two-build split, so the mod now ships `SeaPowerSensorViews.dll` (globe) and `SeaPowerSensorViewsFlat.dll`
+(0.8.7) from one tree, version 0.2.0. `modtool compat/check/lint` are green; `tools/hook-check` confirms the Harmony targets and reflection lookups in both
+games. No GitHub release, no Workshop item. Hosting of the windows: `docs/windows.md`; map layers: `docs/map-layers.md`; what to look at first in the game:
+`docs/testing.md` ("Not verified offline"). Open: the coverage uses the game's own range maths for imagined targets only (no worker thread needed); a true
+per-bearing sonar range (instead of the game's single passive estimate with a baffle dent) would be the next refinement.
 
 ## 1. What Lukas wants (his words, shortened)
 

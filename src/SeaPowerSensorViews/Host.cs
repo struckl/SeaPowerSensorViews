@@ -1,6 +1,7 @@
 using System;
 using SeaPower;
 using SeaPowerSensorViews.Data;
+using SeaPowerSensorViews.Map;
 using SeaPowerSensorViews.Ui;
 using UnityEngine;
 
@@ -17,11 +18,16 @@ internal sealed class Host : MonoBehaviour
     private int tries;
     private float nextAnimate;
     private float nextSync;
+    private enum HookState { Waiting, Applied, Failed }
+    private HookState mapHooks;
+    private float nextHookCheck;
 
     private void Awake() => Instance = this;
 
     internal void MissionReady()
     {
+        try { Map.MapSet.MissionReady(); }
+        catch (Exception ex) { ModLog.Error("map layers off for this mission: " + ex); }
         setupPending = true;
         tries = 0;
         nextTry = 0f;
@@ -31,13 +37,36 @@ internal sealed class Host : MonoBehaviour
     {
         setupPending = false;
         active = false;
+        try { Map.MapSet.MissionEnded(); }
+        catch (Exception ex) { ModLog.Error("mission end (map): " + ex.Message); }
         try { Kit.Teardown(); }
         catch (Exception ex) { ModLog.Error("mission end: " + ex.Message); }
         SensorPicture.Current.Reset();
     }
 
+    internal void MapRendered(object layer) => Map.MapSet.Rendered(layer);
+
     private void Update()
     {
+        if (mapHooks == HookState.Waiting && Time.unscaledTime >= nextHookCheck)
+        {
+            nextHookCheck = Time.unscaledTime + 1f;
+            // A WindowHost registers itself with WindowHostManager when it is built, which only happens while NoesisGUI runs
+            // (the main menu view has one) - from then on the map control's Noesis types are safe to patch.
+            if (Singleton<SeapowerUI.WindowHostManager>.InstanceExists())
+            {
+                try
+                {
+                    mapHooks = Hooks.ApplyMapHooks() ? HookState.Applied : HookState.Failed;
+                    if (mapHooks == HookState.Applied) ModLog.Info("Map hook in place.");
+                }
+                catch (Exception ex)
+                {
+                    mapHooks = HookState.Failed;
+                    ModLog.Error("Map hook failed - nothing on the map: " + ex);
+                }
+            }
+        }
         if (setupPending && Time.unscaledTime >= nextTry)
         {
             nextTry = Time.unscaledTime + 0.5f;
@@ -60,17 +89,16 @@ internal sealed class Host : MonoBehaviour
                 nextSync = Time.unscaledTime + 0.5f;
                 Kit.Sync();
             }
-            if (!Kit.AnyOpen()) return;
+            bool windows = Kit.AnyOpen();
             SensorPicture pic = SensorPicture.Current;
-            pic.PollStrobes();
-            if (pic.Tick(Time.unscaledTime))
+            if (windows || Map.MapSet.NeedsPicture)
             {
-                for (int i = 0; i < 3; i++)
-                    if (Kit.Window(i) is SonarWindow sw && Kit.IsOpen(sw))
-                        SonarSampler.Update(sw);
-                Registry.RefreshAll();
+                if (windows) pic.PollStrobes();
+                if (pic.Tick(Time.unscaledTime) && windows)
+                    OnSnapshot();
             }
-            else if (Time.unscaledTime >= nextAnimate)
+            Map.MapSet.Update(Time.unscaledTime);
+            if (windows && Time.unscaledTime >= nextAnimate)
             {
                 nextAnimate = Time.unscaledTime + 0.2f;      // the scope's sweep: about five redraws a second
                 for (int i = 0; i < Registry.Surfaces.Count; i++)
@@ -81,6 +109,16 @@ internal sealed class Host : MonoBehaviour
         {
             if (errors++ < 5) ModLog.Error("update: " + ex);
         }
+    }
+
+    private static void OnSnapshot()
+    {
+        for (int i = 0; i < 3; i++)
+            if (Kit.Window(i) is SonarWindow sw && Kit.IsOpen(sw))
+                SonarSampler.Update(sw);
+        if (Kit.Window(1) is ScopeWindow scope && Kit.IsOpen(scope))
+            scope.PushAltitude();
+        Registry.RefreshAll();
     }
 
     private int errors;
@@ -96,6 +134,8 @@ internal sealed class Host : MonoBehaviour
             if (Match(Settings.BoardKey.Value, ev)) { Kit.Toggle(Kit.Window(0)); ev.Use(); }
             else if (Match(Settings.ScopeKey.Value, ev)) { Kit.Toggle(Kit.Window(1)); ev.Use(); }
             else if (Match(Settings.SonarKey.Value, ev)) { Kit.Toggle(Kit.Window(2)); ev.Use(); }
+            else if (Match(Settings.LinesKey.Value, ev)) { Map.MapSet.ToggleLines(); ev.Use(); }
+            else if (Match(Settings.CoverageKey.Value, ev)) { Map.MapSet.ToggleCoverage(); ev.Use(); }
         }
         catch (Exception ex)
         {

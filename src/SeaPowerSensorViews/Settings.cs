@@ -17,6 +17,25 @@ internal static class Settings
     public static ConfigEntry<float> MemorySeconds;
     public static ConfigEntry<bool> FollowSelection;
 
+    // map layers
+    public static ConfigEntry<bool> LinesVisible;
+    public static ConfigEntry<string> LinesWho;
+    public static ConfigEntry<float> DimOpacity;
+    public static ConfigEntry<float> LineWidth;
+    public static ConfigEntry<bool> LostLines;
+    public static ConfigEntry<float> WedgeNm;
+    public static ConfigEntry<string> LinesKey;
+    public static ConfigEntry<bool> CoverageVisible;
+    public static ConfigEntry<string> CoverageKey;
+    public static ConfigEntry<float> CoverageAltitude;
+    public static ConfigEntry<float> TargetRcs;
+    public static ConfigEntry<bool> CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows;
+    public static ConfigEntry<string> VisualSize;
+    public static ConfigEntry<int> Rays;
+
+    /// <summary>Bumped whenever a setting changes, so the map layers know to rebuild.</summary>
+    public static int Version;
+
     public static void Init()
     {
         var file = new ConfigFile(Path.Combine(Paths.ConfigPath, Plugin.Guid + ".cfg"), saveOnInit: true);
@@ -24,16 +43,52 @@ internal static class Settings
         VerboseLog = file.Bind("1. General", "Verbose log", false, "Write debug detail to BepInEx/LogOutput.log.");
         BarButtons = file.Bind("2. Opening the windows", "Bottom bar buttons", true,
             "Three small toggle buttons (Board, Scope, Sonar) at the right end of the bottom bar, next to the game's own window toggles.");
-        BoardKey = file.Bind("2. Opening the windows", "Sensor board key", "Ctrl+F4",
+        BoardKey = file.Bind("2. Opening the windows", "Sensor board key", "Ctrl+Insert",
             "Hot key that toggles the sensor board. Modifiers Ctrl, Shift, Alt joined with +, then a Unity KeyCode name. Empty = none. " +
-            "The defaults are keys the game does not bind by default.");
-        ScopeKey = file.Bind("2. Opening the windows", "Radar scope key", "Ctrl+F6", "Hot key that toggles the radar scope.");
-        SonarKey = file.Bind("2. Opening the windows", "Sonar display key", "Ctrl+F8", "Hot key that toggles the sonar display.");
+            "The defaults are keys the game does not bind by default (not F-keys: with Ctrl held the free camera would still pass them on).");
+        ScopeKey = file.Bind("2. Opening the windows", "Radar scope key", "Ctrl+PageUp", "Hot key that toggles the radar scope.");
+        SonarKey = file.Bind("2. Opening the windows", "Sonar display key", "Ctrl+PageDown", "Hot key that toggles the sonar display.");
         MemorySeconds = file.Bind("3. Views", "Lost contact memory (s)", 60f,
             new ConfigDescription("How long a contact a sensor lost stays on the board and scope, dimmed, with the age of its last fix.",
                 new AcceptableValueRange<float>(0f, 600f)));
         FollowSelection = file.Bind("3. Views", "Follow the selected unit", true,
             "The scope, the sonar display and the board's sensor panel show the unit selected in the game. Off = the unit clicked on the board.");
+
+        LinesVisible = file.Bind("4. Map: sensor lines", "Show sensor lines", true,
+            "The 'Sensor lines' entry of the map's Layers menu (kept in step with it). Lines from each own unit to each contact it holds, " +
+            "from the track estimates only.");
+        LinesWho = file.Bind("4. Map: sensor lines", "Units shown", "All, selected bright",
+            new ConfigDescription("All own units' lines (the selected unit's bright, the others dimmed), or only the selected unit's.",
+                new AcceptableValueList<string>("All, selected bright", "Selected only")));
+        DimOpacity = file.Bind("4. Map: sensor lines", "Opacity of the other units' lines", 0.35f,
+            new ConfigDescription("0 = invisible, 1 = as bright as the selected unit's.", new AcceptableValueRange<float>(0f, 1f)));
+        LineWidth = file.Bind("4. Map: sensor lines", "Line weight", 1f,
+            new ConfigDescription("Multiplier on the game's own line weight (its map styling ini uses 1 pixel).", new AcceptableValueRange<float>(0.5f, 4f)));
+        LostLines = file.Bind("4. Map: sensor lines", "Show lost contacts", true,
+            "A contact a sensor has just lost keeps a faint line for the 'lost contact memory' time (section 3).");
+        WedgeNm = file.Bind("4. Map: sensor lines", "Bearing wedge length (nm)", 40f,
+            new ConfigDescription("Length of the line and wedge drawn for bearing-only contacts (ESM, passive sonar).", new AcceptableValueRange<float>(5f, 300f)));
+        LinesKey = file.Bind("4. Map: sensor lines", "Toggle key", "Ctrl+Shift+PageUp", "Hot key for the sensor lines layer. Empty = none.");
+
+        CoverageVisible = file.Bind("5. Map: coverage", "Show coverage", false,
+            "The 'Sensor coverage' entry of the map's Layers menu (kept in step with it). For the unit selected in the game: where its sensors " +
+            "would hold an imagined target - radar against the target altitude below with terrain shadows, ESM, visual, passive sonar.");
+        CoverageKey = file.Bind("5. Map: coverage", "Toggle key", "Ctrl+Shift+PageDown", "Hot key for the coverage layer. Empty = none.");
+        CoverageAltitude = file.Bind("5. Map: coverage", "Target altitude (ft)", 100f,
+            new ConfigDescription("Altitude of the imagined target for radar coverage; the radar scope's slider changes it too.", new AcceptableValueRange<float>(0f, 80000f)));
+        TargetRcs = file.Bind("5. Map: coverage", "Target radar cross section (m2)", 10f,
+            new ConfigDescription("Imagined target for the radar equation; the coverage never exceeds the radar's own maximum range or the horizon.", new AcceptableValueRange<float>(0.01f, 10000f)));
+        CoverRadar = file.Bind("5. Map: coverage", "Radar", true, "Search radar coverage (terrain-shadowed).");
+        CoverEsm = file.Bind("5. Map: coverage", "ESM", true, "ESM listening range against an emitter like the unit's own search radar.");
+        CoverVisual = file.Bind("5. Map: coverage", "Visual", true, "Visual range against a target of the size class below, limited by the horizon.");
+        CoverSonar = file.Bind("5. Map: coverage", "Passive sonar", true, "Passive sonar range with the dent of the baffle sector.");
+        TerrainShadows = file.Bind("5. Map: coverage", "Terrain shadows", true, "Cut the radar coverage where terrain blocks the line of sight (checked a few rays per frame).");
+        VisualSize = file.Bind("5. Map: coverage", "Visual target size", "Medium",
+            new ConfigDescription("Size class of the imagined target for the visual ring.", new AcceptableValueList<string>("VerySmall", "Small", "SemiSmall", "Meager", "Medium", "SemiLarge", "Large", "VeryLarge")));
+        Rays = file.Bind("5. Map: coverage", "Rays", 72,
+            new ConfigDescription("Bearings the coverage polygons are sampled at.", new AcceptableValueRange<int>(24, 180)));
+
+        file.SettingChanged += (s, e) => Version++;
     }
 
     /// <summary>Parses "Ctrl+Shift+F6"; false when empty or unreadable.</summary>

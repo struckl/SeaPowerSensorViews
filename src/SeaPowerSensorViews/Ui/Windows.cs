@@ -70,7 +70,14 @@ public sealed class ScopeWindow : SvWindow
     public ScopeWindow() { Title = "R.A.T.S. Radar Scope"; }
     internal static readonly float[] Ranges = { 5, 10, 20, 40, 80, 160, 320 };
     internal int RangeIndex = 3;
-    internal float TargetAltitudeFt = 100f;
+    /// <summary>Starts at the config value the map coverage layer uses and is written back to it about once a second (not on every slider step: each write saves the config file).</summary>
+    internal float TargetAltitudeFt = Settings.CoverageAltitude.Value;
+
+    internal void PushAltitude()
+    {
+        if (Math.Abs(Settings.CoverageAltitude.Value - TargetAltitudeFt) > 0.5f)
+            Settings.CoverageAltitude.Value = TargetAltitudeFt;
+    }
     internal bool HeadingUp;
     internal bool ShowHorizon = true;
 

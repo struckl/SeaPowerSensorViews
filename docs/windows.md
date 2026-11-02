@@ -34,7 +34,8 @@ build's XAML was not available offline) and the decompiled `SeapowerUI` sources.
 If the template cannot be registered the mod logs it and the hot keys do nothing; the planned fallback would be Noesis elements laid over
 the map as Topo's `Ui/MapDecoration.cs` does. Not needed unless the in-game test shows the window route failing.
 
-## One DLL
+## One source tree, two DLLs
 
-Nothing the mod references differs between the two games except `SonarAcoustics.OwnNoiseDB` (four optional parameters added in the globe
-build), which is bound by reflection in `Compat.cs`. `python tools/modtool.py compat sensorviews`: 0 missing on either game.
+The windows are the same on both games. The map layers are not (see [map-layers.md](map-layers.md)), so the mod is built twice from one tree:
+`SeaPowerSensorViews.dll` (globe) and `SeaPowerSensorViewsFlat.dll` (`FLATMAP`, 0.8.7). `SonarAcoustics.OwnNoiseDB` (four optional parameters
+added in the globe build) is bound by reflection in `Compat.cs`. `python tools/modtool.py compat sensorviews`: 0 missing on the own game, entry point and class load clean on the other.

@@ -5,7 +5,7 @@
     <AssemblyName>SeaPowerSensorViews</AssemblyName>
     <RootNamespace>SeaPowerSensorViews</RootNamespace>
     <Product>Sensor board, radar scope and sonar display as game windows.</Product>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
@@ -23,6 +23,16 @@
     <ModDeployDir>$(GameDir)\Sea Power_Data\StreamingAssets\SeaPowerSensorViews</ModDeployDir>
   </PropertyGroup>
 
+  <!--The flat-map build for Sea Power 0.8.7: the same source with FLATMAP defined, built against 0.8.7's assemblies as
+      SeaPowerSensorViewsFlat.dll. It stays off on the globe game and the globe build stays off on 0.8.7 (docs/both-versions.md
+      in the workspace). dotnet build -p:GameBuild=Flat [-p:FlatManagedDir=...\Managed]-->
+  <PropertyGroup Condition="'$(GameBuild)' == 'Flat'">
+    <AssemblyName>SeaPowerSensorViewsFlat</AssemblyName>
+    <DefineConstants>$(DefineConstants);FLATMAP</DefineConstants>
+    <FlatManagedDir Condition="'$(FlatManagedDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\_gamerefs\SeaPower-0.8.7-public\Managed</FlatManagedDir>
+    <ManagedDir>$(FlatManagedDir)</ManagedDir>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BepInEx.Core" Version="5.4.21" IncludeAssets="compile" PrivateAssets="all" />
     <PackageReference Include="HarmonyX" Version="2.9.0" IncludeAssets="compile" PrivateAssets="all" />
@@ -38,6 +48,7 @@
     <Reference Include="UniRx"><HintPath>$(ManagedDir)\UniRx.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="CommunityToolkit.Mvvm"><HintPath>$(ManagedDir)\CommunityToolkit.Mvvm.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Unity.Entities"><HintPath>$(ManagedDir)\Unity.Entities.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.Mathematics"><HintPath>$(ManagedDir)\Unity.Mathematics.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Unity.Collections"><HintPath>$(ManagedDir)\Unity.Collections.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="AnchorChain"><HintPath>$(AnchorChainDir)\AnchorChain.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>

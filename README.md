@@ -6,8 +6,8 @@ A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowere
 units sees which contact with which sensor**, in three windows that look and behave like the game's own - and pop out to a second
 monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757).
 
-**Status: 0.1.0, in development, not released.** The three windows are written and checked against the game's assemblies offline;
-nothing has been run in the game yet.
+**Status: 0.2.0, in development, not released.** The three windows and the two map layers are written and checked against the game's
+assemblies offline; nothing has been run in the game yet.
 
 - **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
   F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD) with the age of the freshest fix; a lower-case
@@ -26,20 +26,27 @@ They never show a contact's real position, only the estimates your sensors have.
 the game's own radar-horizon function, thermal-layer data and terrain depth for your own unit; the horizon is computed for a
 target altitude you choose, not for a hidden contact.
 
+- **Sensor lines on the map** - a *Sensor lines (who sees what)* entry in the map's Layers menu: a line from each of your units to the place each of its
+  sensors puts a contact (amber search radar, thick red fire-control lock, blue active sonar, dotted visual); ESM and passive sonar as a bearing line with a
+  wedge. The selected unit's lines are bright, the others dimmed - or only the selected unit's, by a setting. Only track estimates are used.
+- **Sensor coverage on the map** - a *Sensor coverage (selected unit)* entry (off by default): where the selected unit's sensors would hold an imagined
+  target - radar against the target altitude of the scope's slider with terrain shadows, ESM, visual range, passive sonar with the dent of its baffle sector.
+
 ## Opening the windows
 
 - Three small buttons - **Board**, **Scope**, **Sonar** - at the right end of the bottom bar, next to the game's window toggles;
   they light up while their window is open.
-- Hot keys (configurable): `Ctrl+F4` board, `Ctrl+F6` scope, `Ctrl+F8` sonar.
+- Hot keys (configurable): `Ctrl+Insert` board, `Ctrl+PageUp` scope, `Ctrl+PageDown` sonar, `Ctrl+Shift+PageUp` sensor lines, `Ctrl+Shift+PageDown` coverage.
 
 The windows use the game's own window layout (title bar, close button, resizing); with Pop-Out Windows they get its pop-out button.
 Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
 
 ## Build
 
-`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. One DLL is meant to serve
-the flat 0.8.7 map and the 3D-globe build; it is checked offline against the assemblies of both and has not been run in the game yet.
-How the windows are hosted: [docs/windows.md](docs/windows.md). Test list: [docs/testing.md](docs/testing.md). Notes and plan:
+`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. Two DLLs
+from one source tree - `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` (`-p:GameBuild=Flat`) for 0.8.7 - each stays off on the
+other game; checked offline against the assemblies of both, not run in the game yet.
+How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Notes and plan:
 [HANDOVER.md](HANDOVER.md).
 
 MIT licence. *R.A.T.S. - Ratte's Assorted Tactical Systems*
