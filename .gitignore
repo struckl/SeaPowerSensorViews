@@ -1,7 +1,12 @@
-.venv/
-.env
-__pycache__/
-.claude/
+# Build output
 bin/
 obj/
+*.user
+.vs/
+
+# Release staging (tools/package.ps1)
 dist/
+
+# Local
+.env
+.claude/
