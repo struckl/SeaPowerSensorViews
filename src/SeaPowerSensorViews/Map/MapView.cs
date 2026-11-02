@@ -29,6 +29,7 @@ internal sealed class MapView
     private readonly Theme theme;
     private int labelsUsed;
     private bool viewDirty = true;
+    private double nextViewBuild;
     private int linesVersion = -1, coverageVersion = -1, settingsVersion = -1;
     private bool linesShown, coverageShown;
 
@@ -119,6 +120,12 @@ internal sealed class MapView
             coveragePaths.Clear();
             linesVersion = coverageVersion = -1;
         }
+        // While the map pans, zooms or follows a unit the viewport changes every frame; rebuilding every path each time is the
+        // expensive part (projection plus Noesis tessellating the strokes again), so view changes rebuild at most 20 times a second.
+        double now = UnityEngine.Time.unscaledTimeAsDouble;
+        if (viewDirty && now < nextViewBuild && settingsVersion == Settings.Version)
+            return;
+        if (viewDirty) nextViewBuild = now + 0.05;
         bool changed = viewDirty || settingsVersion != Settings.Version;
         if (showLines && (changed || lines.Version != linesVersion))
         {

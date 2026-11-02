@@ -200,7 +200,9 @@ internal sealed class CoverageJob
         if (job == null || job.IsDestroyed) { running = false; return; }
         int done = 0;
         bool shadows = Settings.TerrainShadows.Value && haveRadar;
-        while (rayIndex < rays && done < RaysPerFrame)
+        // At most RaysPerFrame rays, and no more than about a millisecond of terrain checks per frame (at least one ray).
+        long until = System.Diagnostics.Stopwatch.GetTimestamp() + System.Diagnostics.Stopwatch.Frequency / 1000;
+        while (rayIndex < rays && done < RaysPerFrame && (done == 0 || System.Diagnostics.Stopwatch.GetTimestamp() < until))
         {
             if (shadows)
             {

@@ -103,13 +103,21 @@ internal static class MapSet
                     linesPictureVersion = pic.Version;
                     linesSettings = Settings.Version;
                     linesSelection = selUid;
+                    long tl = Perf.Start();
                     LineBuilder.Build(pic, selected, Lines);
+                    Perf.Stop(Perf.Part.Lines, tl);
                 }
             }
             if (cover)
+            {
+                long tc = Perf.Start();
                 Coverage.Tick(realNow, selected);
+                Perf.Stop(Perf.Part.Coverage, tc);
+            }
+            long tm = Perf.Start();
             foreach (MapView v in Views)
                 v.Update(lines, Lines, cover, Coverage.Result);
+            Perf.Stop(Perf.Part.MapBuild, tm);
         }
         catch (Exception ex)
         {

@@ -126,8 +126,10 @@ public abstract class Surface : UserControl
     protected override void OnRender(DrawingContext dc)
     {
         if (!themed) Theme();
+        long t = Perf.Start();
         try { Paint(dc, ActualWidth, ActualHeight); }
         catch (Exception ex) { Report(ex); }
+        Perf.Stop(Perf.Part.WindowDraw, t);
     }
 
     private static int errors;

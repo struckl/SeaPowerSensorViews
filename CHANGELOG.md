@@ -2,6 +2,7 @@
 
 ## 0.2.0 - unreleased
 
+- Performance: the bar buttons no longer re-ask the game's window commands on every mouse move and key press; map paths are rebuilt at most 20 times a second while the view moves; the coverage terrain pass takes at most about 1 ms per frame. With *Verbose log* on, the log gets a timing line per part every 10 s.
 - Fix: the mod did not start (no bar buttons) because one config key held an apostrophe, which BepInEx refuses; the key is now *Dimmed line opacity*.
 - **Map layers** in the map's Layers menu: *Sensor lines (who sees what)* and *Sensor coverage (selected unit)* (not yet run in the game).
   - Sensor lines: from each own unit to the place each of its sensors puts a contact (track estimates only). Search radar amber, fire-control

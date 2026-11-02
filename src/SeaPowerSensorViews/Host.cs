@@ -93,11 +93,15 @@ internal sealed class Host : MonoBehaviour
             SensorPicture pic = SensorPicture.Current;
             if (windows || Map.MapSet.NeedsPicture)
             {
+                long t = Perf.Start();
                 if (windows) pic.PollStrobes();
-                if (pic.Tick(Time.unscaledTime) && windows)
+                bool fresh = pic.Tick(Time.unscaledTime);
+                Perf.Stop(Perf.Part.Picture, t);
+                if (fresh && windows)
                     OnSnapshot();
             }
             Map.MapSet.Update(Time.unscaledTime);
+            Perf.Frame();
             if (windows && Time.unscaledTime >= nextAnimate)
             {
                 nextAnimate = Time.unscaledTime + 0.2f;      // the scope's sweep: about five redraws a second

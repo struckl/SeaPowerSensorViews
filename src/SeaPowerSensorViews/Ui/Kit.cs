@@ -26,12 +26,13 @@ internal static class Kit
         public ToggleButton Button;
         public TextBlock Label;
         public string Text;
+        public bool Open;           // as of the last Sync / Open / Close; asking the game's command costs a tree walk
+        public bool Lit;
     }
 
     private static readonly List<Entry> Entries = new List<Entry>();
     private static MainGameView view;
     private static bool syncing;
-    private static bool subscribed;
 
     public static bool Active => view != null;
 
@@ -81,11 +82,8 @@ internal static class Kit
             try { AddBarButtons(main); }
             catch (Exception ex) { ModLog.Warn("Bottom bar buttons not added (" + ex.Message + ") - use the hot keys."); }
         }
-        if (!subscribed)
-        {
-            subscribed = true;
-            WindowHostCommands.CloseWindowCommand.CanExecuteChanged += (s, e) => Sync();
-        }
+        // No CanExecuteChanged subscription: the game's commands re-query on every mouse move and key press, and a Sync each
+        // time cost three tree walks per input event. The host syncs twice a second, and Open/Close update at once.
         ModLog.Info("Windows registered: sensor board, radar scope, sonar display" + (Settings.BarButtons.Value ? " (bottom bar buttons added)." : "."));
         return true;
     }
@@ -143,12 +141,16 @@ internal static class Kit
     {
         if (view == null || IsOpen(e)) return;
         WindowHostCommands.OpenWindowCommand.Execute(e.Window, view);
+        e.Open = IsOpen(e);
+        Sync();
     }
 
     private static void Close(Entry e)
     {
         if (view != null && IsOpen(e))
             WindowHostCommands.CloseWindowCommand.Execute(e.Window, view);
+        e.Open = false;
+        Sync();
     }
 
     public static void Toggle(SvWindow window)
@@ -172,11 +174,12 @@ internal static class Kit
         {
             foreach (Entry e in Entries)
             {
+                bool open = e.Open = IsOpen(e);
                 if (e.Button == null) continue;
-                bool open = IsOpen(e);
                 if (e.Button.IsChecked != open) e.Button.IsChecked = open;
+                if (e.Lit == open) continue;
                 Brush ink = e.Label.TryFindResource(open ? "Brush.Foreground.Emphasis" : "Brush.Foreground.Normal") as Brush;
-                if (ink != null) e.Label.Foreground = ink;
+                if (ink != null) { e.Label.Foreground = ink; e.Lit = open; }
             }
         }
         finally { syncing = false; }
@@ -186,14 +189,14 @@ internal static class Kit
     {
         if (view == null) return false;
         foreach (Entry e in Entries)
-            if (IsOpen(e)) return true;
+            if (e.Open) return true;
         return false;
     }
 
     public static bool IsOpen(SvWindow w)
     {
         foreach (Entry e in Entries)
-            if (ReferenceEquals(e.Window, w)) return IsOpen(e);
+            if (ReferenceEquals(e.Window, w)) return e.Open;
         return false;
     }
 }
