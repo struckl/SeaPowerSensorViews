@@ -6,7 +6,7 @@ A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowere
 units sees which contact with which sensor**, in three windows that look and behave like the game's own - and pop out to a second
 monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757).
 
-**Status: 0.2.0, first release** ([Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654), hidden until it is made public). Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
+**Status: 0.2.0, first release** ([Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654)). Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
 bearing history, depth marks and the echo plot. The build for the 3D-globe beta is checked against its assemblies but not run in the game yet.
 
 - **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
