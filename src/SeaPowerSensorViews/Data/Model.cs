@@ -48,6 +48,7 @@ internal sealed class Hit
     public bool Live;               // the track is still valid; false = remembered
     public int Stamp;
     public float MaxAge;
+    public readonly List<KeyValuePair<float, float>> History = new List<KeyValuePair<float, float>>();   // (fix time, bearing) of each new fix, last 10 min
 }
 
 internal sealed class SensorRow

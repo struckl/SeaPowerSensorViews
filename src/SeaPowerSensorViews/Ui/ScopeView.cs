@@ -79,8 +79,12 @@ public sealed class ScopeSurface : Surface
     private ScopeWindow Win => DataContext as ScopeWindow;
     internal override bool Animated => true;
 
+    private Point cursor = new Point(-1, -1);
+
     public ScopeSurface()
     {
+        MouseMove += (s, e) => { cursor = e.GetPosition(this); InvalidateVisual(); };
+        MouseLeave += (s, e) => { cursor = new Point(-1, -1); InvalidateVisual(); };
         MouseWheel += (s, e) =>
         {
             Win?.StepRange(e.Delta > 0 ? -1 : 1);
@@ -203,6 +207,21 @@ public sealed class ScopeSurface : Surface
         dc.DrawLine(PenOf(Highlight, 1.5f), new Point(cx, cy), Polar(cx, cy, 22f, unit.Heading - up));
         Draw(dc, unit.Name + "   hdg " + Fmt.Compass(unit.Heading) + "   " + unit.SpeedKts.ToString("0") + " kt" +
                  (unit.Emcon ? "   EMCON" : ""), 6, 4, 11, Highlight);
+        // measuring cursor: bearing and range from own ship
+        double dx = cursor.X - cx, dy = cy - cursor.Y;
+        double distPx = Math.Sqrt(dx * dx + dy * dy);
+        if (cursor.X >= 0 && distPx <= radius + 10)
+        {
+            float brg = SensorPicture.Wrap360(up + (float)(Math.Atan2(dx, dy) * 180.0 / Math.PI));
+            float nm = (float)distPx / pxPerNm;
+            Pen cp = PenOf(Highlight, 1f);
+            dc.DrawLine(cp, new Point(cx, cy), cursor);
+            string t = "brg " + Fmt.Compass(brg) + "  rng " + nm.ToString("0.0") + " nm";
+            float tx = cursor.X > w - 140 ? (float)cursor.X - 136 : (float)cursor.X + 10;
+            float ty = cursor.Y < 20 ? (float)cursor.Y + 8 : (float)cursor.Y - 18;
+            dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 134, 15));
+            Draw(dc, t, tx, ty, 10, Highlight);
+        }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
     }

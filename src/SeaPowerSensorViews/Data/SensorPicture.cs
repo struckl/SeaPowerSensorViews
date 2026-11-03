@@ -130,6 +130,11 @@ internal sealed class SensorPicture
                 hit.SensorName = tc.SensorDisplayName.ToString();
                 PointEstimate b = em.GetComponentData<TrackBearing>(e).Estimate;
                 hit.Bearing = Wrap360(b.Estimate);
+                if (hit.History.Count == 0 || hit.History[hit.History.Count - 1].Key < (float)fix)
+                {
+                    hit.History.Add(new KeyValuePair<float, float>((float)fix, hit.Bearing));
+                    while (hit.History.Count > 1 && (float)fix - hit.History[0].Key > 600f) hit.History.RemoveAt(0);
+                }
                 hit.BearingError = kind == Kind.Esm ? b.Error : Mathf.Sqrt(Mathf.Max(0f, b.Error));
                 hit.BearingOnly = !em.HasComponent<TrackRangeInMeters>(e);
                 hit.RangeM = hit.BearingOnly ? float.NaN : em.GetComponentData<TrackRangeInMeters>(e).Estimate.Estimate;

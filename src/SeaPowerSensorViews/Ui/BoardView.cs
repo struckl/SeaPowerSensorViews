@@ -213,6 +213,47 @@ public sealed class PanelSurface : Surface
 {
     private BoardWindow Win => DataContext as BoardWindow;
 
+    /// <summary>Bearing of a bearing-only track over its last fixes (track estimates only): a small strip plus the drift in degrees per minute.</summary>
+    private void DrawHistory(DrawingContext dc, Hit hit, float x, float y, float w, float h)
+    {
+        var hist = hit.History;
+        if (hist.Count < 2 || w < 60f) return;
+        float t1 = hist[hist.Count - 1].Key, t0 = Math.Max(hist[0].Key, t1 - 300f);
+        float last = hist[hist.Count - 1].Value, lo = 0f, hi = 0f;
+        for (int i = 0; i < hist.Count; i++)
+        {
+            if (hist[i].Key < t0) continue;
+            float d = Ang.DeltaAngle(last, hist[i].Value);
+            if (d < lo) lo = d;
+            if (d > hi) hi = d;
+        }
+        float span = Math.Max(2f, hi - lo);
+        dc.DrawRectangle(Fade(Header, 0.8f), null, new Rect(x, y, w - 46f, h));
+        float px = 0f, py = 0f;
+        bool first = true;
+        for (int i = 0; i < hist.Count; i++)
+        {
+            if (hist[i].Key < t0) continue;
+            float xx = x + (w - 46f) * (hist[i].Key - t0) / Math.Max(1f, t1 - t0);
+            float yy = y + h - 2f - (h - 4f) * (Ang.DeltaAngle(last, hist[i].Value) - lo) / span;
+            if (!first) dc.DrawLine(PenOf(hit.Live ? Highlight : Fade(Highlight, 0.4f), 1f), new Point(px, py), new Point(xx, yy));
+            px = xx; py = yy; first = false;
+        }
+        float dt = t1 - t0;
+        if (dt >= 20f)
+        {
+            float drift = Ang.DeltaAngle(hist[0].Key < t0 ? Interp(hist, t0) : hist[0].Value, last) / dt * 60f;
+            DrawRight(dc, (drift >= 0 ? "+" : "") + drift.ToString("0.0") + "/min", x + w, y + 1f, 10, Normal);
+        }
+    }
+
+    private static float Interp(System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, float>> h, float t)
+    {
+        for (int i = 1; i < h.Count; i++)
+            if (h[i].Key >= t) return h[i].Value;
+        return h[h.Count - 1].Value;
+    }
+
     protected override void Paint(DrawingContext dc, float w, float h)
     {
         dc.DrawRectangle(Back, null, new Rect(0, 0, w, h));
@@ -240,6 +281,7 @@ public sealed class PanelSurface : Surface
                 else sb.Append("  bearing only");
                 sb.Append("  fix ").Append(Fmt.Age(pic.Time - hit.FixTime)).Append(hit.Live ? " ago" : " ago (lost)");
                 Draw(dc, sb.ToString(), 14, y, 11, hit.Live ? Normal : Fade(Normal, 0.6f));
+                if (hit.BearingOnly) DrawHistory(dc, hit, w - 150f, y - 1f, 140f, 13f);
                 y += 14;
             }
             if (!any) { Draw(dc, "no sensor of this unit holds it", 14, y, 11, Normal); y += 14; }
