@@ -188,8 +188,8 @@ public sealed class SonarSurface : Surface
                     run0 = -1f;
                 }
             }
-            DrawCentered(dc, "baffles", x0 + ww * 0.08f, y0 + hh - 14, 10, Normal);
-            DrawCentered(dc, "baffles", x0 + ww * 0.92f, y0 + hh - 14, 10, Normal);
+            DrawCentered(dc, "baffles", x0 + ww * 0.08f, y0 + hh / 2f, 10, Normal);
+            DrawCentered(dc, "baffles", x0 + ww * 0.92f, y0 + hh / 2f, 10, Normal);
         }
         for (int deg = -150; deg <= 150; deg += 30)
         {
@@ -197,7 +197,6 @@ public sealed class SonarSurface : Surface
             dc.DrawLine(PenOf(Fade(Lines, 0.8f), 1f), new Point(x, y0), new Point(x, y0 + hh));
             DrawCentered(dc, deg == 0 ? "bow" : (deg > 0 ? "+" : "") + deg, x, y0 - 14, 10, Normal);
         }
-        DrawCentered(dc, "-180 / +180 (stern)", x0 + 60, y0 - 28, 9, Normal);
         if (wf != null && wf.Count > 0)
         {
             float rowH = hh / SonarWindow.Rows;
@@ -216,8 +215,8 @@ public sealed class SonarSurface : Surface
             }
         }
         DrawRight(dc, "now", x0 + ww - 4, y0 + 2, 9, Normal);
-        DrawRight(dc, SonarWindow.Rows + " s ago", x0 + ww - 4, y0 + hh - 26 < y0 ? y0 : y0 + hh - 12, 9, Normal);
-        Draw(dc, "Bearing relative to the bow, newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
+        DrawRight(dc, SonarWindow.Rows + " s ago", x0 + ww - 4, y0 + hh - 12, 9, Normal);
+        Draw(dc, "Bearing relative to the bow (the stern is at both edges), newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
 
         // ---- own noise line -------------------------------------------------------------------------------------------
         string noise = float.IsNaN(st.OwnNoise) ? "own noise n/a" : "own noise " + st.OwnNoise.ToString("0") + " dB";

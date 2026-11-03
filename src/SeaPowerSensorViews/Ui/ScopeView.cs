@@ -12,7 +12,7 @@ public sealed class ScopeView : UserControl
     private readonly TextBlock altText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), MinWidth = 90 };
     private readonly CheckBox horizon = new CheckBox { Content = "Radar horizon", IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
     private readonly CheckBox headingUp = new CheckBox { Content = "Heading up", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
-    private readonly Slider altitude = new Slider { Minimum = 0, Maximum = 60000, Value = 100, Width = 160, VerticalAlignment = VerticalAlignment.Center, SmallChange = 100, LargeChange = 1000 };
+    private readonly Slider altitude = new Slider { Minimum = 0, Maximum = 60000, Value = 100, Width = 130, VerticalAlignment = VerticalAlignment.Center, SmallChange = 100, LargeChange = 1000 };
     private bool syncing;
 
     public ScopeView()
@@ -21,7 +21,7 @@ public sealed class ScopeView : UserControl
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
+        var bar = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };   // wraps in a narrow window
         bar.Children.Add(new TextBlock { Text = "Range", VerticalAlignment = VerticalAlignment.Center });
         var minus = new Button { Content = "-", Width = 24, Margin = new Thickness(6, 0, 0, 0), Focusable = false };
         var plus = new Button { Content = "+", Width = 24, Margin = new Thickness(2, 0, 0, 0), Focusable = false };

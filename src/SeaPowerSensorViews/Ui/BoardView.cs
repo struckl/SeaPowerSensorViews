@@ -113,7 +113,10 @@ public sealed class BoardSurface : Surface
             float x = LabelW + c * colW;
             if (x + colW > w + 1f) break;
             if (ReferenceEquals(u, subject))
-                dc.DrawRectangle(Fade(Red, 0.55f), null, new Rect(x, 0, colW, h));
+            {
+                dc.DrawRectangle(Fade(Red, 0.14f), null, new Rect(x, 0, colW, h));
+                dc.DrawRectangle(Red, null, new Rect(x, HeaderH - 2f, colW, 2f));
+            }
             string name = u.Name ?? "?";
             int fit = Math.Max(3, (int)(colW / 6.2f));
             string l1 = name.Length > fit ? name.Substring(0, fit) : name;

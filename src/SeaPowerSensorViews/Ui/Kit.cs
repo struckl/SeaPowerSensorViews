@@ -79,7 +79,7 @@ internal static class Kit
         view = main;
         if (Settings.BarButtons.Value)
         {
-            try { AddBarButtons(main); }
+            try { AddBarButtons(main); Sync(); }
             catch (Exception ex) { ModLog.Warn("Bottom bar buttons not added (" + ex.Message + ") - use the hot keys."); }
         }
         // No CanExecuteChanged subscription: the game's commands re-query on every mouse move and key press, and a Sync each
@@ -117,6 +117,7 @@ internal static class Kit
                 "<TextBlock HorizontalAlignment='Center' VerticalAlignment='Center' Text='" + entry.Text + "'/></Border></ToggleButton>");
             entry.Button = button;
             entry.Label = (TextBlock)((Border)button.Content).Child;
+            entry.Lit = true;                       // Sync() sets the normal (grey) ink on its first run; a button's own ink is black
             button.ToolTip = entry.Window.Title + " (" + HotKeyText(entry.Window) + ")";
             Entry captured = entry;
             button.Checked += (s, e) => { if (!syncing) Open(captured); };

@@ -122,6 +122,7 @@ internal sealed class Host : MonoBehaviour
                 SonarSampler.Update(sw);
         if (Kit.Window(1) is ScopeWindow scope && Kit.IsOpen(scope))
             scope.PushAltitude();
+        SonarSurface.RaiseChanged();            // the sonar chooser's name line
         Registry.RefreshAll();
     }
 

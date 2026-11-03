@@ -45,7 +45,7 @@ Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
 
 `dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. Two DLLs
 from one source tree - `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` (`-p:GameBuild=Flat`) for 0.8.7 - each stays off on the
-other game; checked offline against the assemblies of both, not run in the game yet.
+other game; checked offline against the assemblies of both; run in the game on 0.8.7 (flat map), not yet on the 3D-globe build.
 How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Notes and plan:
 [HANDOVER.md](HANDOVER.md).
 
