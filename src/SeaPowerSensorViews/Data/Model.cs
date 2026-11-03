@@ -43,6 +43,7 @@ internal sealed class Hit
     public float RangeM = float.NaN;
     public float AltitudeUnits = float.NaN;
     public float BearingError;
+    public float AltitudeError;
     public bool BearingOnly;
     public float Signal = float.NaN;  // signal value the sensor measured (sonar: signal excess dB)
     public bool Live;               // the track is still valid; false = remembered

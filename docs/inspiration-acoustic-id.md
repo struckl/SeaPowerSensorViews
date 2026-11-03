@@ -30,11 +30,11 @@ returned 429).
    showing deployed / stowed / off, and the waterfall says "array not deployed" instead of drawing nothing.
 2. **Measuring cursor** (sonar waterfall done 2026-11-03, scope done too) (radar scope and sonar display): hover shows bearing and range (scope) or bearing and time ago (waterfall);
    drag from own ship for a range/bearing ruler.
-3. **Comparative depth gauge** (sonar depth strip): own depth, layer, seabed and the contact's *estimated* depth band where the track has
+3. **Comparative depth gauge** (done 2026-11-03, untested in game) (sonar depth strip): own depth, layer, seabed and the contact's *estimated* depth band where the track has
    one, so "above/below the layer" is visible at a glance.
 4. **Bearing history per contact** (done 2026-11-03, untested in game) (board detail): the last minutes of bearings of a bearing-only track as a small strip, showing drift
    (the raw input of TMA), from track estimates only.
-5. **Active sonar echoes** on the scope page or the sonar display: active-sonar tracks as echo marks by bearing/range with fix age,
+5. **Active sonar echoes** (done as the Echoes button, untested in game) on the scope page or the sonar display: active-sonar tracks as echo marks by bearing/range with fix age,
    separate from passive traces.
 6. **Display levels** (later): a simple setting that hides detail (errors, wedges, ages) for a cleaner look, not a difficulty system.
 

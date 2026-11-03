@@ -90,6 +90,7 @@ public sealed class SonarWindow : SvWindow
     internal const int Rows = 150;           // seconds of history
     internal const int Bins = 180;           // 2 degree bins across the relative bearing -180..180
     internal int SonarIndex;
+    internal bool ShowEchoes;               // range / bearing echo plot instead of the waterfall
     internal readonly Dictionary<string, Waterfall> Falls = new Dictionary<string, Waterfall>();
     internal SonarState State = new SonarState();
 }
@@ -140,4 +141,8 @@ internal sealed class SonarState
     public float ArrayFt = float.NaN;          // sonar element depth
     public float SeabedFt = float.NaN;
     public float Heading;
+    public readonly List<Mark> Marks = new List<Mark>();
+
+    /// <summary>A contact this sonar holds right now: where (relative bearing, range) and how deep the track estimates it.</summary>
+    public struct Mark { public string Label; public float Rel, RangeM, Age, DepthFt, DepthErrFt; public bool Active; }
 }

@@ -139,6 +139,7 @@ internal sealed class SensorPicture
                 hit.BearingOnly = !em.HasComponent<TrackRangeInMeters>(e);
                 hit.RangeM = hit.BearingOnly ? float.NaN : em.GetComponentData<TrackRangeInMeters>(e).Estimate.Estimate;
                 hit.AltitudeUnits = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Estimate : float.NaN;
+                hit.AltitudeError = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Error : 0f;
                 hit.Signal = em.HasComponent<IncomingSignalData>(e) ? (float)em.GetComponentData<IncomingSignalData>(e)._incomingSignalValue : float.NaN;
             }
         }

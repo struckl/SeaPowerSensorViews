@@ -2,6 +2,7 @@
 
 ## 0.2.0 - unreleased
 
+- Sonar display: the depth strip shows the contacts this sonar holds at their estimated depth, with the track's error band and above/below the layer; an *Echoes* button switches the waterfall to a range/bearing echo plot (active = filled, passive with a range estimate = ring, fading with the fix age). Compiles for both builds, not yet run in the game.
 - Radar scope: a measuring cursor (bearing and range from own ship). Sensor board: bearing-only tracks (ESM, passive sonar) get a small bearing history strip with the drift in degrees per minute, from the track estimates. Both compile for both builds, not yet run in the game.
 - Sonar display: a measuring cursor over the waterfall (bearing true and relative to the bow, seconds ago) and a notice when the selected sonar is switched off. Compiles for both builds, not yet run in the game.
 - Performance: the bar buttons no longer re-ask the game's window commands on every mouse move and key press; map paths are rebuilt at most 20 times a second while the view moves; the coverage terrain pass takes at most about 1 ms per frame. With *Verbose log* on, the log gets a timing line per part every 10 s.

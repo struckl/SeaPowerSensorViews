@@ -23,6 +23,9 @@ public sealed class SonarView : UserControl
         next.Click += (s, e) => Step(1);
         bar.Children.Add(prev);
         bar.Children.Add(next);
+        var echoes = new ToggleButton { Content = "Echoes", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(6, 0, 6, 0), Focusable = false };
+        echoes.Click += (s, e) => { if (DataContext is SonarWindow w) w.ShowEchoes = echoes.IsChecked == true; Registry.RefreshAll(); };
+        bar.Children.Add(echoes);
         bar.Children.Add(nameText);
         Grid.SetRow(bar, 0);
         var surface = new SonarSurface();
@@ -110,6 +113,18 @@ internal static class SonarSampler
         float bed = TerrainUtils.GetHeightAt(geo);
         st.SeabedFt = bed < 0f ? -bed * SensorPicture.MetersPerUnit * 3.28084f : float.NaN;
 
+        st.Marks.Clear();
+        foreach (ContactRow cr in pic.Contacts)
+            foreach (Hit h in cr.Hits)
+            {
+                if (h.Unit != unit || !h.Live || (h.Kind != Kind.Passive && h.Kind != Kind.Active) || h.SensorName != name) continue;
+                float dep = float.IsNaN(h.AltitudeUnits) || h.AltitudeUnits > 0f ? float.NaN : -h.AltitudeUnits * SensorPicture.FeetPerUnit;
+                st.Marks.Add(new SonarState.Mark
+                {
+                    Label = cr.Label, Rel = Ang.DeltaAngle(unit.Heading, h.Bearing), RangeM = h.RangeM, Age = (float)(pic.Time - h.FixTime),
+                    DepthFt = dep, DepthErrFt = h.AltitudeError * SensorPicture.FeetPerUnit, Active = h.Kind == Kind.Active,
+                });
+            }
         if (wf.LastVersion == pic.Version) return;
         wf.LastVersion = pic.Version;
         var dots = wf.Push(float.IsNaN(st.OwnNoise) ? 0f : st.OwnNoise, unit.Heading);
@@ -205,6 +220,8 @@ public sealed class SonarSurface : Surface
             dc.DrawLine(PenOf(Fade(Lines, 0.8f), 1f), new Point(x, y0), new Point(x, y0 + hh));
             DrawCentered(dc, deg == 0 ? "bow" : (deg > 0 ? "+" : "") + deg, x, y0 - 14, 10, Normal);
         }
+        if (!win.ShowEchoes)
+        {
         if (wf != null && wf.Count > 0)
         {
             float rowH = hh / SonarWindow.Rows;
@@ -225,7 +242,7 @@ public sealed class SonarSurface : Surface
         if (!st.On)
             DrawCentered(dc, "sonar is off - nothing is listening", x0 + ww / 2, y0 + hh / 2f - 24, 12, Emphasis);
         // measuring cursor: bearing (true and relative to the bow) and age under the mouse
-        if (cursor.X >= x0 && cursor.X <= x0 + ww && cursor.Y >= y0 && cursor.Y <= y0 + hh)
+        if (!win.ShowEchoes && cursor.X >= x0 && cursor.X <= x0 + ww && cursor.Y >= y0 && cursor.Y <= y0 + hh)
         {
             float rel = (float)((cursor.X - x0) / ww * 360f - 180f);
             float secs = (float)((cursor.Y - y0) / hh * SonarWindow.Rows);
@@ -239,9 +256,14 @@ public sealed class SonarSurface : Surface
             dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 188, 15));
             Draw(dc, t, tx, ty, 10, Highlight);
         }
+        }
+        else DrawEchoes(dc, st, x0, y0, ww, hh);
+        if (!win.ShowEchoes)
+        {
         DrawRight(dc, "now", x0 + ww - 4, y0 + 2, 9, Normal);
         DrawRight(dc, SonarWindow.Rows + " s ago", x0 + ww - 4, y0 + hh - 12, 9, Normal);
-        Draw(dc, "Bearing relative to the bow (the stern is at both edges), newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
+        }
+        Draw(dc, win.ShowEchoes ? "Echoes by bearing relative to the bow and range; filled = active, ring = passive with a range estimate; fades with the age of the fix." : "Bearing relative to the bow (the stern is at both edges), newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
 
         // ---- own noise line -------------------------------------------------------------------------------------------
         string noise = float.IsNaN(st.OwnNoise) ? "own noise n/a" : "own noise " + st.OwnNoise.ToString("0") + " dB";
@@ -300,6 +322,45 @@ public sealed class SonarSurface : Surface
             dc.DrawRectangle(Green, null, new Rect(sx + sw * 0.7f - 3, ya - 3, 6, 6));
             Draw(dc, "array " + st.ArrayFt.ToString("0"), sx + 4, ya + 4, 10, Green);
         }
+        foreach (SonarState.Mark m in st.Marks)
+        {
+            if (float.IsNaN(m.DepthFt)) continue;
+            float ym = yOf(m.DepthFt), mx = sx + sw * 0.88f;
+            Brush mc = Fade(m.Active ? Blue : Green, Math.Max(0.4f, 1f - m.Age / 60f));
+            if (m.DepthErrFt > 1f)
+                dc.DrawLine(PenOf(mc, 1f), new Point(mx, yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt))), new Point(mx, yOf(m.DepthFt + m.DepthErrFt)));
+            dc.DrawEllipse(mc, null, new Point(mx, ym), 3, 3);
+            Draw(dc, m.Label + " " + m.DepthFt.ToString("0") + (m.DepthErrFt > 1f ? "+-" + m.DepthErrFt.ToString("0") : ""), mx - 70, ym - 6, 9, mc);
+            if (!float.IsNaN(st.LayerFt))
+                Draw(dc, m.DepthFt < st.LayerFt ? "above layer" : "below layer", mx - 70, ym + 4, 8, Fade(Normal, 0.8f));
+        }
+    }
+
+    private void DrawEchoes(DrawingContext dc, SonarState st, float x0, float y0, float ww, float hh)
+    {
+        float maxM = 4000f;
+        foreach (SonarState.Mark m in st.Marks)
+            if (!float.IsNaN(m.RangeM) && m.RangeM > maxM) maxM = m.RangeM;
+        float step = maxM > 40000f ? 20000f : maxM > 10000f ? 5000f : 1000f;
+        maxM = (float)Math.Ceiling(maxM * 1.05f / step) * step;
+        for (float r = step; r <= maxM + 1f; r += step)
+        {
+            float y = y0 + hh - hh * r / maxM;
+            dc.DrawLine(PenOf(Fade(Lines, 0.8f), 1f), new Point(x0, y), new Point(x0 + ww, y));
+            DrawRight(dc, (r / 1852f).ToString("0.#") + " nm", x0 + ww - 3, y + 1, 9, Normal);
+        }
+        int n = 0;
+        foreach (SonarState.Mark m in st.Marks)
+        {
+            if (float.IsNaN(m.RangeM)) continue;
+            n++;
+            float x = x0 + (m.Rel + 180f) / 360f * ww, y = y0 + hh - hh * m.RangeM / maxM;
+            Brush c = Fade(m.Active ? Blue : Green, Math.Max(0.35f, 1f - m.Age / 90f));
+            if (m.Active) dc.DrawEllipse(c, null, new Point(x, y), 4, 4);
+            else dc.DrawEllipse(null, PenOf(c, 1.5f), new Point(x, y), 4, 4);
+            Draw(dc, m.Label + " " + (m.RangeM / 1852f).ToString("0.0") + " nm  " + m.Age.ToString("0") + " s", x + 7, y - 6, 10, c);
+        }
+        if (n == 0) DrawCentered(dc, "no echo with a range yet", x0 + ww / 2, y0 + hh / 2f, 12, Normal);
     }
 
     internal static string KeyOf(SonarWindow win)
