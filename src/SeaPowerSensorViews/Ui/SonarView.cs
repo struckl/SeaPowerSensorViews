@@ -330,9 +330,9 @@ public sealed class SonarSurface : Surface
             if (m.DepthErrFt > 1f)
                 dc.DrawLine(PenOf(mc, 1f), new Point(mx, yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt))), new Point(mx, yOf(m.DepthFt + m.DepthErrFt)));
             dc.DrawEllipse(mc, null, new Point(mx, ym), 3, 3);
-            Draw(dc, m.Label + " " + m.DepthFt.ToString("0") + (m.DepthErrFt > 1f ? "+-" + m.DepthErrFt.ToString("0") : ""), mx - 70, ym - 6, 9, mc);
+            DrawRight(dc, m.Label + " " + m.DepthFt.ToString("0"), mx - 6, ym - 6, 9, mc);
             if (!float.IsNaN(st.LayerFt))
-                Draw(dc, m.DepthFt < st.LayerFt ? "above layer" : "below layer", mx - 70, ym + 4, 8, Fade(Normal, 0.8f));
+                DrawRight(dc, m.DepthFt < st.LayerFt ? "above layer" : "below layer", mx - 6, ym + 4, 8, Fade(Normal, 0.8f));
         }
     }
 

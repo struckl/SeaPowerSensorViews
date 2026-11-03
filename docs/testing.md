@@ -1,4 +1,4 @@
-# In-game test checklist (run on 0.8.7 flat map on 2026-11-03: start-up, bar buttons, board, scope, sonar, sensor lines, coverage; not run: the 3D-globe build, a popped-out window, a submarine)
+# In-game test checklist (run on 0.8.7 flat map on 2026-11-03: start-up, bar buttons, board, scope, sonar, sensor lines, coverage; second run 2026-11-03 for scope/sonar cursors, bearing history, depth marks, Echoes; not run: the 3D-globe build, a popped-out window, a submarine)
 
 Both DLLs sit in the mod folder; on each game the other one logs that it stays off.
 Log: `<Sea Power>\BepInEx\LogOutput.log`. Config: `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg`.

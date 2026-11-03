@@ -104,7 +104,7 @@ internal sealed class Host : MonoBehaviour
             Perf.Frame();
             if (windows && Time.unscaledTime >= nextAnimate)
             {
-                nextAnimate = Time.unscaledTime + 0.2f;      // the scope's sweep: about five redraws a second
+                nextAnimate = Time.unscaledTime + 0.04f;     // the scope's sweep: 25 redraws a second
                 for (int i = 0; i < Registry.Surfaces.Count; i++)
                     if (Registry.Surfaces[i].Animated) Registry.Surfaces[i].InvalidateVisual();
             }
