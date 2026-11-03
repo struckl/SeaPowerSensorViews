@@ -33,3 +33,4 @@ Gallery, in this order (the caption goes into each image's caption field):
 | 2 | `sonar-display.jpg` | Sonar display: waterfall relative to the bow, and the depth strip with the contacts' estimated depth |
 | 3 | `sonar-echoes.jpg` | The Echoes button: contacts by bearing and range |
 | 4 | `map-sensor-lines-coverage.jpg` | On the map: a line per sensor to its contact, and the selected unit's coverage |
+| 5 | `map-zoomed-out.jpg` | Zoomed out: radar and sonar coverage of the selected ship, with the lines to every contact |
