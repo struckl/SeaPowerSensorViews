@@ -9,6 +9,6 @@ New mod: three windows and two map layers that show which of your units sees whi
 
 **Game version** Run on 0.8.7, the globe beta build is untried. Needs Anchor Chain.
 Needs **Anchor Chain**.
-**Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=None
+**Workshop:** https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654
 **Source (MIT):** <https://github.com/struckl/SeaPowerSensorViews>
 Feedback welcome, attach LogOutput.log for bugs.

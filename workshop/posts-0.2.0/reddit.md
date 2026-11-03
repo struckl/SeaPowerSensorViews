@@ -18,7 +18,7 @@ I kept losing track of which ship actually holds a contact and with what. So I b
 
 **Game version** Run in the game on Sea Power 0.8.7. The package also holds a build for the 3D globe beta; I have not tried that one in the game yet. Needs Anchor Chain.
 
-Needs [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757). Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=None
+Needs [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757). Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654
 Source (MIT): https://github.com/struckl/SeaPowerSensorViews
 
 If something looks off, tell me and attach `BepInEx\LogOutput.log` with the window and unit you used.
