@@ -131,6 +131,7 @@ internal sealed class SonarState
     public bool Valid;
     public string UnitName, SonarName, Mode;
     public bool Towed;
+    public bool On = true;
     public float BaffleFrom = float.NaN, BaffleTo = float.NaN;
     public float OwnNoise = float.NaN;
     public float SpeedKts;

@@ -83,6 +83,7 @@ internal static class SonarSampler
         st.Heading = unit.Heading;
         st.SpeedKts = unit.SpeedKts;
         st.Towed = sonar.IsTowedSensor || sonar.IsVDS;
+        st.On = sonar.IsOn.Value;
         bool active = sonar._sonar != null && sonar._sonar.IsActive.Value;
         st.Mode = (st.Towed ? "towed " : "") + (active ? "active" : "passive") + (sonar.IsOn.Value ? "" : ", off");
         if (sp != null && sp._baffles != UnityEngine.Vector2.zero && !st.Towed) { st.BaffleFrom = sp._baffles.x; st.BaffleTo = sp._baffles.y; }
@@ -148,6 +149,13 @@ public sealed class SonarSurface : Surface
 {
     internal static event Action Changed;
     private SonarWindow Win => DataContext as SonarWindow;
+    private Point cursor = new Point(-1, -1);
+
+    public SonarSurface()
+    {
+        MouseMove += (s, e) => { cursor = e.GetPosition(this); InvalidateVisual(); };
+        MouseLeave += (s, e) => { cursor = new Point(-1, -1); InvalidateVisual(); };
+    }
 
     private static bool InBaffles(float from, float to, float rel)
     {
@@ -213,6 +221,23 @@ public sealed class SonarSurface : Surface
                     dc.DrawRectangle(c, null, new Rect(x0 + d.Bin * binW - dw / 2f + binW / 2f, y, dw, Math.Max(1.5f, rowH + 0.5f)));
                 }
             }
+        }
+        if (!st.On)
+            DrawCentered(dc, "sonar is off - nothing is listening", x0 + ww / 2, y0 + hh / 2f - 24, 12, Emphasis);
+        // measuring cursor: bearing (true and relative to the bow) and age under the mouse
+        if (cursor.X >= x0 && cursor.X <= x0 + ww && cursor.Y >= y0 && cursor.Y <= y0 + hh)
+        {
+            float rel = (float)((cursor.X - x0) / ww * 360f - 180f);
+            float secs = (float)((cursor.Y - y0) / hh * SonarWindow.Rows);
+            float brg = SensorPicture.Wrap360(st.Heading + rel);
+            Pen cp = PenOf(Highlight, 1f);
+            dc.DrawLine(cp, new Point(cursor.X, y0), new Point(cursor.X, y0 + hh));
+            dc.DrawLine(cp, new Point(x0, cursor.Y), new Point(x0 + ww, cursor.Y));
+            string t = "brg " + Fmt.Compass(brg) + "  rel " + (rel > 0 ? "+" : "") + rel.ToString("0") + "  " + secs.ToString("0") + " s ago";
+            float tx = cursor.X > x0 + ww - 190 ? (float)cursor.X - 190 : (float)cursor.X + 8;
+            float ty = cursor.Y > y0 + hh - 20 ? (float)cursor.Y - 18 : (float)cursor.Y + 6;
+            dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 188, 15));
+            Draw(dc, t, tx, ty, 10, Highlight);
         }
         DrawRight(dc, "now", x0 + ww - 4, y0 + 2, 9, Normal);
         DrawRight(dc, SonarWindow.Rows + " s ago", x0 + ww - 4, y0 + hh - 12, 9, Normal);

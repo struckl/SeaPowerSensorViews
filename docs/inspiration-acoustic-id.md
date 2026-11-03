@@ -28,7 +28,7 @@ returned 429).
 
 1. **Array selector that respects state** (sonar display): instead of `<` `>` cycling, a small selector Hull / Towed / VDS / Dipping
    showing deployed / stowed / off, and the waterfall says "array not deployed" instead of drawing nothing.
-2. **Measuring cursor** (radar scope and sonar display): hover shows bearing and range (scope) or bearing and time ago (waterfall);
+2. **Measuring cursor** (sonar waterfall done 2026-11-03, scope still open) (radar scope and sonar display): hover shows bearing and range (scope) or bearing and time ago (waterfall);
    drag from own ship for a range/bearing ruler.
 3. **Comparative depth gauge** (sonar depth strip): own depth, layer, seabed and the contact's *estimated* depth band where the track has
    one, so "above/below the layer" is visible at a glance.

@@ -2,6 +2,7 @@
 
 ## 0.2.0 - unreleased
 
+- Sonar display: a measuring cursor over the waterfall (bearing true and relative to the bow, seconds ago) and a notice when the selected sonar is switched off. Compiles for both builds, not yet run in the game.
 - Performance: the bar buttons no longer re-ask the game's window commands on every mouse move and key press; map paths are rebuilt at most 20 times a second while the view moves; the coverage terrain pass takes at most about 1 ms per frame. With *Verbose log* on, the log gets a timing line per part every 10 s.
 - Run in the game on 0.8.7 (flat map, 2026-11-03): the three windows, the bar buttons, the sensor lines and the coverage layer work; the 3D-globe build is not run yet.
 - Fix: the bar buttons' labels (Board / Scope / Sonar) were dark on the dark bar; they are grey now, orange while their window is open.
