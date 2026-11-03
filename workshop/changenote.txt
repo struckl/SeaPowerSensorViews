@@ -1,0 +1,2 @@
+0.2.0: first release.
+Sensor board, radar scope and sonar display as game windows, bottom bar buttons, and two map layers: sensor lines and sensor coverage. Measuring cursors on the scope and the sonar, bearing history on the board, contact depth and an echo plot on the sonar display.

@@ -6,19 +6,19 @@ A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowere
 units sees which contact with which sensor**, in three windows that look and behave like the game's own - and pop out to a second
 monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757).
 
-**Status: 0.2.0, in development, not released.** The three windows and the two map layers are written and checked against the game's
-assemblies offline; nothing has been run in the game yet.
+**Status: 0.2.0, first release.** Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
+bearing history, depth marks and the echo plot. The build for the 3D-globe beta is checked against its assemblies but not run in the game yet.
 
 - **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
   F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD) with the age of the freshest fix; a lower-case
   letter means bearing only; dimmed letters are sensors that lost the contact a moment ago. Click a cell for bearing, range and fix
-  age per sensor. Below: the selected unit's sensors with on / off, damage, arcs and EMCON.
+  age per sensor, with a bearing history strip and drift per minute for bearing-only contacts. Below: the selected unit's sensors with on / off, damage, arcs and EMCON.
 - **Radar scope** - a scope centred on the selected unit with the contacts its radars and eyes hold, fading with the age of the
   last fix; the blind arcs of its search radars; the radar horizon against a target altitude you set with a slider; ESM and passive
   sonar bearing lines; strobes for radars warning you (RWR) and jammers; a ring and "LOCK" for contacts held by a fire-control radar.
-  The sweep line follows the antenna and is decoration only.
+  The sweep line follows the antenna and is decoration only. A measuring cursor shows bearing and range.
 - **Sonar display** - bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, the baffle sector,
-  the unit's own noise at its speed, and a depth strip with the thermal layer, own depth, the towed array and the seabed.
+  the unit's own noise at its speed, a measuring cursor (bearing, seconds ago), and a depth strip with the thermal layer, own depth, the array, the seabed and the contacts the sonar holds at the depth the track estimates (with above / below the layer). The *Echoes* button swaps the waterfall for a bearing / range plot.
 
 Everything is **display only**. The windows show what your units' sensors already report to the game's plotting table (track
 bearing, range and age estimates); they change nothing in a mission, and the mission's own rules decide what a sensor can detect.

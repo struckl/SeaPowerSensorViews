@@ -1,0 +1,22 @@
+[Mod] R.A.T.S. Sensor Views: who sees what, with which sensor
+
+I kept losing track of which ship actually holds a contact and with what. So I built three windows that answer that, in the game's own window style, and two layers for the tactical map. Everything is display only and uses the track estimates your sensors already report, never a contact's real position.
+
+[b]What it adds[/b]
+[list]
+[*]Sensor board: your units across, contacts down, a letter per sensor that holds the contact (R F E S A V M) and the age of the freshest fix, with a bearing history strip for bearing-only contacts
+[*]Radar scope: contacts around the selected unit, blind arcs, radar horizon against a target altitude, ESM and sonar bearing lines, RWR and jammer strobes, fire-control LOCK, a measuring cursor
+[*]Sonar display: waterfall relative to the bow, baffle sector, own noise, a depth strip with the layer and the contacts' estimated depth, a measuring cursor and an echo plot
+[*]Map layers: sensor lines from each unit to what each sensor sees, and an optional coverage layer with terrain shadows
+[*]Buttons in the bottom bar and hot keys, windows pop out with Pop-Out Windows
+[/list]
+
+[b]Where the data comes from[/b] Only what your own sensors report to the game's plotting table: track bearing, range, depth and age estimates. It changes nothing in a mission, the mission's own rules decide what a sensor can detect. Passive sonar depth is the game's own rough estimate.
+
+[b]Game version[/b] Run in the game on Sea Power 0.8.7. The package also holds a build for the 3D globe beta; I have not tried that one in the game yet. Needs Anchor Chain.
+
+Requires [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757]Anchor Chain[/url].
+
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=None]Workshop page[/url] · [url=https://github.com/struckl/SeaPowerSensorViews]Source code (MIT)[/url]
+
+If something looks off, tell me and attach BepInEx\LogOutput.log with the window and unit you used.
