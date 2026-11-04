@@ -31,6 +31,8 @@ public abstract class Surface : UserControl
     /// <summary>Called by the host after a new snapshot, or every few frames when <see cref="Animated"/>.</summary>
     internal virtual void Refresh() => InvalidateVisual();
     internal virtual bool Animated => false;
+    /// <summary>Called 25 times a second for an <see cref="Animated"/> surface; the default redraws it.</summary>
+    internal virtual void Animate() => InvalidateVisual();
 
     private Brush Find(string key, uint fallbackArgb)
     {

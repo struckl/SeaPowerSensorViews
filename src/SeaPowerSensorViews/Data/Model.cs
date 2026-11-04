@@ -38,6 +38,7 @@ internal sealed class Hit
     public int ContactId;
     public Kind Kind;
     public string SensorName;
+    public Unity.Collections.FixedString64Bytes SensorNameRaw;
     public double FixTime;          // mission session time of the track's epoch
     public float Bearing;           // degrees true, from the unit
     public float RangeM = float.NaN;
@@ -54,6 +55,7 @@ internal sealed class Hit
 
 internal sealed class SensorRow
 {
+    public SensorSystem System;
     public string Name;
     public string Letter;           // R F E S A V M J(ECM)
     public string Detail;           // range / frequency band / mode, for the sensor panel
@@ -87,6 +89,7 @@ internal sealed class UnitRow
     public float SensorHeightUnits;
     public readonly List<SensorRow> Sensors = new List<SensorRow>();
     public readonly List<Strobe> Strobes = new List<Strobe>();
+    public int StrobeVersion;       // bumped when a strobe comes or goes
     public int Stamp;
 }
 
@@ -94,6 +97,8 @@ internal sealed class ContactRow
 {
     public int Id;
     public string Label;            // "T123" plus the class when the game shows it
+    public string LabelClass;
+    public int Listed;              // stamp of the refresh that put it into Contacts
     public int Relation;            // 0 unknown, 1 friendly, 2 neutral, 3 hostile
     public readonly List<Hit> Hits = new List<Hit>();
     public int Stamp;

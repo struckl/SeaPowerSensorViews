@@ -45,10 +45,19 @@ public sealed class ScopeView : UserControl
             Registry.RefreshAll();
         };
         Grid.SetRow(bar, 0);
+        // Three layers: the picture (redrawn with each snapshot), the sweep (drawn once, then only turned) and the measuring
+        // cursor (redrawn on mouse moves). The sweep used to redraw the whole scope 25 times a second.
         var scope = new ScopeSurface();
-        Grid.SetRow(scope, 1);
+        var sweep = new ScopeSweep { IsHitTestVisible = false };
+        var cursorLayer = new ScopeCursor { IsHitTestVisible = false };
+        scope.CursorLayer = cursorLayer;
+        var stack = new Grid();
+        stack.Children.Add(scope);
+        stack.Children.Add(sweep);
+        stack.Children.Add(cursorLayer);
+        Grid.SetRow(stack, 1);
         root.Children.Add(bar);
-        root.Children.Add(scope);
+        root.Children.Add(stack);
         Content = root;
         Loaded += (s, e) => Sync();
         DataContextChanged += (s, e) => Sync();
@@ -74,23 +83,51 @@ public sealed class ScopeView : UserControl
     }
 }
 
+/// <summary>Where the scope's circle sits in a surface of this size, shared by its three layers.</summary>
+internal struct ScopeGeometry
+{
+    public float Cx, Cy, Radius, RangeNm, PxPerNm, Up;
+
+    public static bool Of(ScopeWindow win, UnitRow unit, float w, float h, out ScopeGeometry g)
+    {
+        g = default;
+        if (win == null || unit == null) return false;
+        g.Cx = w / 2f; g.Cy = h / 2f;
+        g.Radius = Math.Max(20f, Math.Min(w, h) / 2f - 20f);
+        g.RangeNm = ScopeWindow.Ranges[win.RangeIndex];
+        g.PxPerNm = g.Radius / g.RangeNm;
+        g.Up = win.HeadingUp ? unit.Heading : 0f;      // compass bearing that points up
+        return true;
+    }
+}
+
 public sealed class ScopeSurface : Surface
 {
     private ScopeWindow Win => DataContext as ScopeWindow;
-    internal override bool Animated => true;
-
-    private Point cursor = new Point(-1, -1);
+    internal ScopeCursor CursorLayer;
+    private int strobeVersion = -1;
 
     public ScopeSurface()
     {
-        MouseMove += (s, e) => { cursor = e.GetPosition(this); InvalidateVisual(); };
-        MouseLeave += (s, e) => { cursor = new Point(-1, -1); InvalidateVisual(); };
+        MouseMove += (s, e) => CursorLayer?.MoveTo(e.GetPosition(this));
+        MouseLeave += (s, e) => CursorLayer?.MoveTo(new Point(-1, -1));
         MouseWheel += (s, e) =>
         {
             Win?.StepRange(e.Delta > 0 ? -1 : 1);
             e.Handled = true;
-            InvalidateVisual();
+            Registry.RefreshAll();
         };
+    }
+
+    /// <summary>Between snapshots the picture is redrawn only when a radar warning or jam strobe came or went.</summary>
+    internal override bool Animated => true;
+    internal override void Animate()
+    {
+        UnitRow unit = Win?.Subject();
+        int v = unit?.StrobeVersion ?? -1;
+        if (v == strobeVersion) return;
+        strobeVersion = v;
+        InvalidateVisual();
     }
 
     protected override void Paint(DrawingContext dc, float w, float h)
@@ -104,11 +141,9 @@ public sealed class ScopeSurface : Surface
             Draw(dc, "No unit.", 8, 8, 12, Normal);
             return;
         }
-        float cx = w / 2f, cy = h / 2f;
-        float radius = Math.Max(20f, Math.Min(w, h) / 2f - 20f);
-        float rangeNm = ScopeWindow.Ranges[win.RangeIndex];
-        float pxPerNm = radius / rangeNm;
-        float up = win.HeadingUp ? unit.Heading : 0f;      // compass bearing that points up
+        ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g);
+        float cx = g.Cx, cy = g.Cy, radius = g.Radius, rangeNm = g.RangeNm, pxPerNm = g.PxPerNm, up = g.Up;
+        strobeVersion = unit.StrobeVersion;
 
         // ---- rings and bearing marks -----------------------------------------------------------------------------
         Pen ring = PenOf(Fade(Lines, 1f), 1f);
@@ -147,15 +182,6 @@ public sealed class ScopeSurface : Surface
                 dc.DrawEllipse(null, PenOf(Fade(Emphasis, 0.8f), 1.5f), new Point(cx, cy), r, r);
                 DrawCentered(dc, "horizon " + horizonNm.ToString("0") + " nm @ " + win.TargetAltitudeFt.ToString("0") + " ft", cx, cy + r + 2, 10, Emphasis);
             }
-        }
-
-        // ---- decorative sweep (follows the antenna mount of the first search radar that is on) -------------------------
-        float sweep = SweepBearing(unit.Unit);
-        if (!float.IsNaN(sweep))
-        {
-            float a = sweep - up;
-            dc.DrawGeometry(Fade(Green, 0.10f), null, Sector(cx, cy, 0f, radius, a - 18f, a));
-            dc.DrawLine(PenOf(Fade(Green, 0.55f), 1.2f), new Point(cx, cy), Polar(cx, cy, radius, a));
         }
 
         // ---- RWR and jam strobes ------------------------------------------------------------------------------------
@@ -207,21 +233,6 @@ public sealed class ScopeSurface : Surface
         dc.DrawLine(PenOf(Highlight, 1.5f), new Point(cx, cy), Polar(cx, cy, 22f, unit.Heading - up));
         Draw(dc, unit.Name + "   hdg " + Fmt.Compass(unit.Heading) + "   " + unit.SpeedKts.ToString("0") + " kt" +
                  (unit.Emcon ? "   EMCON" : ""), 6, 4, 11, Highlight);
-        // measuring cursor: bearing and range from own ship
-        double dx = cursor.X - cx, dy = cy - cursor.Y;
-        double distPx = Math.Sqrt(dx * dx + dy * dy);
-        if (cursor.X >= 0 && distPx <= radius + 10)
-        {
-            float brg = SensorPicture.Wrap360(up + (float)(Math.Atan2(dx, dy) * 180.0 / Math.PI));
-            float nm = (float)distPx / pxPerNm;
-            Pen cp = PenOf(Highlight, 1f);
-            dc.DrawLine(cp, new Point(cx, cy), cursor);
-            string t = "brg " + Fmt.Compass(brg) + "  rng " + nm.ToString("0.0") + " nm";
-            float tx = cursor.X > w - 140 ? (float)cursor.X - 136 : (float)cursor.X + 10;
-            float ty = cursor.Y < 20 ? (float)cursor.Y + 8 : (float)cursor.Y - 18;
-            dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 134, 15));
-            Draw(dc, t, tx, ty, 10, Highlight);
-        }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
     }
@@ -237,7 +248,7 @@ public sealed class ScopeSurface : Surface
         DrawCentered(dc, (hit.Kind == Kind.Esm ? "E" : "S") + hit.ContactId, p.X, p.Y - 5, 9, b);
     }
 
-    private static float SweepBearing(ObjectBase unit)
+    internal static float SweepBearing(ObjectBase unit)
     {
         var systems = unit?._obp?._sensorSystems;
         if (systems == null) return float.NaN;
@@ -247,5 +258,84 @@ public sealed class ScopeSurface : Surface
                 return SensorPicture.Wrap360(r._mountObject.transform.eulerAngles.y);
         }
         return float.NaN;
+    }
+}
+
+/// <summary>
+/// The scope's decorative sweep (it follows the antenna mount of the first search radar that is on). Drawn pointing up once per
+/// snapshot or size change; in between the host only turns it (a rotate transform), which costs no redraw.
+/// </summary>
+public sealed class ScopeSweep : Surface
+{
+    private readonly RotateTransform turn = new RotateTransform();
+    private ScopeWindow Win => DataContext as ScopeWindow;
+
+    public ScopeSweep()
+    {
+        Background = null;
+        RenderTransform = turn;
+    }
+
+    internal override bool Animated => true;
+
+    internal override void Animate()
+    {
+        ScopeWindow win = Win;
+        UnitRow unit = win?.Subject();
+        float sweep = unit == null ? float.NaN : ScopeSurface.SweepBearing(unit.Unit);
+        if (float.IsNaN(sweep))
+        {
+            if (Visibility != Visibility.Hidden) Visibility = Visibility.Hidden;
+            return;
+        }
+        if (Visibility != Visibility.Visible) Visibility = Visibility.Visible;
+        float angle = sweep - (win.HeadingUp ? unit.Heading : 0f);
+        if (Math.Abs(UnityEngine.Mathf.DeltaAngle(turn.Angle, angle)) > 0.05f) turn.Angle = angle;
+    }
+
+    protected override void Paint(DrawingContext dc, float w, float h)
+    {
+        ScopeWindow win = Win;
+        UnitRow unit = win?.Subject();
+        if (!SensorPicture.Current.InMission || !ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g)) return;
+        turn.CenterX = g.Cx;
+        turn.CenterY = g.Cy;
+        dc.DrawGeometry(Fade(Green, 0.10f), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -18f, 0f));
+        dc.DrawLine(PenOf(Fade(Green, 0.55f), 1.2f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
+    }
+}
+
+/// <summary>The scope's measuring cursor: bearing and range from own ship, on its own layer.</summary>
+public sealed class ScopeCursor : Surface
+{
+    private Point cursor = new Point(-1, -1);
+    private ScopeWindow Win => DataContext as ScopeWindow;
+
+    public ScopeCursor() => Background = null;
+
+    internal void MoveTo(Point p)
+    {
+        if (p.X < 0 && cursor.X < 0) return;
+        cursor = p;
+        InvalidateVisual();
+    }
+
+    protected override void Paint(DrawingContext dc, float w, float h)
+    {
+        if (cursor.X < 0) return;
+        ScopeWindow win = Win;
+        UnitRow unit = win?.Subject();
+        if (!SensorPicture.Current.InMission || !ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g)) return;
+        double dx = cursor.X - g.Cx, dy = g.Cy - cursor.Y;
+        double distPx = Math.Sqrt(dx * dx + dy * dy);
+        if (distPx > g.Radius + 10) return;
+        float brg = SensorPicture.Wrap360(g.Up + (float)(Math.Atan2(dx, dy) * 180.0 / Math.PI));
+        float nm = (float)distPx / g.PxPerNm;
+        dc.DrawLine(PenOf(Highlight, 1f), new Point(g.Cx, g.Cy), cursor);
+        string t = "brg " + Fmt.Compass(brg) + "  rng " + nm.ToString("0.0") + " nm";
+        float tx = cursor.X > w - 140 ? (float)cursor.X - 136 : (float)cursor.X + 10;
+        float ty = cursor.Y < 20 ? (float)cursor.Y + 8 : (float)cursor.Y - 18;
+        dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 134, 15));
+        Draw(dc, t, tx, ty, 10, Highlight);
     }
 }

@@ -32,6 +32,31 @@ internal sealed class MapView
     private double nextViewBuild;
     private int linesVersion = -1, coverageVersion = -1, settingsVersion = -1;
     private bool linesShown, coverageShown;
+    private readonly Fit linesFit, coverageFit;
+
+    /// <summary>
+    /// Where a panel's paths were projected: three anchor places and their screen points at that time. When the view only moved or
+    /// zoomed (the anchors' new points are the old ones scaled and shifted, as on the flat map), the panel gets a scale + shift
+    /// transform instead of a rebuild - projecting every point again and Noesis tessellating every stroke again was the cost of a
+    /// moving map. A zoomed panel is rebuilt once the view has been still for a moment, so strokes and labels get their size back.
+    /// On the globe a rotation is not a scale + shift: those views are rebuilt as before.
+    /// </summary>
+    private sealed class Fit
+    {
+        public readonly ScaleTransform Scale = new ScaleTransform();
+        public readonly TranslateTransform Shift = new TranslateTransform();
+        public readonly TransformGroup Group = new TransformGroup();
+        public double Lat, Lon;             // anchor 0; anchors 1 and 2 are a degree east and north of it
+        public float X0, Y0, X1, Y1, X2, Y2;
+        public bool Valid;
+        public double SettleAt;             // when > 0: rebuild at this time (the view was zoomed)
+
+        public Fit()
+        {
+            Group.Children.Add(Scale);
+            Group.Children.Add(Shift);
+        }
+    }
 
     public MapView(MapBase map)
     {
@@ -57,6 +82,10 @@ internal sealed class MapView
         linesPanel.Visibility = Visibility.Collapsed;
         onViewport = (s, e) => viewDirty = true;
         map.ViewportChanged += onViewport;
+        linesFit = new Fit();
+        coverageFit = new Fit();
+        linesPanel.RenderTransform = linesFit.Group;
+        coveragePanel.RenderTransform = coverageFit.Group;
     }
 
     public bool Alive => VisualTreeHelper.GetParent(Map) != null;
@@ -113,6 +142,7 @@ internal sealed class MapView
             return;
         if (settingsVersion != Settings.Version)
         {
+            linesFit.Valid = coverageFit.Valid = false;
             // styles (weight, opacity of the dimmed lines) are fixed when a path is made: make them again
             foreach (Path p in linePaths.Values) linesPanel.Children.Remove(p);
             foreach (Path p in coveragePaths.Values) coveragePanel.Children.Remove(p);
@@ -120,25 +150,78 @@ internal sealed class MapView
             coveragePaths.Clear();
             linesVersion = coverageVersion = -1;
         }
-        // While the map pans, zooms or follows a unit the viewport changes every frame; rebuilding every path each time is the
-        // expensive part (projection plus Noesis tessellating the strokes again), so view changes rebuild at most 20 times a second.
         double now = UnityEngine.Time.unscaledTimeAsDouble;
-        if (viewDirty && now < nextViewBuild && settingsVersion == Settings.Version)
+        bool settingsChanged = settingsVersion != Settings.Version;
+        settingsVersion = Settings.Version;
+        bool view = viewDirty;
+        viewDirty = false;
+        bool linesData = showLines && lines.Version != linesVersion;
+        bool coverageData = showCoverage && coverage.Version != coverageVersion;
+        // A view change first tries the transform; what it cannot follow needs a rebuild.
+        bool linesView = showLines && (view && !Follow(linesFit) || Settled(linesFit, now));
+        bool coverageView = showCoverage && (view && !Follow(coverageFit) || Settled(coverageFit, now));
+        // While the map turns (globe) the view changes every frame: such rebuilds run at most 20 times a second.
+        if ((linesView || coverageView) && !settingsChanged && !linesData && !coverageData && now < nextViewBuild)
+        {
+            viewDirty = true;
             return;
-        if (viewDirty) nextViewBuild = now + 0.05;
-        bool changed = viewDirty || settingsVersion != Settings.Version;
-        if (showLines && (changed || lines.Version != linesVersion))
+        }
+        if (linesView || coverageView) nextViewBuild = now + 0.05;
+        if (showLines && (settingsChanged || linesData || linesView))
         {
             linesVersion = lines.Version;
+            long t = Perf.Start();
             BuildLines(lines);
+            Anchor(linesFit);
+            Perf.Stop(Perf.Part.MapBuild, t);
         }
-        if (showCoverage && (changed || coverage.Version != coverageVersion))
+        if (showCoverage && (settingsChanged || coverageData || coverageView))
         {
             coverageVersion = coverage.Version;
+            long t = Perf.Start();
             BuildCoverage(coverage);
+            Anchor(coverageFit);
+            Perf.Stop(Perf.Part.MapBuild, t);
         }
-        viewDirty = false;
-        settingsVersion = Settings.Version;
+    }
+
+    private bool Settled(Fit fit, double now) => fit.SettleAt > 0 && now >= fit.SettleAt;
+
+    /// <summary>Records where the anchors are now (the paths were just projected) and clears the panel's transform.</summary>
+    private void Anchor(Fit fit)
+    {
+        fit.Scale.ScaleX = fit.Scale.ScaleY = 1f;
+        fit.Shift.X = fit.Shift.Y = 0f;
+        fit.SettleAt = 0;
+        Location c = Map.Center;
+        fit.Lat = Math.Max(-80.0, Math.Min(79.0, c.Latitude));
+        fit.Lon = c.Longitude;
+        fit.Valid = Project(fit.Lat, fit.Lon, out fit.X0, out fit.Y0)
+                    && Project(fit.Lat, fit.Lon + 1.0, out fit.X1, out fit.Y1)
+                    && Project(fit.Lat + 1.0, fit.Lon, out fit.X2, out fit.Y2);
+    }
+
+    /// <summary>True when the panel could follow the new view with its transform (scale + shift, no turn).</summary>
+    private bool Follow(Fit fit)
+    {
+        if (!fit.Valid) return false;
+        if (!Project(fit.Lat, fit.Lon, out float x0, out float y0) || !Project(fit.Lat, fit.Lon + 1.0, out float x1, out float y1)
+            || !Project(fit.Lat + 1.0, fit.Lon, out float x2, out float y2))
+            return false;
+        double ox = fit.X1 - fit.X0, oy = fit.Y1 - fit.Y0, nx = x1 - x0, ny = y1 - y0;
+        double len = Math.Sqrt(ox * ox + oy * oy);
+        if (len < 1e-3) return false;
+        double scale = Math.Sqrt(nx * nx + ny * ny) / len;
+        if (Math.Abs(ox * ny - oy * nx) / (len * len * scale) > 1e-4) return false;           // turned
+        // the third anchor must land where scale + shift put it (a quarter pixel)
+        double px = x0 + scale * (fit.X2 - fit.X0), py = y0 + scale * (fit.Y2 - fit.Y0);
+        if (Math.Abs(px - x2) > 0.25 || Math.Abs(py - y2) > 0.25) return false;
+        fit.Scale.ScaleX = fit.Scale.ScaleY = (float)scale;
+        fit.Shift.X = (float)(x0 - scale * fit.X0);
+        fit.Shift.Y = (float)(y0 - scale * fit.Y0);
+        bool zoomed = Math.Abs(scale - 1.0) > 1e-3;
+        fit.SettleAt = zoomed ? UnityEngine.Time.unscaledTimeAsDouble + 0.3 : fit.SettleAt;
+        return true;
     }
 
     // ---- paths -------------------------------------------------------------------------------------------------------

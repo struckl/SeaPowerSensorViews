@@ -45,6 +45,8 @@ internal static class MapSet
         Views.Clear();
         Undecoratable.Clear();
         Lines.Lines.Clear();
+        Lines.Signature = 0;
+        Lines.Version++;
         Coverage.Reset();
     }
 
@@ -114,10 +116,8 @@ internal static class MapSet
                 Coverage.Tick(realNow, selected);
                 Perf.Stop(Perf.Part.Coverage, tc);
             }
-            long tm = Perf.Start();
             foreach (MapView v in Views)
                 v.Update(lines, Lines, cover, Coverage.Result);
-            Perf.Stop(Perf.Part.MapBuild, tm);
         }
         catch (Exception ex)
         {

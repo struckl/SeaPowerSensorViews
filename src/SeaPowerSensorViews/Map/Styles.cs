@@ -122,6 +122,7 @@ internal sealed class LineSet
 
     public readonly List<Line> Lines = new List<Line>();
     public int Version;
+    public ulong Signature;
 }
 
 internal sealed class CoverageSet

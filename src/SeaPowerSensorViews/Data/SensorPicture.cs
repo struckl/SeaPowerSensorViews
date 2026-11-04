@@ -127,7 +127,11 @@ internal sealed class SensorPicture
                 hit.Live = true;
                 hit.FixTime = fix;
                 hit.MaxAge = tc.MaxAge;
-                hit.SensorName = tc.SensorDisplayName.ToString();
+                if (hit.SensorName == null || !hit.SensorNameRaw.Equals(tc.SensorDisplayName))
+                {
+                    hit.SensorNameRaw = tc.SensorDisplayName;
+                    hit.SensorName = tc.SensorDisplayName.ToString();
+                }
                 PointEstimate b = em.GetComponentData<TrackBearing>(e).Estimate;
                 hit.Bearing = Wrap360(b.Estimate);
                 if (hit.History.Count == 0 || hit.History[hit.History.Count - 1].Key < (float)fix)
@@ -169,7 +173,8 @@ internal sealed class SensorPicture
             Vehicle v = vehicles[i];
             if (v == null || !contactRows.TryGetValue(v.Id, out ContactRow cr) || cr.Stamp != stamp || cr.Hits.Count == 0)
                 continue;
-            if (Contacts.Contains(cr)) continue;
+            if (cr.Listed == stamp) continue;
+            cr.Listed = stamp;
             Describe(cr, v);
             Contacts.Add(cr);
         }
@@ -178,18 +183,20 @@ internal sealed class SensorPicture
 
     private static void Describe(ContactRow cr, Vehicle v)
     {
-        string label = "T" + v.Id;
-        // The class is shown only once the game itself shows it for the contact (identified).
+        // The class is shown only once the game itself shows it for the contact (identified). The label is made again only
+        // when that changes.
+        string cls = null;
         try
         {
             if (v.Identified.Value && v.BaseObject != null)
-            {
-                string cls = v.BaseObject.ClassNameShort;
-                if (!string.IsNullOrEmpty(cls)) label += " " + cls;
-            }
+                cls = v.BaseObject.ClassNameShort;
         }
         catch (Exception) { /* keep the plain label */ }
-        cr.Label = label;
+        if (cr.Label == null || !string.Equals(cls, cr.LabelClass))
+        {
+            cr.LabelClass = cls;
+            cr.Label = string.IsNullOrEmpty(cls) ? "T" + v.Id : "T" + v.Id + " " + cls;
+        }
         switch (v.CurrentRelationship())
         {
             case RelationsState.Friendly: cr.Relation = 1; break;
@@ -209,40 +216,76 @@ internal sealed class SensorPicture
         float y = u.transform.position.y;
         row.DepthFt = u._type == ObjectBase.ObjectType.Submarine && y < 0f ? -y * FeetPerUnit : float.NaN;
         row.AltitudeFt = u.IsAirUnit ? y * FeetPerUnit : float.NaN;
-        row.Kind = u._type.ToString();
-        row.Sensors.Clear();
+        row.Kind ??= u._type.ToString();
         float height = y;
         var systems = u._obp?._sensorSystems;
-        if (systems == null) { row.SensorHeightUnits = y; return; }
+        if (systems == null) { row.Sensors.Clear(); row.SensorHeightUnits = y; return; }
+        // The rows are made once per sensor (names, arcs, details are fixed); a refresh only reads the switches. Made again when the
+        // unit's sensor list changes. This used to build every row with its strings again each second - garbage for every own unit.
+        int n = 0;
         foreach (SensorSystem s in systems)
+            if (s != null) n++;
+        bool same = row.Sensors.Count == n;
+        if (same)
         {
-            if (s == null) continue;
-            var sr = new SensorRow { Name = s.DisplayName.Value, On = s.IsOn.Value, Inoperable = s.Inoperable.Value, State = s.DisplayState };
-            Vector2 arc = s._horizontalViewArc;
-            sr.ArcMin = arc.x; sr.ArcMax = arc.y;
-            sr.Arc = arc.x <= -180f && arc.y >= 180f ? "all round" : arc.x.ToString("+0;-0;0") + ".." + arc.y.ToString("+0;-0;0");
+            int k = 0;
+            foreach (SensorSystem s in systems)
+                if (s != null && !ReferenceEquals(row.Sensors[k++].System, s)) { same = false; break; }
+        }
+        if (!same)
+        {
+            row.Sensors.Clear();
+            foreach (SensorSystem s in systems)
+                if (s != null) row.Sensors.Add(MakeRow(s));
+        }
+        for (int i = 0; i < row.Sensors.Count; i++)
+        {
+            SensorRow sr = row.Sensors[i];
+            SensorSystem s = sr.System;
+            sr.On = s.IsOn.Value;
+            sr.Inoperable = s.Inoperable.Value;
+            sr.State = s.DisplayState;
             switch (s)
             {
                 case SensorSystemRadar r:
-                    sr.Letter = r._type == SensorSystemRadar.RadarType.Targeting ? "F" : "R";
-                    sr.Detail = r._type + (r._radar?._rp != null ? ", max " + (r._radar._rp._maxRange * NmPerUnit).ToString("0") + " nm" : "");
-                    sr.Active = s.IsOn.Value;
+                    sr.Active = sr.On;
                     height = Mathf.Max(height, r.SensorPosition.y);
                     break;
-                case SensorSystemESM: sr.Letter = "E"; sr.Detail = "passive"; break;
                 case SensorSystemSonar so:
-                    sr.Active = so._sonar != null && so._sonar.IsActive.Value;
-                    sr.Letter = sr.Active ? "A" : "S";
-                    sr.Detail = (so.IsTowedSensor ? "towed " : so.IsVDS ? "VDS " : "") + (sr.Active ? "active" : "passive");
+                    bool active = so._sonar != null && so._sonar.IsActive.Value;
+                    if (active != sr.Active || sr.Detail == null)
+                    {
+                        sr.Active = active;
+                        sr.Letter = active ? "A" : "S";
+                        sr.Detail = (so.IsTowedSensor ? "towed " : so.IsVDS ? "VDS " : "") + (active ? "active" : "passive");
+                    }
                     break;
-                case SensorSystemVisual: sr.Letter = "V"; sr.Detail = "visual / infrared"; break;
-                case SensorSystemMAD: sr.Letter = "M"; sr.Detail = "MAD"; break;
-                case SensorSystemECM: sr.Letter = "J"; sr.Detail = "jammer"; sr.Active = s.IsOn.Value; break;
-                default: sr.Letter = "?"; break;
+                case SensorSystemECM: sr.Active = sr.On; break;
             }
-            row.Sensors.Add(sr);
         }
         row.SensorHeightUnits = height;
+    }
+
+    private static SensorRow MakeRow(SensorSystem s)
+    {
+        var sr = new SensorRow { System = s, Name = s.DisplayName.Value };
+        Vector2 arc = s._horizontalViewArc;
+        sr.ArcMin = arc.x; sr.ArcMax = arc.y;
+        sr.Arc = arc.x <= -180f && arc.y >= 180f ? "all round" : arc.x.ToString("+0;-0;0") + ".." + arc.y.ToString("+0;-0;0");
+        switch (s)
+        {
+            case SensorSystemRadar r:
+                sr.Letter = r._type == SensorSystemRadar.RadarType.Targeting ? "F" : "R";
+                sr.Detail = r._type + (r._radar?._rp != null ? ", max " + (r._radar._rp._maxRange * NmPerUnit).ToString("0") + " nm" : "");
+                break;
+            case SensorSystemESM: sr.Letter = "E"; sr.Detail = "passive"; break;
+            case SensorSystemSonar: sr.Letter = "S"; break;                     // letter and detail follow the mode in ReadUnit
+            case SensorSystemVisual: sr.Letter = "V"; sr.Detail = "visual / infrared"; break;
+            case SensorSystemMAD: sr.Letter = "M"; sr.Detail = "MAD"; break;
+            case SensorSystemECM: sr.Letter = "J"; sr.Detail = "jammer"; break;
+            default: sr.Letter = "?"; break;
+        }
+        return sr;
     }
 
     /// <summary>Copies the unit's radar warning and jam bearings into short-lived strobes (the game clears them every cycle).</summary>
@@ -254,16 +297,18 @@ internal sealed class SensorPicture
         {
             UnitRow row = Units[n];
             ObjectBase u = row.Unit;
-            Collect(row, u._rwrBearings, false, now);
-            Collect(row, u._jamBearings, true, now);
+            bool changed = Collect(row, u._rwrBearings, false, now) | Collect(row, u._jamBearings, true, now);
             for (int i = row.Strobes.Count - 1; i >= 0; i--)
-                if (now - row.Strobes[i].Time > 8.0) row.Strobes.RemoveAt(i);
+                if (now - row.Strobes[i].Time > 8.0) { row.Strobes.RemoveAt(i); changed = true; }
+            if (changed) row.StrobeVersion++;
         }
     }
 
-    private static void Collect(UnitRow row, List<float> bearings, bool jam, double now)
+    /// <summary>True when a strobe was added (a known one only gets its time refreshed).</summary>
+    private static bool Collect(UnitRow row, List<float> bearings, bool jam, double now)
     {
-        if (bearings == null) return;
+        bool added = false;
+        if (bearings == null) return false;
         for (int i = 0; i < bearings.Count; i++)
         {
             float b = Wrap360(bearings[i]);
@@ -277,9 +322,11 @@ internal sealed class SensorPicture
             {
                 found = new Strobe { Jam = jam };
                 row.Strobes.Add(found);
+                added = true;
             }
             if (found != null) { found.Bearing = b; found.Time = now; }
         }
+        return added;
     }
 
     public static float Wrap360(float a)

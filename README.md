@@ -8,6 +8,8 @@ monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamco
 
 **Status: 0.2.0, first release** ([Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654)). Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
 bearing history, depth marks and the echo plot. The build for the 3D-globe beta is checked against its assemblies but not run in the game yet.
+Unreleased on main: performance work (map layers follow pans and zooms without a rebuild, scope sweep and cursors on their own layers),
+measured before/after in the game on 0.8.7: [tools/perf-test/results-2026-11-04](tools/perf-test/results-2026-11-04/README.md).
 
 - **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
   F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD) with the age of the freshest fix; a lower-case
@@ -46,7 +48,7 @@ Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
 `dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. Two DLLs
 from one source tree - `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` (`-p:GameBuild=Flat`) for 0.8.7 - each stays off on the
 other game; checked offline against the assemblies of both; run in the game on 0.8.7 (flat map), not yet on the 3D-globe build.
-How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Notes and plan:
+How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Frame-time test: [tools/perf-test](tools/perf-test/README.md). Notes and plan:
 [HANDOVER.md](HANDOVER.md).
 
 MIT licence. *R.A.T.S. - Ratte's Assorted Tactical Systems*

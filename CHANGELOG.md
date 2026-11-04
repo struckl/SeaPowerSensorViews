@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- Performance (measured in the game on 0.8.7, before/after in `tools/perf-test/results-2026-11-04`):
+  - Map layers: when the map pans or zooms, the sensor lines and coverage now move with a transform instead of being projected and
+    tessellated again (the flat map; the globe's turning view still rebuilds, at most 20 times a second). A zoomed layer is rebuilt
+    once the view holds still. The lines are rebuilt only when they changed by more than about 0.1 nm, so a paused game or
+    still contacts cost nothing on the map.
+  - Radar scope: the sweep is its own layer that is only turned, so the scope picture is no longer redrawn 25 times a
+    second. It is redrawn with each snapshot, and in between only when a radar warning or jam strobe comes or goes. The measuring
+    cursor is its own layer too.
+  - Sonar display: the measuring cursor is its own layer (moving the mouse used to redraw the whole waterfall), and the
+    waterfall is drawn as one shape per colour and brightness step instead of one rectangle per dot.
+  - The sensor snapshot keeps each unit's sensor rows and only reads their switches each second; it no longer builds every
+    row and its texts again.
+  - Result on his PC (Gulf of Sidra, everything open, map moving): 73.9/71.9 fps → 80.9/76.0 fps; the mod's own time per frame
+    went from about 0.2 ms to 0.03 ms. Most single cases are within the test's noise (about 5 %). The 3D-globe build compiles
+    and passes the compat check but was not run in the game.
+- `tools/perf-test`: the repeatable frame-time test (runner, cases, README).
+
 ## 0.2.0 - unreleased
 
 - Radar scope: the sweep redraws 25 times a second instead of 5 (smoother turning). Run in the game on 0.8.7 (2026-11-03): scope cursor, board bearing history strip, sonar measuring cursor, depth marks and the Echoes plot work; depth labels are right-aligned so they no longer clip.

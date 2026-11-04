@@ -106,7 +106,7 @@ internal sealed class Host : MonoBehaviour
             {
                 nextAnimate = Time.unscaledTime + 0.04f;     // the scope's sweep: 25 redraws a second
                 for (int i = 0; i < Registry.Surfaces.Count; i++)
-                    if (Registry.Surfaces[i].Animated) Registry.Surfaces[i].InvalidateVisual();
+                    if (Registry.Surfaces[i].Animated) Registry.Surfaces[i].Animate();
             }
         }
         catch (Exception ex)

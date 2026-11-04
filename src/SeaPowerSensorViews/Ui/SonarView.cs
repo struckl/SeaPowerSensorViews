@@ -28,10 +28,17 @@ public sealed class SonarView : UserControl
         bar.Children.Add(echoes);
         bar.Children.Add(nameText);
         Grid.SetRow(bar, 0);
+        // The measuring cursor is drawn on its own layer over the waterfall, so moving the mouse redraws a few lines, not the
+        // whole waterfall (up to 150 rows of dots).
         var surface = new SonarSurface();
-        Grid.SetRow(surface, 1);
+        var cursorLayer = new SonarCursor { IsHitTestVisible = false };
+        surface.CursorLayer = cursorLayer;
+        var stack = new Grid();
+        stack.Children.Add(surface);
+        stack.Children.Add(cursorLayer);
+        Grid.SetRow(stack, 1);
         root.Children.Add(bar);
-        root.Children.Add(surface);
+        root.Children.Add(stack);
         Content = root;
         Loaded += (s, e) => UpdateName();
         DataContextChanged += (s, e) => UpdateName();
@@ -164,12 +171,31 @@ public sealed class SonarSurface : Surface
 {
     internal static event Action Changed;
     private SonarWindow Win => DataContext as SonarWindow;
-    private Point cursor = new Point(-1, -1);
+    internal SonarCursor CursorLayer;
 
     public SonarSurface()
     {
-        MouseMove += (s, e) => { cursor = e.GetPosition(this); InvalidateVisual(); };
-        MouseLeave += (s, e) => { cursor = new Point(-1, -1); InvalidateVisual(); };
+        MouseMove += (s, e) => CursorLayer?.MoveTo(e.GetPosition(this));
+        MouseLeave += (s, e) => CursorLayer?.MoveTo(new Point(-1, -1));
+    }
+
+    /// <summary>The waterfall's rectangle in a surface of this size (shared with the cursor layer).</summary>
+    internal static bool Layout(float w, float h, out float x0, out float y0, out float ww, out float hh, out float stripW)
+    {
+        stripW = Math.Min(190f, w * 0.28f);
+        x0 = 8; y0 = 34; ww = w - stripW - 24; hh = h - y0 - 26;
+        return ww >= 60 && hh >= 60;
+    }
+
+    private readonly System.Collections.Generic.Dictionary<int, StreamGeometryContext> batches = new System.Collections.Generic.Dictionary<int, StreamGeometryContext>();
+    private readonly System.Collections.Generic.List<(int key, StreamGeometry geometry)> batchList = new System.Collections.Generic.List<(int, StreamGeometry)>();
+
+    private static void AddRect(StreamGeometryContext c, float x, float y, float w, float h)
+    {
+        c.BeginFigure(new Point(x, y), true, true);
+        c.LineTo(new Point(x + w, y), false, false);
+        c.LineTo(new Point(x + w, y + h), false, false);
+        c.LineTo(new Point(x, y + h), false, false);
     }
 
     private static bool InBaffles(float from, float to, float rel)
@@ -189,9 +215,7 @@ public sealed class SonarSurface : Surface
             Draw(dc, st.UnitName != null ? st.UnitName + " has no sonar." : "No unit.", 8, 8, 12, Normal);
             return;
         }
-        float stripW = Math.Min(190f, w * 0.28f);
-        float x0 = 8, y0 = 34, ww = w - stripW - 24, hh = h - y0 - 26;
-        if (ww < 60 || hh < 60) return;
+        if (!Layout(w, h, out float x0, out float y0, out float ww, out float hh, out float stripW)) return;
         Waterfall wf = null;
         win.Falls.TryGetValue(KeyOf(win), out wf);
 
@@ -224,7 +248,10 @@ public sealed class SonarSurface : Surface
         {
         if (wf != null && wf.Count > 0)
         {
+            // One geometry per colour and brightness step instead of one rectangle per dot.
             float rowH = hh / SonarWindow.Rows;
+            batches.Clear();
+            batchList.Clear();
             for (int age = 0; age < wf.Count; age++)
             {
                 var dots = wf.Rows[wf.Back(age)];
@@ -233,29 +260,25 @@ public sealed class SonarSurface : Surface
                 {
                     Waterfall.Dot d = dots[i];
                     float a = d.Level / 255f * (1f - age * 0.004f);
-                    Brush c = Fade(d.Active ? Blue : Green, a);
+                    int key = (d.Active ? 64 : 0) + Math.Max(0, Math.Min(32, (int)Math.Round(a * 32f)));
+                    if (!batches.TryGetValue(key, out StreamGeometryContext c))
+                    {
+                        var g = new StreamGeometry();
+                        batches[key] = c = g.Open();
+                        batchList.Add((key, g));
+                    }
                     float dw = Math.Max(2f, d.Width * binW);
-                    dc.DrawRectangle(c, null, new Rect(x0 + d.Bin * binW - dw / 2f + binW / 2f, y, dw, Math.Max(1.5f, rowH + 0.5f)));
+                    AddRect(c, x0 + d.Bin * binW - dw / 2f + binW / 2f, y, dw, Math.Max(1.5f, rowH + 0.5f));
                 }
             }
+            foreach (StreamGeometryContext c in batches.Values) c.Dispose();
+            foreach ((int key, StreamGeometry g) in batchList)
+                dc.DrawGeometry(Fade(key >= 64 ? Blue : Green, (key & 63) / 32f), null, g);
+            batches.Clear();
+            batchList.Clear();
         }
         if (!st.On)
             DrawCentered(dc, "sonar is off - nothing is listening", x0 + ww / 2, y0 + hh / 2f - 24, 12, Emphasis);
-        // measuring cursor: bearing (true and relative to the bow) and age under the mouse
-        if (!win.ShowEchoes && cursor.X >= x0 && cursor.X <= x0 + ww && cursor.Y >= y0 && cursor.Y <= y0 + hh)
-        {
-            float rel = (float)((cursor.X - x0) / ww * 360f - 180f);
-            float secs = (float)((cursor.Y - y0) / hh * SonarWindow.Rows);
-            float brg = SensorPicture.Wrap360(st.Heading + rel);
-            Pen cp = PenOf(Highlight, 1f);
-            dc.DrawLine(cp, new Point(cursor.X, y0), new Point(cursor.X, y0 + hh));
-            dc.DrawLine(cp, new Point(x0, cursor.Y), new Point(x0 + ww, cursor.Y));
-            string t = "brg " + Fmt.Compass(brg) + "  rel " + (rel > 0 ? "+" : "") + rel.ToString("0") + "  " + secs.ToString("0") + " s ago";
-            float tx = cursor.X > x0 + ww - 190 ? (float)cursor.X - 190 : (float)cursor.X + 8;
-            float ty = cursor.Y > y0 + hh - 20 ? (float)cursor.Y - 18 : (float)cursor.Y + 6;
-            dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 188, 15));
-            Draw(dc, t, tx, ty, 10, Highlight);
-        }
         }
         else DrawEchoes(dc, st, x0, y0, ww, hh);
         if (!win.ShowEchoes)
@@ -371,4 +394,40 @@ public sealed class SonarSurface : Surface
     }
 
     internal static void RaiseChanged() => Changed?.Invoke();
+}
+
+/// <summary>The sonar display's measuring cursor: bearing (true and relative to the bow) and age under the mouse, on its own layer.</summary>
+public sealed class SonarCursor : Surface
+{
+    private Point cursor = new Point(-1, -1);
+    private SonarWindow Win => DataContext as SonarWindow;
+
+    public SonarCursor() => Background = null;
+
+    internal void MoveTo(Point p)
+    {
+        if (p.X < 0 && cursor.X < 0) return;
+        cursor = p;
+        InvalidateVisual();
+    }
+
+    protected override void Paint(DrawingContext dc, float w, float h)
+    {
+        SonarWindow win = Win;
+        if (win == null || win.ShowEchoes || cursor.X < 0) return;
+        SonarState st = win.State;
+        if (!st.Valid || !SonarSurface.Layout(w, h, out float x0, out float y0, out float ww, out float hh, out _)) return;
+        if (cursor.X < x0 || cursor.X > x0 + ww || cursor.Y < y0 || cursor.Y > y0 + hh) return;
+        float rel = (float)((cursor.X - x0) / ww * 360f - 180f);
+        float secs = (float)((cursor.Y - y0) / hh * SonarWindow.Rows);
+        float brg = SensorPicture.Wrap360(st.Heading + rel);
+        Pen cp = PenOf(Highlight, 1f);
+        dc.DrawLine(cp, new Point(cursor.X, y0), new Point(cursor.X, y0 + hh));
+        dc.DrawLine(cp, new Point(x0, cursor.Y), new Point(x0 + ww, cursor.Y));
+        string t = "brg " + Fmt.Compass(brg) + "  rel " + (rel > 0 ? "+" : "") + rel.ToString("0") + "  " + secs.ToString("0") + " s ago";
+        float tx = cursor.X > x0 + ww - 190 ? (float)cursor.X - 190 : (float)cursor.X + 8;
+        float ty = cursor.Y > y0 + hh - 20 ? (float)cursor.Y - 18 : (float)cursor.Y + 6;
+        dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(tx - 2, ty - 1, 188, 15));
+        Draw(dc, t, tx, ty, 10, Highlight);
+    }
 }
