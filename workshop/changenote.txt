@@ -1,2 +1,3 @@
-0.2.0: first release.
-Sensor board, radar scope and sonar display as game windows, bottom bar buttons, and two map layers: sensor lines and sensor coverage. Measuring cursors on the scope and the sonar, bearing history on the board, contact depth and an echo plot on the sonar display.
+0.2.1: performance update.
+The map layers now follow the map when you pan or zoom instead of being rebuilt every frame, and are only rebuilt when the contacts actually moved. The radar scope's sweep and the measuring cursors on the scope and sonar are separate layers, so the main picture is no longer redrawn 25 times a second or on every mouse move. The sonar waterfall is drawn in far fewer pieces, and the once-a-second sensor snapshot no longer rebuilds every row.
+Measured on 0.8.7 (Gulf of Sidra, all windows open, map moving): about 7 % more fps; the mod's own time per frame went from about 0.2 ms to 0.03 ms. Nothing changes in what is shown.

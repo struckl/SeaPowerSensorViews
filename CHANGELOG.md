@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 - 2026-11-04
 
 - Performance (measured in the game on 0.8.7, before/after in `tools/perf-test/results-2026-11-04`):
   - Map layers: when the map pans or zooms, the sensor lines and coverage now move with a transform instead of being projected and
@@ -14,12 +14,12 @@
     waterfall is drawn as one shape per colour and brightness step instead of one rectangle per dot.
   - The sensor snapshot keeps each unit's sensor rows and only reads their switches each second; it no longer builds every
     row and its texts again.
-  - Result on his PC (Gulf of Sidra, everything open, map moving): 73.9/71.9 fps → 80.9/76.0 fps; the mod's own time per frame
+  - Result on the test PC (Gulf of Sidra, everything open, map moving): 73.9/71.9 fps → 80.9/76.0 fps; the mod's own time per frame
     went from about 0.2 ms to 0.03 ms. Most single cases are within the test's noise (about 5 %). The 3D-globe build compiles
     and passes the compat check but was not run in the game.
 - `tools/perf-test`: the repeatable frame-time test (runner, cases, README).
 
-## 0.2.0 - unreleased
+## 0.2.0 - 2026-11-03
 
 - Radar scope: the sweep redraws 25 times a second instead of 5 (smoother turning). Run in the game on 0.8.7 (2026-11-03): scope cursor, board bearing history strip, sonar measuring cursor, depth marks and the Echoes plot work; depth labels are right-aligned so they no longer clip.
 - Sonar display: the depth strip shows the contacts this sonar holds at their estimated depth, with the track's error band and above/below the layer; an *Echoes* button switches the waterfall to a range/bearing echo plot (active = filled, passive with a range estimate = ring, fading with the fix age). Run in the game on 0.8.7.

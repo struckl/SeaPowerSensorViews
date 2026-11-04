@@ -18,7 +18,7 @@ namespace SeaPowerSensorViews;
 public class Plugin : IAnchorChainMod
 {
     public const string Guid = "dev.sewerlabs.seapowersensorviews";
-    public const string Version = "0.2.0";
+    public const string Version = "0.2.1";
 
 #if FLATMAP
     // Anchor Chain skips a plugin whose GUID it has already seen, so the two builds register under different ones.
