@@ -16,6 +16,7 @@ internal static class LineBuilder
     private const float KmPerMeter = 0.001f;
 
     private static readonly List<LineSet.Line> Fresh = new List<LineSet.Line>();
+    private static HashSet<ulong> lastHashes = new HashSet<ulong>(), freshHashes = new HashSet<ulong>();
 
     /// <summary>
     /// Builds the lines; the set's version (which makes every map rebuild its paths) only moves when they differ from the last ones
@@ -27,29 +28,59 @@ internal static class LineBuilder
         Fill(pic, selected, Fresh);
         ulong sig = Signature(Fresh);
         if (sig == set.Signature && set.Version > 0) return;
+        if (Settings.VerboseLog.Value) Explain(set);
         set.Signature = sig;
         set.Lines.Clear();
         set.Lines.AddRange(Fresh);
         set.Version++;
     }
 
+    /// <summary>
+    /// The lines' fingerprint, independent of their order (the snapshot does not list the contacts in a fixed order, and an
+    /// order-bound fingerprint rebuilt every map path once a second even in a paused game).
+    /// </summary>
     private static ulong Signature(List<LineSet.Line> lines)
+    {
+        freshHashes.Clear();
+        ulong sum = (ulong)lines.Count * 0x9E3779B97F4A7C15UL;
+        foreach (LineSet.Line l in lines)
+        {
+            ulong h = LineHash(l);
+            freshHashes.Add(h);
+            sum += h;
+        }
+        return sum;
+    }
+
+    private static ulong LineHash(LineSet.Line l)
     {
         ulong h = 14695981039346656037UL;
         void Mix(long v) { h = (h ^ (ulong)v) * 1099511628211UL; }
-        Mix(lines.Count);
-        foreach (LineSet.Line l in lines)
+        Mix(((int)l.Style << 3) | (l.Bright ? 4 : 0) | (l.Live ? 2 : 0) | (l.Fill ? 1 : 0));
+        Mix(l.Label?.GetHashCode() ?? 0);
+        Mix(l.Lat.Length);
+        for (int i = 0; i < l.Lat.Length; i++)
         {
-            Mix(((int)l.Style << 3) | (l.Bright ? 4 : 0) | (l.Live ? 2 : 0) | (l.Fill ? 1 : 0));
-            Mix(l.Label?.GetHashCode() ?? 0);
-            Mix(l.Lat.Length);
-            for (int i = 0; i < l.Lat.Length; i++)
-            {
-                Mix((long)Math.Round(l.Lat[i] * 500.0));        // 0.002 degree, about 0.1 nm
-                Mix((long)Math.Round(l.Lon[i] * 500.0));
-            }
+            Mix((long)Math.Round(l.Lat[i] * 500.0));        // 0.002 degree, about 0.1 nm
+            Mix((long)Math.Round(l.Lon[i] * 500.0));
         }
-        return h;
+        h ^= h >> 31;
+        return h * 0xBF58476D1CE4E5B9UL;
+    }
+
+    /// <summary>Verbose log: what made the map paths rebuild (new or changed lines, gone lines).</summary>
+    private static void Explain(LineSet set)
+    {
+        int added = 0, kept = 0;
+        string first = null;
+        foreach (LineSet.Line l in Fresh)
+        {
+            if (lastHashes.Contains(LineHash(l))) { kept++; continue; }
+            added++;
+            first ??= $"{l.Style} live={l.Live} fill={l.Fill} '{l.Label}' end {l.Lat[l.Lat.Length - 1]:F4},{l.Lon[l.Lon.Length - 1]:F4}";
+        }
+        ModLog.Debug($"lines rebuilt: {Fresh.Count} lines, {added} new or changed, {lastHashes.Count - kept} gone; first new: {first ?? "-"}");
+        (lastHashes, freshHashes) = (freshHashes, lastHashes);
     }
 
     private static void Fill(SensorPicture pic, UnitRow selected, List<LineSet.Line> lines)

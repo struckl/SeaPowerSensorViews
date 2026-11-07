@@ -2,8 +2,15 @@
 
 ## Unreleased
 
-- Fix: zooming in on the map with the sensor lines on made the game crawl or freeze, worse the closer the zoom (reported by many players). The lines, wedges and coverage are now cut to the visible map plus a margin before they are drawn; before, a line ran hundreds of thousands of pixels past the screen when zoomed in, and the game had to draw every dash of it. Compiles for both builds; not yet run in the game.
-- 	ools/perf-test: two zoomed-in cases (zoom 13 and 17 with the sensor lines on).
+- Fix: zooming in on the map with the sensor lines on made the game crawl or freeze, worse the closer the zoom (reported by many
+  players). The lines, wedges and coverage are now cut to the visible map plus half a view on each side before they are drawn;
+  before, zoomed in, a line ran hundreds of thousands of pixels past the screen and the game drew every dash of it. Measured in
+  the game on 0.8.7 (`tools/perf-test/results-2026-11-07`): zoom 13 went from 61/31 fps with frames up to 0.86 s to 74/72 fps
+  with frames under about 50 ms; at zoom 17, 0.2.1 froze the game until Windows closed it, now 76/74 fps.
+- Fix: the map lines were rebuilt once a second even in a paused game, because the change check depended on the order of the
+  contacts. With *Verbose log* on, the log now says what changed when the lines are rebuilt.
+- `tools/perf-test`: zoomed-in cases (zoom 13 and 17), `cases-zoom.cmd` (lines off vs on), `cases-running.cmd` (mission running,
+  `-Running`), and `-CaseFile` to pick a case list.
 
 ## 0.2.1 - 2026-11-04
 

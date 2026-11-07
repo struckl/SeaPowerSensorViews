@@ -33,7 +33,7 @@ internal sealed class MapView
     private int linesVersion = -1, coverageVersion = -1, settingsVersion = -1;
     private bool linesShown, coverageShown;
     private readonly Fit linesFit, coverageFit;
-    // The area paths are cut to, in view pixels: the view plus one view size on each side. Zoomed in, a sensor line or wedge runs
+    // The area paths are cut to, in view pixels: the view plus half a view size on each side. Zoomed in, a sensor line or wedge runs
     // hundreds of thousands of pixels past the screen; uncut, Noesis tessellated all of it (every dash of a dotted line), which froze
     // the game when zoomed in on a contact.
     private float clipX0, clipY0, clipX1, clipY1;
@@ -243,7 +243,7 @@ internal sealed class MapView
 
     private void SetClip()
     {
-        float w = Map.ActualWidth, h = Map.ActualHeight, m = Math.Max(w, h);
+        float w = Map.ActualWidth, h = Map.ActualHeight, m = 0.5f * Math.Max(w, h);
         clipX0 = -m; clipY0 = -m; clipX1 = w + m; clipY1 = h + m;
     }
 

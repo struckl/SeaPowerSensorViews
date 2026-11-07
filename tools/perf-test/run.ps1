@@ -1,9 +1,9 @@
-# Frame-time test of Sensor Views in the running game (see README.md here). Needs Lukas' OK, the workspace .game-lock and the
+﻿# Frame-time test of Sensor Views in the running game (see README.md here). Needs Lukas' OK, the workspace .game-lock and the
 # Shot Director with the perf commands installed. Starts the game, loads the Gulf of Sidra mission, lets it run 45 s at x4, then
 # runs cases.cmd twice (rounds LABEL-r1 and LABEL-r2) and quits. Results: BepInEx\perf\results.csv.
 #
 #   run.ps1 -Label before
-param([Parameter(Mandatory)][string]$Label, [switch]$KeepOpen)
+param([Parameter(Mandatory)][string]$Label, [switch]$KeepOpen, [switch]$Running, [switch]$RunningOnly, [string]$CaseFile = 'cases.cmd')
 $ErrorActionPreference = 'Stop'
 $game = 'E:\Games\steamapps\common\Sea Power'
 $bep = Join-Path $game 'BepInEx'
@@ -33,9 +33,12 @@ Send @('load missions/NATO/Action in the Gulf of Sidra 1986.ini', 'waitload', 'w
        'wait 3', 'marker setup-done')
 WaitLog 'unknown command: marker setup-done' 400 $n
 
-$cases = Get-Content (Join-Path $PSScriptRoot 'cases.cmd')
+$cases = Get-Content (Join-Path $PSScriptRoot $CaseFile)
 $n = Lines
-Send (($cases -replace 'ROUND', "$Label-r1") + ($cases -replace 'ROUND', "$Label-r2") + @('sv verbose off', 'marker cases-done'))
+$extra = @()
+if ($RunningOnly) { $cases = @(); $Running = $true }
+if ($Running) { $extra = (Get-Content (Join-Path $PSScriptRoot 'cases-running.cmd')) -replace 'ROUND', $Label }
+Send (($cases -replace 'ROUND', "$Label-r1") + ($cases -replace 'ROUND', "$Label-r2") + $extra + @('sv verbose off', 'marker cases-done'))
 WaitLog 'unknown command: marker cases-done' 900 $n
 
 if ($KeepOpen) { "done: $Label, game left open"; return }
