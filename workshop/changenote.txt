@@ -1,3 +1,3 @@
-0.2.1: performance update.
-The map layers now follow the map when you pan or zoom instead of being rebuilt every frame, and are only rebuilt when the contacts actually moved. The radar scope's sweep and the measuring cursors on the scope and sonar are separate layers, so the main picture is no longer redrawn 25 times a second or on every mouse move. The sonar waterfall is drawn in far fewer pieces, and the once-a-second sensor snapshot no longer rebuilds every row.
-Measured on 0.8.7 (Gulf of Sidra, all windows open, map moving): about 7 % more fps; the mod's own time per frame went from about 0.2 ms to 0.03 ms. Nothing changes in what is shown.
+0.2.2: fixes the lag and freeze when zooming in on the map with the sensor lines on.
+Zoomed in, the sensor lines and bearing wedges were drawn in full length far past the edge of the screen, which made the game crawl and at high zoom freeze. They are now cut to the visible map before they are drawn. Measured on 0.8.7: at zoom 13 from about 31-61 fps with half-second stutters to about 72-74 fps; at zoom 17 the old version froze the game, now about 74-76 fps.
+Also: the lines are no longer rebuilt every second while the game is paused. Thanks to everyone who reported it.

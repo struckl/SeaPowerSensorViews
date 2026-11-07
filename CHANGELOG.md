@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 - 2026-11-07
 
 - Fix: zooming in on the map with the sensor lines on made the game crawl or freeze, worse the closer the zoom (reported by many
   players). The lines, wedges and coverage are now cut to the visible map plus half a view on each side before they are drawn;
