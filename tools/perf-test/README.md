@@ -25,6 +25,7 @@ vsync off for the test only (`fps uncap`; `fps restore` before quitting, nothing
 | sonar_hover | sonar display open, mouse circling over the waterfall |
 | board | sensor board open |
 | everything | lines + coverage + all three windows + panning + mouse over the sonar |
+| lines_zoom13, lines_zoom17 | sensor lines on, map zoomed in on the Ticonderoga (zoom 13 and 17); added after players reported freezes when zooming in |
 
 Each case settles 3 s and records 15 s. `BepInEx\perf\results.csv` gets one line per case: frames, fps, average /
 p50 / p95 / p99 / max frame time, 1% low, frames over twice the average, GC runs, and from Unity's frame timing the

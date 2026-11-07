@@ -33,6 +33,12 @@ internal sealed class MapView
     private int linesVersion = -1, coverageVersion = -1, settingsVersion = -1;
     private bool linesShown, coverageShown;
     private readonly Fit linesFit, coverageFit;
+    // The area paths are cut to, in view pixels: the view plus one view size on each side. Zoomed in, a sensor line or wedge runs
+    // hundreds of thousands of pixels past the screen; uncut, Noesis tessellated all of it (every dash of a dotted line), which froze
+    // the game when zoomed in on a contact.
+    private float clipX0, clipY0, clipX1, clipY1;
+    private readonly List<Point> run = new List<Point>();
+    private readonly List<Point> polyA = new List<Point>(), polyB = new List<Point>();
 
     /// <summary>
     /// Where a panel's paths were projected: three anchor places and their screen points at that time. When the view only moved or
@@ -49,6 +55,7 @@ internal sealed class MapView
         public double Lat, Lon;             // anchor 0; anchors 1 and 2 are a degree east and north of it
         public float X0, Y0, X1, Y1, X2, Y2;
         public bool Valid;
+        public float ClipX0, ClipY0, ClipX1, ClipY1;   // the cut area of the last build, in its view pixels
         public double SettleAt;             // when > 0: rebuild at this time (the view was zoomed)
 
         public Fit()
@@ -167,6 +174,8 @@ internal sealed class MapView
             return;
         }
         if (linesView || coverageView) nextViewBuild = now + 0.05;
+        if ((showLines && (settingsChanged || linesData || linesView)) || (showCoverage && (settingsChanged || coverageData || coverageView)))
+            SetClip();
         if (showLines && (settingsChanged || linesData || linesView))
         {
             linesVersion = lines.Version;
@@ -193,6 +202,7 @@ internal sealed class MapView
         fit.Scale.ScaleX = fit.Scale.ScaleY = 1f;
         fit.Shift.X = fit.Shift.Y = 0f;
         fit.SettleAt = 0;
+        fit.ClipX0 = clipX0; fit.ClipY0 = clipY0; fit.ClipX1 = clipX1; fit.ClipY1 = clipY1;
         Location c = Map.Center;
         fit.Lat = Math.Max(-80.0, Math.Min(79.0, c.Latitude));
         fit.Lon = c.Longitude;
@@ -216,12 +226,118 @@ internal sealed class MapView
         // the third anchor must land where scale + shift put it (a quarter pixel)
         double px = x0 + scale * (fit.X2 - fit.X0), py = y0 + scale * (fit.Y2 - fit.Y0);
         if (Math.Abs(px - x2) > 0.25 || Math.Abs(py - y2) > 0.25) return false;
+        // the view, taken back into the build's pixels, must still lie inside the area that was cut out; else rebuild
+        double sx = x0 - scale * fit.X0, sy = y0 - scale * fit.Y0;
+        double vx0 = (0 - sx) / scale, vy0 = (0 - sy) / scale;
+        double vx1 = (Map.ActualWidth - sx) / scale, vy1 = (Map.ActualHeight - sy) / scale;
+        if (vx0 < fit.ClipX0 || vy0 < fit.ClipY0 || vx1 > fit.ClipX1 || vy1 > fit.ClipY1) return false;
         fit.Scale.ScaleX = fit.Scale.ScaleY = (float)scale;
         fit.Shift.X = (float)(x0 - scale * fit.X0);
         fit.Shift.Y = (float)(y0 - scale * fit.Y0);
         bool zoomed = Math.Abs(scale - 1.0) > 1e-3;
         fit.SettleAt = zoomed ? UnityEngine.Time.unscaledTimeAsDouble + 0.3 : fit.SettleAt;
         return true;
+    }
+
+    // ---- cutting to the view ---------------------------------------------------------------------------------------------
+
+    private void SetClip()
+    {
+        float w = Map.ActualWidth, h = Map.ActualHeight, m = Math.Max(w, h);
+        clipX0 = -m; clipY0 = -m; clipX1 = w + m; clipY1 = h + m;
+    }
+
+    /// <summary>Adds the points collected in <see cref="run"/> to the geometry, cut to the clip area, and empties the run.</summary>
+    private void Emit(StreamGeometryContext c, bool fill)
+    {
+        if (run.Count >= 2)
+        {
+            if (fill) EmitPolygon(c);
+            else EmitPolyline(c);
+        }
+        run.Clear();
+    }
+
+    private void EmitPolyline(StreamGeometryContext c)
+    {
+        bool drawing = false;
+        for (int i = 1; i < run.Count; i++)
+        {
+            Point a = run[i - 1], b = run[i];
+            if (!ClipSegment(ref a, ref b, out bool cutStart, out bool cutEnd)) { drawing = false; continue; }
+            if (!drawing || cutStart) c.BeginFigure(a, false, false);
+            c.LineTo(b, true, false);
+            drawing = !cutEnd;
+        }
+    }
+
+    /// <summary>Liang-Barsky: cuts the segment to the clip area; false when nothing of it is inside.</summary>
+    private bool ClipSegment(ref Point a, ref Point b, out bool cutStart, out bool cutEnd)
+    {
+        cutStart = cutEnd = false;
+        double x0 = a.X, y0 = a.Y, dx = b.X - x0, dy = b.Y - y0, t0 = 0, t1 = 1;
+        if (!Edge(-dx, x0 - clipX0, ref t0, ref t1) || !Edge(dx, clipX1 - x0, ref t0, ref t1)
+            || !Edge(-dy, y0 - clipY0, ref t0, ref t1) || !Edge(dy, clipY1 - y0, ref t0, ref t1))
+            return false;
+        if (t0 > 0) { a = new Point((float)(x0 + t0 * dx), (float)(y0 + t0 * dy)); cutStart = true; }
+        if (t1 < 1) { b = new Point((float)(x0 + t1 * dx), (float)(y0 + t1 * dy)); cutEnd = true; }
+        return true;
+    }
+
+    private static bool Edge(double p, double q, ref double t0, ref double t1)
+    {
+        if (p == 0) return q >= 0;
+        double r = q / p;
+        if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+        else { if (r < t0) return false; if (r < t1) t1 = r; }
+        return true;
+    }
+
+    /// <summary>Sutherland-Hodgman: cuts the closed polygon in <see cref="run"/> to the clip area.</summary>
+    private void EmitPolygon(StreamGeometryContext c)
+    {
+        polyA.Clear();
+        polyA.AddRange(run);
+        ClipPolygon(polyA, polyB, 0, clipX0);
+        ClipPolygon(polyB, polyA, 1, clipX1);
+        ClipPolygon(polyA, polyB, 2, clipY0);
+        ClipPolygon(polyB, polyA, 3, clipY1);
+        if (polyA.Count < 3) return;
+        c.BeginFigure(polyA[0], true, true);
+        for (int i = 1; i < polyA.Count; i++) c.LineTo(polyA[i], true, false);
+    }
+
+    private static void ClipPolygon(List<Point> src, List<Point> dst, int side, float v)
+    {
+        dst.Clear();
+        int n = src.Count;
+        if (n == 0) return;
+        Point prev = src[n - 1];
+        bool prevIn = Inside(prev, side, v);
+        for (int i = 0; i < n; i++)
+        {
+            Point cur = src[i];
+            bool curIn = Inside(cur, side, v);
+            if (curIn != prevIn) dst.Add(Cross(prev, cur, side, v));
+            if (curIn) dst.Add(cur);
+            prev = cur; prevIn = curIn;
+        }
+    }
+
+    private static bool Inside(Point p, int side, float v) => side switch
+    {
+        0 => p.X >= v, 1 => p.X <= v, 2 => p.Y >= v, _ => p.Y <= v,
+    };
+
+    private static Point Cross(Point a, Point b, int side, float v)
+    {
+        if (side < 2)
+        {
+            double t = (v - a.X) / (double)(b.X - a.X);
+            return new Point(v, (float)(a.Y + t * (b.Y - a.Y)));
+        }
+        double u = (v - a.Y) / (double)(b.Y - a.Y);
+        return new Point((float)(a.X + u * (b.X - a.X)), v);
     }
 
     // ---- paths -------------------------------------------------------------------------------------------------------
@@ -291,24 +407,22 @@ internal sealed class MapView
             string key = LineStyles.Key(line.Style, line.Bright, line.Live, line.Fill);
             StreamGeometryContext c = Context(key);
             bool started = false;
-            float firstX = 0, firstY = 0, lastX = 0, lastY = 0;
+            float lastX = 0, lastY = 0;
+            run.Clear();
             for (int i = 0; i < line.Lat.Length; i++)
             {
                 if (!Project(line.Lat[i], line.Lon[i], out float x, out float y))
                 {
-                    started = false;
+                    Emit(c, line.Fill);
                     continue;
                 }
-                if (!started)
-                {
-                    c.BeginFigure(new Point(x, y), line.Fill, line.Fill);
-                    firstX = x; firstY = y;
-                    started = true;
-                }
-                else c.LineTo(new Point(x, y), true, false);
+                run.Add(new Point(x, y));
                 lastX = x; lastY = y;
+                started = true;
             }
-            if (!string.IsNullOrEmpty(line.Label) && started && line.Bright)
+            Emit(c, line.Fill);
+            if (!string.IsNullOrEmpty(line.Label) && started && line.Bright
+                && lastX >= 0 && lastY >= 0 && lastX <= Map.ActualWidth && lastY <= Map.ActualHeight)
             {
                 Brush b = theme.Line(line.Style);
                 Label(line.Label, lastX + 4, lastY - 8, b, 1f);
@@ -346,13 +460,13 @@ internal sealed class MapView
             if (ring.Lat.Length < 3) continue;
             string key = "c|" + (int)ring.Kind + (ring.Fill ? "f" : "s");
             StreamGeometryContext c = Context(key);
-            bool started = false;
+            run.Clear();
             for (int i = 0; i < ring.Lat.Length; i++)
             {
-                if (!Project(ring.Lat[i], ring.Lon[i], out float x, out float y)) { started = false; continue; }
-                if (!started) { c.BeginFigure(new Point(x, y), ring.Fill, ring.Fill); started = true; }
-                else c.LineTo(new Point(x, y), true, false);
+                if (!Project(ring.Lat[i], ring.Lon[i], out float x, out float y)) { Emit(c, ring.Fill); continue; }
+                run.Add(new Point(x, y));
             }
+            Emit(c, ring.Fill);
         }
         Commit(coveragePaths, coveragePanel, key => MakeCoveragePath(key));
     }

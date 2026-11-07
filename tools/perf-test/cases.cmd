@@ -44,3 +44,15 @@ wait 3
 perf ROUND-08-everything 15
 wiggle stop
 pan stop
+sv win 0 off
+sv win 1 off
+sv win 2 off
+sv cover off
+sv lines on
+focus Ticonderoga 13
+wait 3
+perf ROUND-09-lines_zoom13 15
+focus Ticonderoga 17
+wait 3
+perf ROUND-10-lines_zoom17 15
+focus Ticonderoga 8

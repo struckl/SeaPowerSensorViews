@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fix: zooming in on the map with the sensor lines on made the game crawl or freeze, worse the closer the zoom (reported by many players). The lines, wedges and coverage are now cut to the visible map plus a margin before they are drawn; before, a line ran hundreds of thousands of pixels past the screen when zoomed in, and the game had to draw every dash of it. Compiles for both builds; not yet run in the game.
+- 	ools/perf-test: two zoomed-in cases (zoom 13 and 17 with the sensor lines on).
+
 ## 0.2.1 - 2026-11-04
 
 - Performance (measured in the game on 0.8.7, before/after in `tools/perf-test/results-2026-11-04`):
