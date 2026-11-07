@@ -129,6 +129,24 @@ internal sealed class MapView
 #endif
     }
 
+    /// <summary>Degrees of latitude or longitude per screen pixel at the map's centre (the finer of the two); MaxValue if unknown.</summary>
+    public double DegreesPerPixel()
+    {
+        if (Map.ActualWidth < 2 || Map.ActualHeight < 2) return double.MaxValue;
+        try
+        {
+            Location c = Map.Center;
+            double lat = Math.Max(-80.0, Math.Min(80.0, c.Latitude)), lon = c.Longitude;
+            if (!Project(lat, lon, out float x0, out float y0) || !Project(lat, lon + 0.01, out float x1, out float y1)
+                || !Project(lat + 0.01, lon, out float x2, out float y2))
+                return double.MaxValue;
+            double px = Math.Max(Math.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0)),
+                                 Math.Sqrt((x2 - x0) * (x2 - x0) + (y2 - y0) * (y2 - y0)));
+            return px < 1e-6 ? double.MaxValue : 0.01 / px;
+        }
+        catch (Exception) { return double.MaxValue; }
+    }
+
     // ---- update ------------------------------------------------------------------------------------------------------
 
     public void Update(bool showLines, LineSet lines, bool showCoverage, CoverageSet coverage)
@@ -419,6 +437,12 @@ internal sealed class MapView
                 run.Add(new Point(x, y));
                 lastX = x; lastY = y;
                 started = true;
+            }
+            // zoomed in so far that a wedge (origin, edge, middle, edge) is longer than the screen: its bearing line alone
+            if (line.Fill && !Settings.ZoomedWedges.Value && run.Count >= 3)
+            {
+                float dx = run[2].X - run[0].X, dy = run[2].Y - run[0].Y, limit = Math.Max(Map.ActualWidth, Map.ActualHeight);
+                if (dx * dx + dy * dy > limit * limit) run.Clear();
             }
             Emit(c, line.Fill);
             if (!string.IsNullOrEmpty(line.Label) && started && line.Bright

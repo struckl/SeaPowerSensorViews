@@ -16,76 +16,80 @@ internal static class LineBuilder
     private const float KmPerMeter = 0.001f;
 
     private static readonly List<LineSet.Line> Fresh = new List<LineSet.Line>();
-    private static HashSet<ulong> lastHashes = new HashSet<ulong>(), freshHashes = new HashSet<ulong>();
+    private static readonly Comparison<LineSet.Line> ByKey = (a, b) => a.Key.CompareTo(b.Key);
+
+    /// <summary>The tolerance the current lines were last compared with (degrees); see <see cref="Build"/>.</summary>
+    public static double LastTolerance = double.MaxValue;
 
     /// <summary>
-    /// Builds the lines; the set's version (which makes every map rebuild its paths) only moves when they differ from the last ones
-    /// by more than about 0.1 nm or in style or label - a paused game, or contacts that hold still, cost nothing on the map.
+    /// Builds the lines; the set's version (which makes every map rebuild its paths) only moves when a line came, went, changed its
+    /// style or label, or moved by more than <paramref name="tolerance"/> degrees (about one screen pixel at the map's zoom, from
+    /// <see cref="MapSet"/>). The track estimates wander by a few dozen metres even in a paused game; a fixed grid rebuilt every
+    /// map path once a second for that. Compared against the lines last built, so slow drift is drawn once it adds up to a pixel.
     /// </summary>
-    public static void Build(SensorPicture pic, UnitRow selected, LineSet set)
+    public static void Build(SensorPicture pic, UnitRow selected, LineSet set, double tolerance)
     {
         Fresh.Clear();
         Fill(pic, selected, Fresh);
-        ulong sig = Signature(Fresh);
-        if (sig == set.Signature && set.Version > 0) return;
-        if (Settings.VerboseLog.Value) Explain(set);
-        set.Signature = sig;
+        Fresh.Sort(ByKey);
+        LastTolerance = tolerance;
+        int changed = Changed(set.Lines, Fresh, tolerance, out string first);
+        if (changed == 0 && set.Version > 0) return;
+        ModLog.Debug($"lines rebuilt: {Fresh.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved; first: {first ?? "-"}");
         set.Lines.Clear();
         set.Lines.AddRange(Fresh);
         set.Version++;
     }
 
-    /// <summary>
-    /// The lines' fingerprint, independent of their order (the snapshot does not list the contacts in a fixed order, and an
-    /// order-bound fingerprint rebuilt every map path once a second even in a paused game).
-    /// </summary>
-    private static ulong Signature(List<LineSet.Line> lines)
+    /// <summary>How many lines differ (both lists sorted by key); 0 = nothing worth drawing again.</summary>
+    private static int Changed(List<LineSet.Line> old, List<LineSet.Line> now, double tol, out string first)
     {
-        freshHashes.Clear();
-        ulong sum = (ulong)lines.Count * 0x9E3779B97F4A7C15UL;
-        foreach (LineSet.Line l in lines)
+        first = null;
+        int changed = 0, i = 0, j = 0;
+        while (i < old.Count || j < now.Count)
         {
-            ulong h = LineHash(l);
-            freshHashes.Add(h);
-            sum += h;
+            LineSet.Line a = i < old.Count ? old[i] : null, b = j < now.Count ? now[j] : null;
+            if (a != null && b != null && a.Key == b.Key)
+            {
+                if (!Same(a, b, tol)) { changed++; first ??= Describe(b); }
+                i++; j++;
+            }
+            else if (b == null || (a != null && a.Key < b.Key)) { changed++; first ??= "gone " + Describe(a); i++; }
+            else { changed++; first ??= "new " + Describe(b); j++; }
         }
-        return sum;
+        return changed;
     }
 
-    private static ulong LineHash(LineSet.Line l)
+    private static bool Same(LineSet.Line a, LineSet.Line b, double tol)
     {
-        ulong h = 14695981039346656037UL;
-        void Mix(long v) { h = (h ^ (ulong)v) * 1099511628211UL; }
-        Mix(((int)l.Style << 3) | (l.Bright ? 4 : 0) | (l.Live ? 2 : 0) | (l.Fill ? 1 : 0));
-        Mix(l.Label?.GetHashCode() ?? 0);
-        Mix(l.Lat.Length);
-        for (int i = 0; i < l.Lat.Length; i++)
-        {
-            Mix((long)Math.Round(l.Lat[i] * 500.0));        // 0.002 degree, about 0.1 nm
-            Mix((long)Math.Round(l.Lon[i] * 500.0));
-        }
-        h ^= h >> 31;
-        return h * 0xBF58476D1CE4E5B9UL;
+        if (a.Style != b.Style || a.Bright != b.Bright || a.Live != b.Live || a.Fill != b.Fill || a.Label != b.Label
+            || a.Lat.Length != b.Lat.Length)
+            return false;
+        for (int k = 0; k < a.Lat.Length; k++)
+            if (Math.Abs(a.Lat[k] - b.Lat[k]) > tol || Math.Abs(a.Lon[k] - b.Lon[k]) > tol)
+                return false;
+        return true;
     }
 
-    /// <summary>Verbose log: what made the map paths rebuild (new or changed lines, gone lines).</summary>
-    private static void Explain(LineSet set)
+    private static string Describe(LineSet.Line l) =>
+        $"{l.Style} live={l.Live} fill={l.Fill} '{l.Label}' end {l.Lat[l.Lat.Length - 1]:F4},{l.Lon[l.Lon.Length - 1]:F4}";
+
+    private static ulong KeyOf(UnitRow unit, ContactRow cr, Hit h, int part)
     {
-        int added = 0, kept = 0;
-        string first = null;
-        foreach (LineSet.Line l in Fresh)
-        {
-            if (lastHashes.Contains(LineHash(l))) { kept++; continue; }
-            added++;
-            first ??= $"{l.Style} live={l.Live} fill={l.Fill} '{l.Label}' end {l.Lat[l.Lat.Length - 1]:F4},{l.Lon[l.Lon.Length - 1]:F4}";
-        }
-        ModLog.Debug($"lines rebuilt: {Fresh.Count} lines, {added} new or changed, {lastHashes.Count - kept} gone; first new: {first ?? "-"}");
-        (lastHashes, freshHashes) = (freshHashes, lastHashes);
+        ulong k = 14695981039346656037UL;
+        void Mix(long v) { k = (k ^ (ulong)v) * 1099511628211UL; }
+        Mix(unit.Uid);
+        Mix(cr.Id);
+        Mix((int)h.Kind);
+        Mix(h.SensorName?.GetHashCode() ?? 0);
+        Mix(part);
+        return k;
     }
 
     private static void Fill(SensorPicture pic, UnitRow selected, List<LineSet.Line> lines)
     {
-        bool onlySelected = Settings.LinesWho.Value == "Selected only";
+        bool onlySelected = Settings.LinesWho.Value == Settings.SelectedOnly;
+        if (onlySelected && selected == null) return;              // nothing selected: no lines
         bool lost = Settings.LostLines.Value;
         float wedgeKm = Settings.WedgeNm.Value * 1.852f;
         foreach (ContactRow cr in pic.Contacts)
@@ -111,7 +115,7 @@ internal static class LineBuilder
                         lat[i] = p._latitude; lon[i] = p._longitude;
                     }
                     string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
-                    lines.Add(new LineSet.Line { Style = style, Bright = bright, Live = h.Live, Lat = lat, Lon = lon, Label = label });
+                    lines.Add(new LineSet.Line { Key = KeyOf(h.Unit, cr, h, 0), Style = style, Bright = bright, Live = h.Live, Lat = lat, Lon = lon, Label = label });
                 }
                 else
                 {
@@ -122,14 +126,14 @@ internal static class LineBuilder
                     // the wedge, filled
                     lines.Add(new LineSet.Line
                     {
-                        Style = style, Bright = bright, Live = h.Live, Fill = true,
+                        Key = KeyOf(h.Unit, cr, h, 1), Style = style, Bright = bright, Live = h.Live, Fill = true,
                         Lat = new[] { origin._latitude, a._latitude, m._latitude, b._latitude },
                         Lon = new[] { origin._longitude, a._longitude, m._longitude, b._longitude },
                     });
                     // the bearing line down its middle, labelled at the far end
                     lines.Add(new LineSet.Line
                     {
-                        Style = style, Bright = bright, Live = h.Live,
+                        Key = KeyOf(h.Unit, cr, h, 2), Style = style, Bright = bright, Live = h.Live,
                         Lat = new[] { origin._latitude, m._latitude },
                         Lon = new[] { origin._longitude, m._longitude },
                         Label = (h.Kind == Kind.Esm ? "ESM " : "S ") + cr.Label,

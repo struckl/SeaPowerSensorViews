@@ -59,6 +59,8 @@ internal sealed class Host : MonoBehaviour
                 {
                     mapHooks = Hooks.ApplyMapHooks() ? HookState.Applied : HookState.Failed;
                     if (mapHooks == HookState.Applied) ModLog.Info("Map hook in place.");
+                    try { Hooks.ApplyOptionsHooks(); }
+                    catch (Exception ex) { ModLog.Warn("Options page hook failed - settings only in the config file: " + ex.Message); }
                 }
                 catch (Exception ex)
                 {

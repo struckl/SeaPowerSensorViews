@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased (0.3.0, compiles for both builds, not run in the game)
+
+- Fix for the new 3D-globe beta (build 261107): the sonar display called TerrainUtils.GetHeightAt, which gained a parameter there; the call now works on every build (found by the compat check against the new build).
+- Sensor lines: Units shown defaults to Selected only (nothing while no unit is selected); configs from before keep their value only if it was changed from the old default.
+- Sensor lines are rebuilt only when a line moved by about a screen pixel (or came, went or changed), not once a second.
+- Zoomed in so far that a bearing wedge is longer than the screen, only its bearing line is drawn (setting Fill wedges when zoomed in).
+- Settings in the game: a Sensor Views tab in the Options menu (fallback: a group in the Audio tab).
+
 ## 0.2.2 - 2026-11-07
 
 - Fix: zooming in on the map with the sensor lines on made the game crawl or freeze, worse the closer the zoom (reported by many

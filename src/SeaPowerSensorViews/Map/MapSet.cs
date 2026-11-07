@@ -45,8 +45,8 @@ internal static class MapSet
         Views.Clear();
         Undecoratable.Clear();
         Lines.Lines.Clear();
-        Lines.Signature = 0;
         Lines.Version++;
+        LineBuilder.LastTolerance = double.MaxValue;
         Coverage.Reset();
     }
 
@@ -100,13 +100,18 @@ internal static class MapSet
             if (lines)
             {
                 int selUid = selected?.Uid ?? -1;
-                if (pic.Version != linesPictureVersion || Settings.Version != linesSettings || selUid != linesSelection)
+                // a line counts as moved at one screen pixel of the most zoomed-in map; zoomed in further, compare again at once
+                double tolerance = double.MaxValue;
+                foreach (MapView v in Views) tolerance = Math.Min(tolerance, v.DegreesPerPixel());
+                if (tolerance == double.MaxValue) tolerance = 0.002;
+                bool finer = tolerance < LineBuilder.LastTolerance * 0.5;
+                if (pic.Version != linesPictureVersion || Settings.Version != linesSettings || selUid != linesSelection || finer)
                 {
                     linesPictureVersion = pic.Version;
                     linesSettings = Settings.Version;
                     linesSelection = selUid;
                     long tl = Perf.Start();
-                    LineBuilder.Build(pic, selected, Lines);
+                    LineBuilder.Build(pic, selected, Lines, tolerance);
                     Perf.Stop(Perf.Part.Lines, tl);
                 }
             }

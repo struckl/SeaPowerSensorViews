@@ -117,7 +117,7 @@ internal static class SonarSampler
         catch (Exception) { st.LayerFt = float.NaN; }
         float ay = sonar.SensorPosition.y;
         st.ArrayFt = ay < 0f ? -ay * SensorPicture.FeetPerUnit : float.NaN;
-        float bed = TerrainUtils.GetHeightAt(geo);
+        float bed = Terrain.HeightAt(geo);
         st.SeabedFt = bed < 0f ? -bed * SensorPicture.MetersPerUnit * 3.28084f : float.NaN;
 
         st.Marks.Clear();

@@ -24,6 +24,7 @@ internal static class Settings
     public static ConfigEntry<float> LineWidth;
     public static ConfigEntry<bool> LostLines;
     public static ConfigEntry<float> WedgeNm;
+    public static ConfigEntry<bool> ZoomedWedges;
     public static ConfigEntry<string> LinesKey;
     public static ConfigEntry<bool> CoverageVisible;
     public static ConfigEntry<string> CoverageKey;
@@ -36,9 +37,15 @@ internal static class Settings
     /// <summary>Bumped whenever a setting changes, so the map layers know to rebuild.</summary>
     public static int Version;
 
+    public const string AllUnits = "All, selected bright", SelectedOnly = "Selected only";
+    private const int Layout = 2;          // 2 = 0.3.0: "Units shown" defaults to the selected unit only
+    private static ConfigEntry<int> layoutVersion;
+
     public static void Init()
     {
-        var file = new ConfigFile(Path.Combine(Paths.ConfigPath, Plugin.Guid + ".cfg"), saveOnInit: true);
+        string path = Path.Combine(Paths.ConfigPath, Plugin.Guid + ".cfg");
+        bool existed = File.Exists(path);
+        var file = new ConfigFile(path, saveOnInit: true);
         Enabled = file.Bind("1. General", "Enable mod", true, "Master switch. Needs a restart.");
         VerboseLog = file.Bind("1. General", "Verbose log", false, "Write debug detail to BepInEx/LogOutput.log.");
         BarButtons = file.Bind("2. Opening the windows", "Bottom bar buttons", true,
@@ -57,9 +64,10 @@ internal static class Settings
         LinesVisible = file.Bind("4. Map: sensor lines", "Show sensor lines", true,
             "The 'Sensor lines' entry of the map's Layers menu (kept in step with it). Lines from each own unit to each contact it holds, " +
             "from the track estimates only.");
-        LinesWho = file.Bind("4. Map: sensor lines", "Units shown", "All, selected bright",
-            new ConfigDescription("All own units' lines (the selected unit's bright, the others dimmed), or only the selected unit's.",
-                new AcceptableValueList<string>("All, selected bright", "Selected only")));
+        LinesWho = file.Bind("4. Map: sensor lines", "Units shown", SelectedOnly,
+            new ConfigDescription("Only the selected unit's lines (nothing while no unit is selected), or all own units' lines with the " +
+                "selected unit's bright and the others dimmed. With many units, all lines are a lot to draw.",
+                new AcceptableValueList<string>(SelectedOnly, AllUnits)));
         DimOpacity = file.Bind("4. Map: sensor lines", "Dimmed line opacity", 0.35f,
             new ConfigDescription("0 = invisible, 1 = as bright as the selected unit's.", new AcceptableValueRange<float>(0f, 1f)));
         LineWidth = file.Bind("4. Map: sensor lines", "Line weight", 1f,
@@ -68,6 +76,9 @@ internal static class Settings
             "A contact a sensor has just lost keeps a faint line for the 'lost contact memory' time (section 3).");
         WedgeNm = file.Bind("4. Map: sensor lines", "Bearing wedge length (nm)", 40f,
             new ConfigDescription("Length of the line and wedge drawn for bearing-only contacts (ESM, passive sonar).", new AcceptableValueRange<float>(5f, 300f)));
+        ZoomedWedges = file.Bind("4. Map: sensor lines", "Fill wedges when zoomed in", false,
+            "Off: zoomed in so far that a bearing wedge is longer than the screen, it is drawn as its bearing line only (the filled wedges " +
+            "covered the whole map there and cost frame rate). On: always filled.");
         LinesKey = file.Bind("4. Map: sensor lines", "Toggle key", "Ctrl+Shift+PageUp", "Hot key for the sensor lines layer. Empty = none.");
 
         CoverageVisible = file.Bind("5. Map: coverage", "Show coverage", false,
@@ -87,6 +98,16 @@ internal static class Settings
             new ConfigDescription("Size class of the imagined target for the visual ring.", new AcceptableValueList<string>("VerySmall", "Small", "SemiSmall", "Meager", "Medium", "SemiLarge", "Large", "VeryLarge")));
         Rays = file.Bind("5. Map: coverage", "Rays", 72,
             new ConfigDescription("Bearings the coverage polygons are sampled at.", new AcceptableValueRange<int>(24, 180)));
+
+        // One-time change for configs from before 0.3.0: they hold the old default "All", which made the map very busy (and slow)
+        // with many units. A player who wants all lines sets it back once.
+        layoutVersion = file.Bind("9. Internal", "Settings layout", existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
+        if (layoutVersion.Value < 2 && LinesWho.Value == AllUnits)
+        {
+            LinesWho.Value = SelectedOnly;
+            ModLog.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
+        }
+        if (layoutVersion.Value < Layout) layoutVersion.Value = Layout;
 
         file.SettingChanged += (s, e) => Version++;
     }

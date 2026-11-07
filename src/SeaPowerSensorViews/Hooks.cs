@@ -34,6 +34,11 @@ internal static class Hooks
         new Hook { Type = "MapControl.RenderedLayer", Method = "OnRender", Postfix = nameof(MapRendered) },
     };
 
+    private static readonly Hook[] OptionsHooks =
+    {
+        new Hook { Type = "SeapowerUI.OptionsMenuView", Method = ".ctor", Args = Type.EmptyTypes, Postfix = nameof(OptionsViewCreated) },
+    };
+
     private static Harmony harmony;
 
     public static bool ApplyGameHooks(Harmony instance)
@@ -44,13 +49,18 @@ internal static class Hooks
 
     public static bool ApplyMapHooks() => harmony != null && Apply(MapHooks, "no sensor lines or coverage on the map");
 
+    /// <summary>The settings page in the Options menu; applied with the map hooks (once NoesisGUI runs), on its own.</summary>
+    public static bool ApplyOptionsHooks() => harmony != null && Apply(OptionsHooks, "the settings are only in the config file");
+
     private static bool Apply(Hook[] hooks, string consequence)
     {
         var resolved = new List<(Hook hook, MethodBase target)>();
         foreach (Hook hook in hooks)
         {
             Type type = AccessTools.TypeByName(hook.Type);
-            MethodBase target = type == null ? null : AccessTools.Method(type, hook.Method, hook.Args);
+            MethodBase target = type == null ? null
+                : hook.Method == ".ctor" ? AccessTools.Constructor(type, hook.Args)
+                : AccessTools.Method(type, hook.Method, hook.Args);
             if (target == null)
             {
                 ModLog.Error(hook.Type + "." + hook.Method + " not found (game updated?) - " + consequence + ".");
@@ -72,4 +82,10 @@ internal static class Hooks
     private static void MissionUnloading() => Host.Instance?.MissionEnded();
 
     private static void MapRendered(object __instance) => Host.Instance?.MapRendered(__instance);
+
+    private static void OptionsViewCreated(object __instance)
+    {
+        try { Ui.OptionsPage.ViewCreated(__instance); }
+        catch (Exception ex) { ModLog.Warn("options page: " + ex.Message); }
+    }
 }

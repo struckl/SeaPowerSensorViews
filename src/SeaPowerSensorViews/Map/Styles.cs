@@ -114,6 +114,7 @@ internal sealed class LineSet
 {
     public sealed class Line
     {
+        public ulong Key;               // unit, contact, sensor and part: the same line across snapshots
         public LineStyle Style;
         public bool Bright, Live, Fill;
         public double[] Lat, Lon;
@@ -122,7 +123,6 @@ internal sealed class LineSet
 
     public readonly List<Line> Lines = new List<Line>();
     public int Version;
-    public ulong Signature;
 }
 
 internal sealed class CoverageSet
