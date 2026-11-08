@@ -20,6 +20,7 @@
 - **Visual contacts are lost sooner:** a contact held only by eyes or infrared counts as lost 30 s after its last sighting (setting 'Visual contact lifetime', 0 = the game's own track age) and is erased after the lost-contact memory.
 - **Scope range readout follows the mouse wheel:** the 'Range ... nm' text in the tool row did not change when the range was changed with the wheel; the window now tells the row.
 - **Zoom animation on the radar scope:** when the range changes the contacts glide to the new scale (about a quarter of a second) instead of jumping, so the overview is not lost at a step. Setting 'Radar scope: zoom animation' (on by default; Options tab).
+- **Smoother radar sweep trail:** the glow behind the sweep line is made of 1 degree slices that fade out smoothly (it was one flat wedge, or six coarse steps with visible edges).
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

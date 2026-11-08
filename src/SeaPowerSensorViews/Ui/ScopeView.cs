@@ -390,17 +390,18 @@ public sealed class ScopeSweep : Surface
         if (!SensorPicture.Current.InMission || !ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g)) return;
         turn.CenterX = g.Cx;
         turn.CenterY = g.Cy;
-        if (Settings.RetroLook.Value)
+        // The trail behind the line: 1 degree slices whose brightness dies away smoothly (quadratic) over the trail, drawn once and then
+        // only turned. It used to be one flat wedge, or six coarse steps with visible edges. The slices overlap by half a degree so no
+        // seams show between them.
+        bool retro = Settings.RetroLook.Value;
+        int slices = retro ? 70 : 50;
+        float start = retro ? 0.34f : 0.16f;
+        for (int i = 0; i < slices; i++)
         {
-            // a phosphor tube's sweep: a bright leading line and a trail that glows and dies away behind it
-            float[] glow = { 0.30f, 0.22f, 0.16f, 0.11f, 0.07f, 0.04f };
-            for (int i = 0; i < glow.Length; i++)
-                dc.DrawGeometry(Fade(Green, glow[i]), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -6f * (i + 1), -6f * i));
-            dc.DrawLine(PenOf(Fade(Green, 0.95f), 1.8f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
-            return;
+            float t = 1f - (float)i / slices;
+            dc.DrawGeometry(Fade(Green, start * t * t / 2.2f), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -(i + 1.5f), -(float)i));
         }
-        dc.DrawGeometry(Fade(Green, 0.10f), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -18f, 0f));
-        dc.DrawLine(PenOf(Fade(Green, 0.55f), 1.2f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
+        dc.DrawLine(PenOf(Fade(Green, retro ? 0.95f : 0.6f), retro ? 1.8f : 1.2f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
     }
 }
 
