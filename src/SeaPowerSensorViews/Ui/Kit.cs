@@ -211,3 +211,39 @@ internal static class Kit
         return false;
     }
 }
+
+/// <summary>Diagnostic for "the window grows but will not shrink": logs, on each resize of a scope or sonar window, the size
+/// numbers of the view and of every parent up to the game's Window (verbose log only, at most 80 lines).</summary>
+internal static class SizeProbe
+{
+    private static int lines;
+
+    public static void Watch(FrameworkElement view, string name)
+    {
+        view.SizeChanged += (s, e) => Log(view, name);
+    }
+
+    private static void Log(FrameworkElement view, string name)
+    {
+        if (lines >= 80) return;
+        try
+        {
+            var sb = new System.Text.StringBuilder("[size] " + name + ": ");
+            DependencyObject d = view;
+            int depth = 0;
+            while (d != null && depth++ < 12)
+            {
+                if (d is FrameworkElement fe)
+                    sb.Append(fe.GetType().Name + " act=" + fe.ActualWidth.ToString("0") + "x" + fe.ActualHeight.ToString("0") +
+                              " set=" + fe.Width.ToString("0") + "x" + fe.Height.ToString("0") +
+                              " min=" + fe.MinWidth.ToString("0") + "x" + fe.MinHeight.ToString("0") +
+                              " want=" + fe.DesiredSize.Width.ToString("0") + "x" + fe.DesiredSize.Height.ToString("0") + " | ");
+                if (d is SeapowerUI.Window) break;
+                d = VisualTreeHelper.GetParent(d);
+            }
+            lines++;
+            ModLog.Debug(sb.ToString());
+        }
+        catch (Exception) { }
+    }
+}

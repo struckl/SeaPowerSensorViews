@@ -44,6 +44,7 @@ public sealed class SonarView : UserControl
         root.Children.Add(bar);
         root.Children.Add(stack);
         Content = root;
+        SizeProbe.Watch(this, "sonar");
         Loaded += (s, e) => UpdateName();
         DataContextChanged += (s, e) => UpdateName();
         SonarSurface.Changed += UpdateName;

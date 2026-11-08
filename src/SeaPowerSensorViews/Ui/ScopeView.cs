@@ -89,6 +89,7 @@ public sealed class ScopeView : UserControl
         root.Children.Add(bar);
         root.Children.Add(stack);
         Content = root;
+        SizeProbe.Watch(this, "scope");
         Loaded += (s, e) => Sync();
         // The wheel on the scope changes the range without touching this row: follow the window's own change event.
         DataContextChanged += (s, e) =>
