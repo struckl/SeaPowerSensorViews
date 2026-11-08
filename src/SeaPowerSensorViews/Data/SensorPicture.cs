@@ -209,7 +209,13 @@ internal sealed class SensorPicture
         {
             var est = v.PositionEstimate;
             cr.HasPlot = est.HasValue;
-            if (est.HasValue) cr.Plot = est.Value.Item1;
+            if (est.HasValue)
+            {
+                // Position is the property the map's marker follows (set when the vehicle is refreshed); the estimate above is the
+                // live extrapolation, which runs ahead of the marker between refreshes. Same value when both are current.
+                GeoPosition shown = v.Position.Value;
+                cr.Plot = shown._latitude == 0.0 && shown._longitude == 0.0 ? est.Value.Item1 : shown;
+            }
         }
         catch (Exception) { cr.HasPlot = false; }
         switch (v.CurrentRelationship())

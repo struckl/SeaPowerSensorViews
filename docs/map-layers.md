@@ -43,3 +43,10 @@ For the unit selected in the game, against an imagined target: see the class com
 and Unity physics, so it runs 6 rays per frame on the main thread (14 samples + 4 bisections per ray); a new job starts when the unit, its place (1 nm),
 the target altitude or a setting changes, at most once a second, and the old result stays up until the new one is done. The rest of the maths is a few
 hundred operations; there is no worker thread because nothing is expensive enough to need one.
+
+## What the lines and cones mean
+
+- A **dashed line with a label (ESM T7004)** is the compass bearing from one of your units to a contact it hears on ESM or passive sonar: a direction only, no distance. The **filled cone** round it is that bearing's uncertainty (1 to 15 degrees either side).
+- Line and cone run to the distance of the contact's map marker (plus 10 %) when the game plots it, else to the 'Bearing wedge length'. The marker is the game's combined estimate from all your sensors, so a single unit's line can pass beside it: that is the disagreement between the sensors, not a bug.
+- **Dotted or solid lines to a contact** (radar, visual, active sonar) end on the contact's marker.
+- The orange ellipses are the game's own error ellipses, not drawn by this mod.

@@ -364,7 +364,9 @@ internal sealed class MapView
     {
         if (!open.TryGetValue(key, out var pair))
         {
-            var geometry = new StreamGeometry();
+            // Every figure of one style goes into one geometry. With the default even-odd rule two wedges that overlap cancel each other
+            // out where they cross (a cone blue at its edges and empty inside); non-zero fills the union. All wedges wind the same way.
+            var geometry = new StreamGeometry { FillRule = FillRule.Nonzero };
             pair = (geometry, geometry.Open());
             open[key] = pair;
         }

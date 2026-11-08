@@ -126,9 +126,17 @@ internal static class LineBuilder
                 else
                 {
                     float half = Math.Max(1f, Math.Min(15f, h.BearingError));
-                    GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(wedgeKm, h.Bearing - half);
-                    GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(wedgeKm, h.Bearing);
-                    GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(wedgeKm, h.Bearing + half);
+                    // With a plotted position (the map marker) the line and cone run to the marker's distance and a little past it, so
+                    // the marker sits inside the cone when this bearing agrees with it; without one they have the configured length.
+                    float lenKm = wedgeKm;
+                    if (cr.HasPlot)
+                    {
+                        GeoMath.BearingRange(origin, cr.Plot, out float _, out float pnm);
+                        lenKm = Math.Max(1.852f, Math.Min(300f * 1.852f, pnm * 1.852f * 1.1f));
+                    }
+                    GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing - half);
+                    GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing);
+                    GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing + half);
                     // the wedge, filled
                     lines.Add(new LineSet.Line
                     {
