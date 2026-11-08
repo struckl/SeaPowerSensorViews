@@ -438,7 +438,7 @@ internal sealed class MapView
             string key = LineStyles.Key(line.Style, line.Bright, line.Live, line.Fill);
             StreamGeometryContext c = Context(key);
             bool started = false;
-            float lastX = 0, lastY = 0;
+            float lastX = 0, lastY = 0, firstX = 0, firstY = 0;
             run.Clear();
             for (int i = 0; i < line.Lat.Length; i++)
             {
@@ -448,6 +448,7 @@ internal sealed class MapView
                     continue;
                 }
                 run.Add(new Point(x, y));
+                if (!started) { firstX = x; firstY = y; }
                 lastX = x; lastY = y;
                 started = true;
             }
@@ -462,7 +463,10 @@ internal sealed class MapView
                 && lastX >= 0 && lastY >= 0 && lastX <= Map.ActualWidth && lastY <= Map.ActualHeight)
             {
                 Brush b = theme.Line(line.Style);
-                Label(line.Label, lastX + 4, lastY - 8, b, 1f);
+                // Not at the end: the end is now the contact's marker, whose own text (track number, class, range) would sit under
+                // this one. A quarter of the way back along the line it stands clear of it.
+                float fx = lastX + (firstX - lastX) * 0.25f, fy = lastY + (firstY - lastY) * 0.25f;
+                Label(line.Label, fx + 4, fy - 8, b, 1f);
             }
         }
         Commit(linePaths, linesPanel, key => MakeLinePath(key));

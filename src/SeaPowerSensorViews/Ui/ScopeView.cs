@@ -299,6 +299,12 @@ public sealed class ScopeSurface : Surface
         dc.DrawLine(PenOf(Highlight, 1.5f), new Point(cx, cy), Polar(cx, cy, 22f, unit.Heading - up));
         Draw(dc, unit.Name + "   hdg " + Fmt.Compass(unit.Heading) + "   " + unit.SpeedKts.ToString("0") + " kt" +
                  (unit.Emcon ? "   EMCON" : ""), 6, 4, 11, Highlight);
+        if (float.IsNaN(SweepBearing(unit.Unit)))   // no search radar is on: the sweep is not drawn, so say why
+        {
+            dc.DrawRectangle(Fade(Back, 0.35f), null, new Rect(0, 0, w, h));
+            DrawCentered(dc, "SEARCH RADAR OFF", cx, cy + radius * 0.45f, 14, Emphasis);
+            DrawCentered(dc, "contacts shown are from other sensors or remembered", cx, cy + radius * 0.45f + 18f, 10, Normal);
+        }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
     }

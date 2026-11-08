@@ -9,6 +9,9 @@
 - **Cones:** a fainter fill (7 % instead of 16 %) with a firm outline, so they read on bright terrain and where they overlap.
 - **Map lines follow a moving map in the same frame:** the lines and cones were moved by the next frame's update, so they trailed the map by a frame while it was dragged or zoomed; the map's viewport event moves them now.
 - **Own ships on the scope** are drawn in a lighter blue (the game's friendly blue was hard to see on the dark scope).
+- **Lag when the map moves:** the map lines are rebuilt at most twice a second however often the snapshot comes (the 10-a-second snapshot of the scope made every line rebuild 10 times a second).
+- **Line labels** stand a quarter of the way back along the line instead of on the contact marker's own text.
+- **Scope:** 'SEARCH RADAR OFF' is written over the scope when none of the unit's search radars is on (the sweep is not drawn then).
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

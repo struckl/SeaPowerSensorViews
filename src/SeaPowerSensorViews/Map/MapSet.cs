@@ -19,6 +19,7 @@ internal static class MapSet
     private static readonly CoverageJob Coverage = new CoverageJob();
     private static bool active;
     private static int linesPictureVersion = -1, linesSettings = -1, linesSelection = -1;
+    private static double linesNextAt;
     private static int errors;
 
     public static bool LinesOn => linesLayer != null ? linesLayer.Visible : Settings.LinesVisible.Value;
@@ -105,8 +106,11 @@ internal static class MapSet
                 foreach (MapView v in Views) tolerance = Math.Min(tolerance, v.DegreesPerPixel());
                 if (tolerance == double.MaxValue) tolerance = 0.002;
                 bool finer = tolerance < LineBuilder.LastTolerance * 0.5;
-                if (pic.Version != linesPictureVersion || Settings.Version != linesSettings || selUid != linesSelection || finer)
+                // The snapshot can come 10 times a second (scope open), but the map's paths cost a rebuild each time: at most twice a second.
+                bool pictureDue = pic.Version != linesPictureVersion && realNow >= linesNextAt;
+                if (pictureDue || Settings.Version != linesSettings || selUid != linesSelection || finer)
                 {
+                    linesNextAt = realNow + 0.5;
                     linesPictureVersion = pic.Version;
                     linesSettings = Settings.Version;
                     linesSelection = selUid;
