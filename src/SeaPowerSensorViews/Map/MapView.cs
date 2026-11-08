@@ -465,7 +465,13 @@ internal sealed class MapView
         // The opacity goes into the brush: an element opacity below 1 makes Noesis draw the element into an offscreen picture first.
         var path = new Path { IsHitTestVisible = false, StrokeLineJoin = PenLineJoin.Round };
         if (fill)
-            path.Fill = theme.Alpha(theme.Line(style), alpha * 0.16f);
+        {
+            // A faint fill with a firm outline: the cones stay readable on bright terrain and where they overlap, and their fill no
+            // longer drowns the map under it.
+            path.Fill = theme.Alpha(theme.Line(style), alpha * 0.07f);
+            path.Stroke = theme.Alpha(theme.Line(style), alpha * 0.85f);
+            path.StrokeThickness = BaseWeight * Settings.LineWidth.Value * 0.9f;
+        }
         else
         {
             path.Stroke = theme.Alpha(theme.Line(style), alpha);
