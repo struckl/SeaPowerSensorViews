@@ -74,6 +74,25 @@ public sealed class ScopeWindow : SvWindow
     public ScopeWindow() { Title = "R.A.T.S. Radar Scope"; }
     internal static readonly float[] Ranges = { 5, 10, 20, 40, 80, 160, 320 };
     internal int RangeIndex = 3;
+    /// <summary>The range the scope is drawn with: glides to the chosen range (a zoom animation) so the picture is not lost at a step.</summary>
+    internal float RangeShown = Ranges[3];
+    private double lastZoom;
+    internal float RangeTarget => Ranges[RangeIndex];
+
+    /// <summary>One animation step (called about 25 times a second); true while the picture still has to be redrawn.</summary>
+    internal bool StepZoom()
+    {
+        double now = UnityEngine.Time.unscaledTimeAsDouble;
+        float dt = (float)Math.Min(0.1, Math.Max(0.0, now - lastZoom));
+        lastZoom = now;
+        float target = RangeTarget;
+        if (RangeShown == target) return false;
+        if (!Settings.ZoomAnimation.Value || Math.Abs(RangeShown - target) < 0.004f * target) { RangeShown = target; return true; }
+        // glide in log space (every step is a doubling), about a quarter of a second for the biggest jump
+        float k = 1f - (float)Math.Exp(-dt * 14f);
+        RangeShown = (float)Math.Exp(Math.Log(RangeShown) + (Math.Log(target) - Math.Log(RangeShown)) * k);
+        return true;
+    }
     /// <summary>Starts at the config value the map coverage layer uses and is written back to it about once a second (not on every slider step: each write saves the config file).</summary>
     internal float TargetAltitudeFt = Settings.CoverageAltitude.Value;
 

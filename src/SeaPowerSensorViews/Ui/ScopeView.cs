@@ -135,7 +135,7 @@ internal struct ScopeGeometry
         if (win == null || unit == null) return false;
         g.Cx = w / 2f; g.Cy = h / 2f;
         g.Radius = Math.Max(20f, Math.Min(w, h) / 2f - 20f);
-        g.RangeNm = ScopeWindow.Ranges[win.RangeIndex];
+        g.RangeNm = win.RangeShown;
         g.PxPerNm = g.Radius / g.RangeNm;
         g.Up = win.HeadingUp ? unit.Heading : 0f;      // compass bearing that points up
         return true;
@@ -178,6 +178,7 @@ public sealed class ScopeSurface : Surface
     internal override bool Animated => true;
     internal override void Animate()
     {
+        if (Win != null && Win.StepZoom()) InvalidateVisual();     // the range is gliding to its new value
         UnitRow unit = Win?.Subject();
         int v = unit?.StrobeVersion ?? -1;
         if (v == strobeVersion) return;
@@ -206,7 +207,7 @@ public sealed class ScopeSurface : Surface
         {
             float r = radius * i / 4f;
             dc.DrawEllipse(null, ring, new Point(cx, cy), r, r);
-            DrawCentered(dc, (rangeNm * i / 4f).ToString("0.#"), cx + 8, cy - r - 12, 9, Normal);
+            DrawCentered(dc, (win.RangeTarget * i / 4f).ToString("0.#"), cx + 8, cy - r - 12, 9, Normal);
         }
         for (int b = 0; b < 360; b += 30)
         {
@@ -414,7 +415,7 @@ public sealed class ScopeBlips : Surface
     private struct Blip { public float Brg, Rng; }
 
     private readonly Dictionary<int, Blip> blips = new Dictionary<int, Blip>();
-    private float prevSweep = float.NaN, drawnSweep = float.NaN;
+    private float prevSweep = float.NaN, drawnSweep = float.NaN, drawnRange = float.NaN;
     private int uid = -1, version = -1;
     private ScopeWindow Win => DataContext as ScopeWindow;
 
@@ -479,8 +480,10 @@ public sealed class ScopeBlips : Surface
             if (float.IsNaN(drawnSweep) || Math.Abs(UnityEngine.Mathf.DeltaAngle(sweep, drawnSweep)) > 4f) changed = true;
         }
         else if (!float.IsNaN(drawnSweep)) { changed = true; prevSweep = float.NaN; }
+        if (!float.IsNaN(drawnRange) && Math.Abs(win.RangeShown - drawnRange) > 0.0001f) changed = true;   // the range glides
         if (changed)
         {
+            drawnRange = win.RangeShown;
             version = pic.Version;
             drawnSweep = sweep;
             InvalidateVisual();

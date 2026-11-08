@@ -30,6 +30,7 @@ internal static class Settings
     public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
     public static ConfigEntry<bool> RealisticSweep, RetroLook;
     public static ConfigEntry<float> VisualLifetime;
+    public static ConfigEntry<bool> ZoomAnimation;
     public static ConfigEntry<bool> CoverageVisible;
     public static ConfigEntry<string> CoverageKey;
     public static ConfigEntry<float> CoverageAltitude;
@@ -93,6 +94,8 @@ internal static class Settings
         HideTrackedEsm = file.Bind("4. Map: sensor lines", "Hide ESM of tracked contacts", true,
             "Layers menu entry 'Sensor lines: hide ESM of tracked contacts'. An ESM bearing line and cone is left out for a contact that a radar " +
             "(or other ranging sensor) holds as a live track: the game has linked the emission to that contact, so the cone adds nothing.");
+        ZoomAnimation = file.Bind("3. Views", "Radar scope: zoom animation", true,
+            "On: when the range changes (mouse wheel, - and + buttons) the contacts glide to the new scale in about a quarter of a second instead of jumping. Off: they jump.");
         VisualLifetime = file.Bind("3. Views", "Visual contact lifetime (s)", 30f,
             new ConfigDescription("A contact held only by eyes or infrared counts as lost this many seconds after its last sighting (it then fades " +
                 "for the 'lost contact memory' time). 0 = as long as the game keeps the track (its own maximum age, which can be long).",
