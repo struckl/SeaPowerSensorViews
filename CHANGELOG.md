@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Radar scope:** the target altitude slider runs on a square-root scale (it moved by 460 ft per pixel) and has a box next to it to type the altitude in feet. The radar horizon ring is only drawn when it lies inside the scope's range (it used to run out of the window); otherwise its distance is written at the bottom. Your other units show as small diamonds with their names (checkbox *Own ships*).
+- **Radar scope follows the game's clock:** with the scope open the snapshot is taken whenever the game's clock moved (at most 10 a second) instead of once a second, so lines and contacts are from the same moment as the world instead of up to a second behind a running game and exact only when paused. Board and sonar stay at one a second (the sonar waterfall takes a row per second).
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

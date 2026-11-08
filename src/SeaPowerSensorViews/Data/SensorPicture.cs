@@ -33,7 +33,7 @@ internal sealed class SensorPicture
     private readonly List<long> stale = new List<long>();
     private readonly List<ObjectBase> gone = new List<ObjectBase>();
     private int stamp;
-    private double nextRefresh;
+    private double nextRefresh, lastRefreshReal;
 
     public UnitRow RowFor(ObjectBase unit) => unit != null && rows.TryGetValue(unit, out UnitRow r) ? r : null;
 
@@ -44,10 +44,16 @@ internal sealed class SensorPicture
     }
 
     /// <summary>Refreshes when due (about once a second of real time). True when a new snapshot was made.</summary>
-    public bool Tick(double realNow, double interval = 1.0)
+    public bool Tick(double realNow, double interval = 1.0, bool followGameTime = false)
     {
         if (realNow < nextRefresh)
             return false;
+        // Following the game: a new snapshot only when the game's clock moved (a paused game shows nothing new, so it falls back to
+        // the slow rate that still catches selection changes). The snapshot is then at most one short step behind the world, not a
+        // whole second: before, the scope sat up to a second behind a running game and exactly on it when paused.
+        if (followGameTime && InMission && GameTime.missionSessionTime == Time && realNow < lastRefreshReal + 1.0)
+            return false;
+        lastRefreshReal = realNow;
         nextRefresh = realNow + interval;
         try { Refresh(); }
         catch (Exception ex) { ModLog.Error("sensor picture: " + ex); return false; }

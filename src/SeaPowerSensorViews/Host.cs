@@ -21,7 +21,7 @@ internal sealed class Host : MonoBehaviour
     private float nextTry;
     private int tries;
     private float nextAnimate;
-    private float nextSync;
+    private float nextSync, nextSlow;
     private enum HookState { Waiting, Applied, Failed }
     private HookState mapHooks;
     private float nextHookCheck;
@@ -101,10 +101,20 @@ internal sealed class Host : MonoBehaviour
             {
                 long t = Perf.Start();
                 if (windows) pic.PollStrobes();
-                bool fresh = pic.Tick(Time.unscaledTime);
+                // With the scope open the snapshot follows the game's clock (10 a second at most) so its lines and contacts are from the
+                // same moment as the world; the board and sonar are fine with one a second.
+                bool scopeOpen = windows && Kit.Window(1) is ScopeWindow sc && Kit.IsOpen(sc);
+                bool fresh = scopeOpen ? pic.Tick(Time.unscaledTime, 0.1, true) : pic.Tick(Time.unscaledTime);
                 Perf.Stop(Perf.Part.Picture, t);
                 if (fresh && windows)
-                    OnSnapshot();
+                {
+                    // The sonar waterfall takes one row per slow snapshot (150 rows = 150 s), the board and the sonar redraw once a
+                    // second; only the scope's surfaces follow the fast snapshots.
+                    if (Time.unscaledTime >= nextSlow) { nextSlow = Time.unscaledTime + 0.95f; OnSnapshot(); }
+                    else
+                        for (int i = 0; i < Registry.Surfaces.Count; i++)
+                            if (Registry.Surfaces[i] is ScopeSurface) Registry.Surfaces[i].InvalidateVisual();
+                }
             }
             Map.MapSet.Update(Time.unscaledTime);
             Perf.Frame();
