@@ -86,7 +86,14 @@ public sealed class ScopeWindow : SvWindow
     internal bool ShowHorizon = true;
     internal bool ShowFriends = true;       // the other own units, as a reference
 
-    internal void StepRange(int d) => RangeIndex = Math.Max(0, Math.Min(Ranges.Length - 1, RangeIndex + d));
+    /// <summary>Raised when the range changes (mouse wheel on the scope, the - / + buttons) so the tool row can show it.</summary>
+    internal event Action Changed;
+
+    internal void StepRange(int d)
+    {
+        RangeIndex = Math.Max(0, Math.Min(Ranges.Length - 1, RangeIndex + d));
+        Changed?.Invoke();
+    }
 }
 
 public sealed class SonarWindow : SvWindow

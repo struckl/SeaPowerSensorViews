@@ -90,8 +90,18 @@ public sealed class ScopeView : UserControl
         root.Children.Add(stack);
         Content = root;
         Loaded += (s, e) => Sync();
-        DataContextChanged += (s, e) => Sync();
+        // The wheel on the scope changes the range without touching this row: follow the window's own change event.
+        DataContextChanged += (s, e) =>
+        {
+            if (watched != null) watched.Changed -= OnWindowChanged;
+            watched = Win;
+            if (watched != null) watched.Changed += OnWindowChanged;
+            Sync();
+        };
     }
+
+    private ScopeWindow watched;
+    private void OnWindowChanged() { if (!syncing) Sync(); }
 
     private ScopeWindow Win => DataContext as ScopeWindow;
 

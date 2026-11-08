@@ -18,6 +18,7 @@
 - **Sonar coverage dent faces the right way:** the baffle dent of the passive sonar coverage was worked out as if north were the bow, so it was always aft of north; it follows the unit's heading now.
 - **Ranged lines show their uncertainty:** a line is solid up to the nearest range the track could have and fades on to the farthest (the range error of the track), instead of ending at one exact point.
 - **Visual contacts are lost sooner:** a contact held only by eyes or infrared counts as lost 30 s after its last sighting (setting 'Visual contact lifetime', 0 = the game's own track age) and is erased after the lost-contact memory.
+- **Scope range readout follows the mouse wheel:** the 'Range ... nm' text in the tool row did not change when the range was changed with the wheel; the window now tells the row.
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08
