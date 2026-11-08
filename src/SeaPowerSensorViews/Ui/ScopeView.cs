@@ -13,11 +13,28 @@ namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full n
 public sealed class ScopeView : UserControl
 {
     private readonly TextBlock rangeText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 10, 0), MinWidth = 48 };
-    private readonly TextBlock altText = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), MinWidth = 90 };
+    private readonly TextBox altBox = new TextBox { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 2, 0), Width = 58 };
     private readonly CheckBox horizon = new CheckBox { Content = "Radar horizon", IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
     private readonly CheckBox headingUp = new CheckBox { Content = "Heading up", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
-    private readonly Slider altitude = new Slider { Minimum = 0, Maximum = 60000, Value = 100, Width = 130, VerticalAlignment = VerticalAlignment.Center, SmallChange = 100, LargeChange = 1000 };
+    private readonly CheckBox friends = new CheckBox { Content = "Own ships", IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+    // The slider runs on a square-root scale: the useful altitudes (sea-skimmers, helicopters, strike aircraft) sit at the low end
+    // and a linear 0..60000 ft slider 130 px wide moved by 460 ft per pixel. Exact values go into the box.
+    private const float MaxAltitudeFt = 60000f, SliderSteps = 1000f;
+    private readonly Slider altitude = new Slider { Minimum = 0, Maximum = SliderSteps, Value = 0, Width = 130, VerticalAlignment = VerticalAlignment.Center, SmallChange = 5, LargeChange = 50 };
     private bool syncing;
+
+    private static float AltitudeOf(double slider) { double t = slider / SliderSteps; return (float)(MaxAltitudeFt * t * t); }
+    private static double SliderOf(float altitudeFt) => SliderSteps * Math.Sqrt(Math.Max(0f, Math.Min(MaxAltitudeFt, altitudeFt)) / MaxAltitudeFt);
+
+    /// <summary>Takes the number typed into the altitude box (feet).</summary>
+    private void CommitAltitude()
+    {
+        ScopeWindow w = Win;
+        if (w == null || syncing) return;
+        if (float.TryParse(altBox.Text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ft) && !float.IsNaN(ft))
+            w.TargetAltitudeFt = Math.Max(0f, Math.Min(100000f, ft));
+        Sync();
+    }
 
     public ScopeView()
     {
@@ -37,15 +54,21 @@ public sealed class ScopeView : UserControl
         bar.Children.Add(horizon);
         bar.Children.Add(new TextBlock { Text = "Target altitude", VerticalAlignment = VerticalAlignment.Center });
         bar.Children.Add(altitude);
-        bar.Children.Add(altText);
+        bar.Children.Add(altBox);
+        bar.Children.Add(new TextBlock { Text = "ft", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
         bar.Children.Add(headingUp);
+        bar.Children.Add(friends);
+        altBox.KeyDown += (s, e) => { if (e.Key == Key.Enter) { CommitAltitude(); e.Handled = true; } };
+        altBox.LostFocus += (s, e) => CommitAltitude();
+        friends.Click += (s, e) => { if (Win != null && !syncing) Win.ShowFriends = friends.IsChecked == true; Registry.RefreshAll(); };
         horizon.Click += (s, e) => { if (Win != null && !syncing) Win.ShowHorizon = horizon.IsChecked == true; Registry.RefreshAll(); };
         headingUp.Click += (s, e) => { if (Win != null && !syncing) Win.HeadingUp = headingUp.IsChecked == true; Registry.RefreshAll(); };
         altitude.ValueChanged += (s, e) =>
         {
             if (Win == null || syncing) return;
-            Win.TargetAltitudeFt = altitude.Value;
-            altText.Text = Win.TargetAltitudeFt.ToString("0") + " ft";
+            float ft = AltitudeOf(altitude.Value);
+            Win.TargetAltitudeFt = ft < 1000f ? (float)Math.Round(ft / 10f) * 10f : (float)Math.Round(ft / 100f) * 100f;
+            altBox.Text = Win.TargetAltitudeFt.ToString("0");
             Registry.RefreshAll();
         };
         Grid.SetRow(bar, 0);
@@ -77,10 +100,11 @@ public sealed class ScopeView : UserControl
         try
         {
             rangeText.Text = ScopeWindow.Ranges[w.RangeIndex].ToString("0") + " nm";
-            altitude.Value = w.TargetAltitudeFt;
-            altText.Text = w.TargetAltitudeFt.ToString("0") + " ft";
+            altitude.Value = (float)SliderOf(w.TargetAltitudeFt);
+            altBox.Text = w.TargetAltitudeFt.ToString("0");
             horizon.IsChecked = w.ShowHorizon;
             headingUp.IsChecked = w.HeadingUp;
+            friends.IsChecked = w.ShowFriends;
         }
         finally { syncing = false; }
         Registry.RefreshAll();
@@ -182,9 +206,32 @@ public sealed class ScopeSurface : Surface
             horizonNm = RadarCalculator.getRadarHorizon(unit.SensorHeightUnits, targetY, false, 0f) * SensorPicture.NmPerUnit;
             if (horizonNm > 0.1f)
             {
-                float r = Math.Min(horizonNm, rangeNm * 1.4f) * pxPerNm;
-                dc.DrawEllipse(null, PenOf(Fade(Emphasis, 0.8f), 1.5f), new Point(cx, cy), r, r);
-                DrawCentered(dc, "horizon " + horizonNm.ToString("0") + " nm @ " + win.TargetAltitudeFt.ToString("0") + " ft", cx, cy + r + 2, 10, Emphasis);
+                string note = "horizon " + horizonNm.ToString("0") + " nm @ " + win.TargetAltitudeFt.ToString("0") + " ft";
+                if (horizonNm <= rangeNm)
+                {
+                    float r = horizonNm * pxPerNm;
+                    dc.DrawEllipse(null, PenOf(Fade(Emphasis, 0.8f), 1.5f), new Point(cx, cy), r, r);
+                    DrawCentered(dc, note, cx, cy + r + 2, 10, Emphasis);
+                }
+                else   // beyond the scope: no ring (it used to run out of the window), only the number
+                    DrawCentered(dc, note + " (beyond this range)", cx, h - 32, 10, Emphasis);
+            }
+        }
+
+        // ---- the other own units, as a reference -------------------------------------------------------------------------
+        if (win.ShowFriends)
+        {
+            GeoPosition here = unit.Unit.getGeoPosition();
+            foreach (UnitRow other in pic.Units)
+            {
+                if (ReferenceEquals(other, unit) || other.Unit == null) continue;
+                GeoMath.BearingRange(here, other.Unit.getGeoPosition(), out float brg, out float nm);
+                if (nm > rangeNm * 1.02f) continue;
+                Point fp = Polar(cx, cy, nm * pxPerNm, brg - up);
+                var diamond = new Point[] { new Point(fp.X, fp.Y - 4.5f), new Point(fp.X + 4.5f, fp.Y), new Point(fp.X, fp.Y + 4.5f), new Point(fp.X - 4.5f, fp.Y), new Point(fp.X, fp.Y - 4.5f) };
+                Pen fpen = PenOf(Fade(Friendly, 0.9f), 1.3f);
+                for (int i = 0; i < 4; i++) dc.DrawLine(fpen, diamond[i], diamond[i + 1]);
+                Draw(dc, other.Name, fp.X + 7, fp.Y - 6, 9, Fade(Friendly, 0.85f));
             }
         }
 

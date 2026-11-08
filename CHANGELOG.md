@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Radar scope:** the target altitude slider runs on a square-root scale (it moved by 460 ft per pixel) and has a box next to it to type the altitude in feet. The radar horizon ring is only drawn when it lies inside the scope's range (it used to run out of the window); otherwise its distance is written at the bottom. Your other units show as small diamonds with their names (checkbox *Own ships*).
+- **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
+
 ## 0.3.0 - 2026-11-08
 
 - Fix: on the 3D-globe build the Board, Scope and Sonar windows failed (repeated error window, Sonar showing "no sonar"), because Noesis resolves XAML types by full name and picked the idle flat DLL's classes. The globe build's UI now has its own namespace (`SeaPowerSensorViews.Globe.Ui`); the flat build is unchanged. Run in the game on beta 261107 (`tools/perf-test/results-2026-11-08`): Options tab, windows, selected-only lines, wedges, coverage, seabed depth; zoom 13/17 about 100 fps with lines on, 106 off.

@@ -190,15 +190,23 @@ public sealed class BoardSurface : Surface
         if (win == null) return;
         Point p = e.GetPosition(this);
         int col = (int)Math.Floor((p.X - LabelW) / colW);
+        bool dbl = e.ClickCount >= 2;
         if (col >= 0 && col < pic.Units.Count)
         {
             win.SelUnit = pic.Units[col];
             win.Pin(pic.Units[col]);
         }
+        ContactRow clicked = null;
         if (p.Y >= HeaderH)
         {
             int row = firstRow + (int)((p.Y - HeaderH) / RowH);
-            if (row >= 0 && row < pic.Contacts.Count) win.SelContact = pic.Contacts[row];
+            if (row >= 0 && row < pic.Contacts.Count) { clicked = pic.Contacts[row]; win.SelContact = clicked; }
+        }
+        // double click: a contact (its row) -> to where it is estimated; a unit's header -> to that unit
+        if (dbl)
+        {
+            if (clicked != null) Jump.ToContact(clicked, col >= 0 && col < pic.Units.Count ? pic.Units[col] : null);
+            else if (p.Y < HeaderH && col >= 0 && col < pic.Units.Count) Jump.ToUnit(pic.Units[col]);
         }
         e.Handled = true;
         Registry.RefreshAll();

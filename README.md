@@ -13,10 +13,10 @@ measured before/after in the game on 0.8.7: [tools/perf-test/results-2026-11-04]
 
 - **Sensor board** - your units across, the contacts down; each cell lists the sensors that hold the contact (R search radar,
   F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD) with the age of the freshest fix; a lower-case
-  letter means bearing only; dimmed letters are sensors that lost the contact a moment ago. Click a cell for bearing, range and fix
+  letter means bearing only; dimmed letters are sensors that lost the contact a moment ago. Double-click a contact's row to bring the game's camera to where your sensors put it (the real object is never used; a bearing-only contact goes to the unit that holds it), a unit's header to bring it to that unit. Click a cell for bearing, range and fix
   age per sensor, with a bearing history strip and drift per minute for bearing-only contacts. Below: the selected unit's sensors with on / off, damage, arcs and EMCON.
 - **Radar scope** - a scope centred on the selected unit with the contacts its radars and eyes hold, fading with the age of the
-  last fix; the blind arcs of its search radars; the radar horizon against a target altitude you set with a slider; ESM and passive
+  last fix; the blind arcs of its search radars; the radar horizon against a target altitude you set with a slider (square-root scale, fine at low altitudes) or type in as feet (the ring is drawn only when it lies inside the scope's range, else its distance is written at the bottom); your other units as small diamonds (switch: *Own ships*); ESM and passive
   sonar bearing lines; strobes for radars warning you (RWR) and jammers; a ring and "LOCK" for contacts held by a fire-control radar.
   The sweep line follows the antenna and is decoration only. A measuring cursor shows bearing and range.
 - **Sonar display** - bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, the baffle sector,
