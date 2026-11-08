@@ -87,7 +87,18 @@ internal sealed class MapView
         linesPanel.Children.Add(labels);
         coveragePanel.Visibility = Visibility.Collapsed;
         linesPanel.Visibility = Visibility.Collapsed;
-        onViewport = (s, e) => viewDirty = true;
+        onViewport = (s, e) =>
+        {
+            viewDirty = true;
+            // Move the panels with the map at once, in the same frame the map moved. The next Update comes a frame later, so the lines
+            // and cones trailed the map by one frame while it was dragged or zoomed. (Update still rebuilds what a transform cannot follow.)
+            try
+            {
+                if (linesShown) Follow(linesFit);
+                if (coverageShown) Follow(coverageFit);
+            }
+            catch (Exception) { /* Update will deal with it */ }
+        };
         map.ViewportChanged += onViewport;
         linesFit = new Fit();
         coverageFit = new Fit();

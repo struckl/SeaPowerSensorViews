@@ -7,6 +7,7 @@
 - **Lines end on the map marker:** the map's sensor lines and the scope's contact marks now end at the place the game's plotting table puts the contact (the marker you see on the map: the track estimate, extrapolated between fixes) instead of at one sensor's own older bearing and range, so they no longer sit beside the marker. Still an estimate, never the real object. The map lines follow the game's clock like the scope (10 snapshots a second at most).
 - **Map cones:** overlapping bearing cones of one colour cancelled each other out (blue edges, empty inside); they fill as one now. A bearing line and its cone run to the distance of the contact's marker (plus 10 %) when the game plots the contact; the 'Bearing wedge length' setting is only the fallback. Lines to ranged contacts end on the position the marker follows.
 - **Cones:** a fainter fill (7 % instead of 16 %) with a firm outline, so they read on bright terrain and where they overlap.
+- **Map lines follow a moving map in the same frame:** the lines and cones were moved by the next frame's update, so they trailed the map by a frame while it was dragged or zoomed; the map's viewport event moves them now.
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08
