@@ -3,7 +3,11 @@ using System.Text;
 using Noesis;
 using SeaPowerSensorViews.Data;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>Sensor board window content: legend line, the unit x contact grid, and the selected unit's sensors.</summary>
 public sealed class BoardView : UserControl

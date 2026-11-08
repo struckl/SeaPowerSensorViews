@@ -1,3 +1,5 @@
-0.2.2: fixes the lag and freeze when zooming in on the map with the sensor lines on.
-Zoomed in, the sensor lines and bearing wedges were drawn in full length far past the edge of the screen, which made the game crawl and at high zoom freeze. They are now cut to the visible map before they are drawn. Measured on 0.8.7: at zoom 13 from about 31-61 fps with half-second stutters to about 72-74 fps; at zoom 17 the old version froze the game, now about 74-76 fps.
-Also: the lines are no longer rebuilt every second while the game is paused. Thanks to everyone who reported it.
+0.3.0: fixes the windows on the 3D globe beta, and adds settings in the game.
+On the globe beta (build 261107) the Board, Scope and Sonar windows failed with an error; they work now, and the sonar seabed depth is right again.
+Sensor lines now show only the selected unit by default (you can switch back to all units); they are redrawn only when a line really moves on screen; zoomed in far, bearing wedges draw just their line unless you turn the fill on.
+New: a Sensor Views tab in the game's Options menu.
+Run in the game on the globe beta 261107. The 0.8.7 build passes the offline checks.

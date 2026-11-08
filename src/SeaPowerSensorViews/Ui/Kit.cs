@@ -5,7 +5,11 @@ using SeaPower;
 using SeapowerUI;
 using SeaPowerSensorViews.Data;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>
 /// Puts the three windows into the game's own window system.
@@ -36,9 +40,15 @@ internal static class Kit
 
     public static bool Active => view != null;
 
+#if FLATMAP
+    private const string XamlNamespace = "SeaPowerSensorViews.Ui";
+#else
+    private const string XamlNamespace = "SeaPowerSensorViews.Globe.Ui";
+#endif
+
     private const string Header =
         "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
-        "xmlns:local='clr-namespace:SeapowerUI' xmlns:sv='clr-namespace:SeaPowerSensorViews.Ui'";
+        "xmlns:local='clr-namespace:SeapowerUI' xmlns:sv='clr-namespace:" + XamlNamespace + "'";
 
     private static string Template(string type, string content, int width, int height, int x, int y, bool dynamicTemplate) =>
         "<DataTemplate DataType='{x:Type sv:" + type + "}'>" +

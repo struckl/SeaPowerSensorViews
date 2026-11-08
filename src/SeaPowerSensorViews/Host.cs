@@ -2,7 +2,11 @@ using System;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 using SeaPowerSensorViews.Map;
+#if FLATMAP
 using SeaPowerSensorViews.Ui;
+#else
+using SeaPowerSensorViews.Globe.Ui;
+#endif
 using UnityEngine;
 
 namespace SeaPowerSensorViews;

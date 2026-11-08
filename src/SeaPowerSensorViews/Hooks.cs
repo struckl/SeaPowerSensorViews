@@ -1,3 +1,8 @@
+#if FLATMAP
+using SeaPowerSensorViews.Ui;
+#else
+using SeaPowerSensorViews.Globe.Ui;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -85,7 +90,7 @@ internal static class Hooks
 
     private static void OptionsViewCreated(object __instance)
     {
-        try { Ui.OptionsPage.ViewCreated(__instance); }
+        try { OptionsPage.ViewCreated(__instance); }
         catch (Exception ex) { ModLog.Warn("options page: " + ex.Message); }
     }
 }

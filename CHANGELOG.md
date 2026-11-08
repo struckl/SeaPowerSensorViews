@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (0.3.0, compiles for both builds, not run in the game)
+## 0.3.0 - 2026-11-08
+
+- Fix: on the 3D-globe build the Board, Scope and Sonar windows failed (repeated error window, Sonar showing "no sonar"), because Noesis resolves XAML types by full name and picked the idle flat DLL's classes. The globe build's UI now has its own namespace (`SeaPowerSensorViews.Globe.Ui`); the flat build is unchanged. Run in the game on beta 261107 (`tools/perf-test/results-2026-11-08`): Options tab, windows, selected-only lines, wedges, coverage, seabed depth; zoom 13/17 about 100 fps with lines on, 106 off.
 
 - Fix for the new 3D-globe beta (build 261107): the sonar display called TerrainUtils.GetHeightAt, which gained a parameter there; the call now works on every build (found by the compat check against the new build).
 - Sensor lines: Units shown defaults to Selected only (nothing while no unit is selected); configs from before keep their value only if it was changed from the old default.

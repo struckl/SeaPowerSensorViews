@@ -5,7 +5,11 @@ using SeaPower;
 using SeaPowerSensorViews.Data;
 using SeapowerUI;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>
 /// The content object of a window: the game's WindowHost shows it through the DataTemplate registered for its type

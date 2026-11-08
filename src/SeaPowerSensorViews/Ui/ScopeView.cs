@@ -3,7 +3,11 @@ using Noesis;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>Radar scope window content: a small tool row (range, horizon, target altitude) over the scope.</summary>
 public sealed class ScopeView : UserControl

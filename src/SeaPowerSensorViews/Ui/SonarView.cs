@@ -3,7 +3,11 @@ using Noesis;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>Sonar display window content: sonar chooser over the waterfall and depth strip.</summary>
 public sealed class SonarView : UserControl

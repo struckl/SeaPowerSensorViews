@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using Noesis;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>
 /// A control that draws itself with Noesis' DrawingContext, like the game's own map controls (MapEllipse, Ruler, ...).

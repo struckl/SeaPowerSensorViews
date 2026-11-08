@@ -6,8 +6,8 @@ A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowere
 units sees which contact with which sensor**, in three windows that look and behave like the game's own - and pop out to a second
 monitor with *R.A.T.S. Pop-Out Windows*. Requires [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757).
 
-**Status: 0.2.2, zoom fix** ([Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654)). Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
-bearing history, depth marks and the echo plot. The build for the 3D-globe beta is checked against its assemblies but not run in the game yet.
+**Status: 0.3.0, selected-only lines, in-game settings, globe windows fixed** ([Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654)). Run in the game on 0.8.7 (flat map) on 2026-11-03: windows, bar buttons, sensor lines, coverage, cursors,
+bearing history, depth marks and the echo plot. 0.3.0 was run in the game on the 3D-globe beta (build 261107) on 2026-11-08: Options tab, all three windows, sensor lines, coverage, sonar seabed depth, zoom ([results](tools/perf-test/results-2026-11-08/README.md)). The 0.3.0 flat build for 0.8.7 passes the offline checks; 0.8.7 itself last ran 0.2.2.
 0.2.2 fixes the freeze when zooming in with the sensor lines on ([results](tools/perf-test/results-2026-11-07/README.md)); 0.2.1 was the performance update (map layers follow pans and zooms without a rebuild, scope sweep and cursors on their own layers),
 measured before/after in the game on 0.8.7: [tools/perf-test/results-2026-11-04](tools/perf-test/results-2026-11-04/README.md).
 
@@ -47,7 +47,7 @@ Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
 
 `dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. Two DLLs
 from one source tree - `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` (`-p:GameBuild=Flat`) for 0.8.7 - each stays off on the
-other game; checked offline against the assemblies of both; run in the game on 0.8.7 (flat map), not yet on the 3D-globe build.
+other game; checked offline against the assemblies of both; run in the game on both: 0.8.7 up to 0.2.2, the 3D-globe beta (261107) with 0.3.0.
 How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Frame-time test: [tools/perf-test](tools/perf-test/README.md). Notes and plan:
 [HANDOVER.md](HANDOVER.md).
 

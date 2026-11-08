@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
 
+#if FLATMAP
 namespace SeaPowerSensorViews.Ui;
+#else
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
+#endif
 
 /// <summary>
 /// The mod's settings in the game's Options menu. When an options page (SeapowerUI.OptionsMenuView, a Noesis UserControl) has
