@@ -42,6 +42,7 @@ internal sealed class Hit
     public double FixTime;          // mission session time of the track's epoch
     public float Bearing;           // degrees true, from the unit
     public float RangeM = float.NaN;
+    public float RangeErrorM;       // one standard deviation of the range estimate (0 when the track has none)
     public float AltitudeUnits = float.NaN;
     public float BearingError;
     public float AltitudeError;

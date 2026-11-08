@@ -178,7 +178,9 @@ internal sealed class CoverageJob
             bool towed = bestSonar.IsTowedSensor || bestSonar.IsVDS;
             for (int i = 0; i < rays; i++)
             {
-                float rel = i * 360f / rays;
+                // The ray i points at the compass bearing i * 360 / rays; the baffles are fixed to the hull, so the dent sits where that
+                // bearing lies relative to the bow. (It used the compass bearing as the relative one: the dent was always aft of north.)
+                float rel = SensorPicture.Wrap360(i * 360f / rays - unit.Heading);
                 if (rel > 180f) rel -= 360f;
                 bool dent = !towed && sp != null && sp._baffles != Vector2.zero && InBaffles(sp._baffles, rel);
                 sonarRange[i] = sonarNm * UnitsPerNm * (dent ? 0.08f : 1f);

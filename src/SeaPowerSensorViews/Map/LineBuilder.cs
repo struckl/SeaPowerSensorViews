@@ -86,6 +86,20 @@ internal static class LineBuilder
         return k;
     }
 
+    /// <summary>A line along a bearing from <paramref name="fromKm"/> to <paramref name="toKm"/> out of the origin, a chord every ~25 nm.</summary>
+    private static LineSet.Line MakeLine(GeoPosition origin, float bearing, float fromKm, float toKm, ulong key, LineStyle style, bool bright, bool live, string label)
+    {
+        int steps = Math.Max(1, Math.Min(10, (int)Math.Ceiling((toKm - fromKm) / 46f)));
+        var lat = new double[steps + 1];
+        var lon = new double[steps + 1];
+        for (int i = 0; i <= steps; i++)
+        {
+            float d = fromKm + (toKm - fromKm) * i / steps;
+            GeoPosition p = d <= 0f ? origin : origin.OffsetByDistanceOnHeadingUnity(d, bearing);
+            lat[i] = p._latitude; lon[i] = p._longitude;
+        }
+        return new LineSet.Line { Key = key, Style = style, Bright = bright, Live = live, Lat = lat, Lon = lon, Label = label };
+    }
     private static bool KindShown(Kind k)
     {
         switch (k)
@@ -132,18 +146,15 @@ internal static class LineBuilder
                         GeoMath.BearingRange(origin, cr.Plot, out float pb, out float pnm);
                         if (pnm > 0.01f) { km = pnm * 1.852f; bearing = pb; }
                     }
-                    int steps = Math.Max(1, Math.Min(10, (int)Math.Ceiling(km / 46f)));   // a chord every ~25 nm follows the curve
-                    var lat = new double[steps + 1];
-                    var lon = new double[steps + 1];
-                    lat[0] = origin._latitude; lon[0] = origin._longitude;
-                    for (int i = 1; i <= steps; i++)
-                    {
-                        GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(km * i / steps, bearing);
-                        lat[i] = p._latitude; lon[i] = p._longitude;
-                    }
+                    // The range is an estimate with an error. The line is solid up to the nearest range it could be, and a faint stretch
+                    // runs on to the farthest: a line ending at one exact point would claim a precision the sensor does not have (sonar).
+                    float errKm = h.RangeErrorM * KmPerMeter;
+                    bool uncertain = errKm > 0.1f && errKm > 0.03f * km;
+                    float solidKm = uncertain ? Math.Max(0.05f * km, km - errKm) : km;
                     string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
-                    lines.Add(new LineSet.Line { Key = KeyOf(h.Unit, cr, h, 0), Style = style, Bright = bright, Live = h.Live, Lat = lat, Lon = lon, Label = label });
-                }
+                    lines.Add(MakeLine(origin, bearing, 0f, solidKm, KeyOf(h.Unit, cr, h, 0), style, bright, h.Live, label));
+                    if (uncertain)
+                        lines.Add(MakeLine(origin, bearing, solidKm, km + errKm, KeyOf(h.Unit, cr, h, 3), style, false, h.Live, null));                }
                 else
                 {
                     float half = Math.Max(1f, Math.Min(15f, h.BearingError));

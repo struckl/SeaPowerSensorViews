@@ -29,6 +29,7 @@ internal static class Settings
     // quick switches (also entries of the map's Layers menu)
     public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
     public static ConfigEntry<bool> RealisticSweep, RetroLook;
+    public static ConfigEntry<float> VisualLifetime;
     public static ConfigEntry<bool> CoverageVisible;
     public static ConfigEntry<string> CoverageKey;
     public static ConfigEntry<float> CoverageAltitude;
@@ -92,6 +93,10 @@ internal static class Settings
         HideTrackedEsm = file.Bind("4. Map: sensor lines", "Hide ESM of tracked contacts", true,
             "Layers menu entry 'Sensor lines: hide ESM of tracked contacts'. An ESM bearing line and cone is left out for a contact that a radar " +
             "(or other ranging sensor) holds as a live track: the game has linked the emission to that contact, so the cone adds nothing.");
+        VisualLifetime = file.Bind("3. Views", "Visual contact lifetime (s)", 30f,
+            new ConfigDescription("A contact held only by eyes or infrared counts as lost this many seconds after its last sighting (it then fades " +
+                "for the 'lost contact memory' time). 0 = as long as the game keeps the track (its own maximum age, which can be long).",
+                new AcceptableValueRange<float>(0f, 600f)));
         RetroLook = file.Bind("3. Views", "Radar and sonar: period look", true,
             "On: the radar scope and the sonar display look like the green phosphor tubes of the period - dark ground, dim rings, bright traces, a sweep with a glowing trail. Off: the game's own colours (as in 0.3.0). Applies to windows opened afterwards.");
         RealisticSweep = file.Bind("3. Views", "Radar scope: blips appear when the sweep passes", true,

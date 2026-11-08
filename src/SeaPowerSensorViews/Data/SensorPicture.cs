@@ -121,6 +121,9 @@ internal sealed class SensorPicture
 
                 long key = ((long)unitRow.Uid << 32) ^ ((long)v.Id << 4) ^ (long)kind;
                 double fix = tc.Epoch.ToLive();
+                // A visual track lives as long as the game keeps it (its MaxAge); a contact out of sight is not held that long.
+                float visualCap = Settings.VisualLifetime.Value;
+                if (kind == Kind.Visual && visualCap > 0f && Time - fix > visualCap) continue;
                 if (!hits.TryGetValue(key, out Hit hit))
                 {
                     hit = new Hit { Unit = unitRow, ContactId = v.Id, Kind = kind };
@@ -148,6 +151,7 @@ internal sealed class SensorPicture
                 hit.BearingError = kind == Kind.Esm ? b.Error : Mathf.Sqrt(Mathf.Max(0f, b.Error));
                 hit.BearingOnly = !em.HasComponent<TrackRangeInMeters>(e);
                 hit.RangeM = hit.BearingOnly ? float.NaN : em.GetComponentData<TrackRangeInMeters>(e).Estimate.Estimate;
+                hit.RangeErrorM = hit.BearingOnly ? 0f : Mathf.Sqrt(Mathf.Max(0f, em.GetComponentData<TrackRangeInMeters>(e).Estimate.Error));
                 hit.AltitudeUnits = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Estimate : float.NaN;
                 hit.AltitudeError = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Error : 0f;
                 hit.Signal = em.HasComponent<IncomingSignalData>(e) ? (float)em.GetComponentData<IncomingSignalData>(e)._incomingSignalValue : float.NaN;
