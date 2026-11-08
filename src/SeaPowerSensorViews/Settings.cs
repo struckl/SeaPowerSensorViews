@@ -75,7 +75,7 @@ internal static class Settings
         LostLines = file.Bind("4. Map: sensor lines", "Show lost contacts", true,
             "A contact a sensor has just lost keeps a faint line for the 'lost contact memory' time (section 3).");
         WedgeNm = file.Bind("4. Map: sensor lines", "Bearing wedge length (nm)", 40f,
-            new ConfigDescription("Length of the line and wedge drawn for bearing-only contacts (ESM, passive sonar).", new AcceptableValueRange<float>(5f, 300f)));
+            new ConfigDescription("Length of the line and wedge drawn for bearing-only contacts (ESM, passive sonar) that have no plotted position yet. Once the game plots the contact (its map marker), the line and wedge run to the marker's distance instead.", new AcceptableValueRange<float>(5f, 300f)));
         ZoomedWedges = file.Bind("4. Map: sensor lines", "Fill wedges when zoomed in", false,
             "Off: zoomed in so far that a bearing wedge is longer than the screen, it is drawn as its bearing line only (the filled wedges " +
             "covered the whole map there and cost frame rate). On: always filled.");
