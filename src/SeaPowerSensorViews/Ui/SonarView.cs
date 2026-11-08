@@ -173,6 +173,7 @@ internal static class Ang
 
 public sealed class SonarSurface : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     internal static event Action Changed;
     private SonarWindow Win => DataContext as SonarWindow;
     internal SonarCursor CursorLayer;
@@ -403,6 +404,7 @@ public sealed class SonarSurface : Surface
 /// <summary>The sonar display's measuring cursor: bearing (true and relative to the bow) and age under the mouse, on its own layer.</summary>
 public sealed class SonarCursor : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     private Point cursor = new Point(-1, -1);
     private SonarWindow Win => DataContext as SonarWindow;
 

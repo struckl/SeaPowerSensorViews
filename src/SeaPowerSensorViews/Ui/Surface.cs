@@ -50,6 +50,11 @@ public abstract class Surface : UserControl
 
     internal static Color Argb(uint v) => Color.FromArgb((byte)(v >> 24), (byte)(v >> 16), (byte)(v >> 8), (byte)v);
 
+    /// <summary>A subclass that wants the phosphor-screen palette of the period radar and sonar displays instead of the game's theme.</summary>
+    internal virtual bool Retro => false;
+
+    private static Brush Px(uint argb) => new SolidColorBrush(Argb(argb));
+
     private void Theme()
     {
         if (themed) return;
@@ -70,6 +75,14 @@ public abstract class Surface : UserControl
         Unknown = Find("NTDS.UnknownColour", 0xFFFFC000);
         try { family = TryFindResource("Font.Family.Default") as FontFamily; } catch (Exception) { family = null; }
         if (family == null) family = FontFamily;
+        if (Retro)
+        {
+            // a green phosphor tube: near-black ground, dim rings, bright traces; hostile and locks stay the brightest
+            Back = Px(0xFF020E06); Header = Px(0xFF03180B); Lines = Px(0xFF14502A); Normal = Px(0xFF3DA857);
+            Highlight = Px(0xFF8CFFA8); Emphasis = Px(0xFFD6FF8C); Red = Px(0xFFFFB347); Green = Px(0xFF5DFF7D);
+            Blue = Px(0xFF4FD0C0); Button = Px(0xFF0A2A14);
+            Hostile = Px(0xFFE8FF6A); Friendly = Px(0xFF6AFFB0); Neutral = Px(0xFF3DA857); Unknown = Px(0xFFB8FF9A);
+        }
     }
 
     /// <summary>The brush with another opacity (cached per colour and alpha step).</summary>

@@ -14,6 +14,7 @@
 - **Scope:** 'SEARCH RADAR OFF' is written over the scope when none of the unit's search radars is on (the sweep is not drawn then).
 - **Quick switches in the map's Layers menu:** 'Sensor lines: all units', 'radar', 'ESM', 'visual', 'sonar' and 'hide ESM of tracked contacts' (also in the Options tab). An ESM bearing line and cone is left out for a contact that a radar holds as a live track.
 - **Radar scope like a radar:** a radar contact is painted when the sweep passes over it, at its position then, and fades until the next pass; the scope's contacts from other sensors stay always current. Setting 'Radar scope: blips appear when the sweep passes' (Options tab / config) switches back to the old always-current look.
+- **Period look for radar and sonar** (setting 'Radar and sonar: period look', on by default; Options tab): the scope and the sonar display are drawn like green phosphor tubes - near-black ground, dim rings, bright traces - and the radar sweep has a glowing trail. Off = the game's own colours. Applies to windows opened afterwards.
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

@@ -134,6 +134,7 @@ internal struct ScopeGeometry
 
 public sealed class ScopeSurface : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     private ScopeWindow Win => DataContext as ScopeWindow;
     internal ScopeCursor CursorLayer;
     private int strobeVersion = -1;
@@ -344,6 +345,7 @@ public sealed class ScopeSurface : Surface
 /// </summary>
 public sealed class ScopeSweep : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     private readonly RotateTransform turn = new RotateTransform();
     private ScopeWindow Win => DataContext as ScopeWindow;
 
@@ -377,6 +379,15 @@ public sealed class ScopeSweep : Surface
         if (!SensorPicture.Current.InMission || !ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g)) return;
         turn.CenterX = g.Cx;
         turn.CenterY = g.Cy;
+        if (Settings.RetroLook.Value)
+        {
+            // a phosphor tube's sweep: a bright leading line and a trail that glows and dies away behind it
+            float[] glow = { 0.30f, 0.22f, 0.16f, 0.11f, 0.07f, 0.04f };
+            for (int i = 0; i < glow.Length; i++)
+                dc.DrawGeometry(Fade(Green, glow[i]), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -6f * (i + 1), -6f * i));
+            dc.DrawLine(PenOf(Fade(Green, 0.95f), 1.8f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
+            return;
+        }
         dc.DrawGeometry(Fade(Green, 0.10f), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -18f, 0f));
         dc.DrawLine(PenOf(Fade(Green, 0.55f), 1.2f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
     }
@@ -389,6 +400,7 @@ public sealed class ScopeSweep : Surface
 /// </summary>
 public sealed class ScopeBlips : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     private struct Blip { public float Brg, Rng; }
 
     private readonly Dictionary<int, Blip> blips = new Dictionary<int, Blip>();
@@ -489,6 +501,7 @@ public sealed class ScopeBlips : Surface
 /// <summary>The scope's measuring cursor: bearing and range from own ship, on its own layer.</summary>
 public sealed class ScopeCursor : Surface
 {
+    internal override bool Retro => Settings.RetroLook.Value;
     private Point cursor = new Point(-1, -1);
     private ScopeWindow Win => DataContext as ScopeWindow;
 
