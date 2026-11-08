@@ -50,19 +50,21 @@ internal static class Kit
         "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
         "xmlns:local='clr-namespace:SeapowerUI' xmlns:sv='clr-namespace:" + XamlNamespace + "'";
 
-    private static string Template(string type, string content, int width, int height, int x, int y, bool dynamicTemplate) =>
+    // The game's resize command clamps a dragged edge to "size minus MinWidth/MinHeight": with no minimum (0) the window could
+    // grow but never shrink. Found with the size probe below.
+    private static string Template(string type, string content, int width, int height, int x, int y, bool dynamicTemplate, int minWidth, int minHeight) =>
         "<DataTemplate DataType='{x:Type sv:" + type + "}'>" +
         "<local:Window " + (dynamicTemplate ? "Template='{DynamicResource WindowLayoutNoScroll}' " : "") +
-        "Width='" + width + "' Height='" + height + "' X='" + x + "' Y='" + y + "'>" +
+        "Width='" + width + "' Height='" + height + "' MinWidth='" + minWidth + "' MinHeight='" + minHeight + "' X='" + x + "' Y='" + y + "'>" +
         "<local:Window.Header><TextBlock Text='{Binding Title}'/></local:Window.Header>" +
         "<sv:" + content + "/></local:Window></DataTemplate>";
 
     private static ResourceDictionary Dictionary(bool dynamicTemplate) =>
         (ResourceDictionary)GUI.ParseXaml(
             "<ResourceDictionary " + Header + ">" +
-            Template("BoardWindow", "BoardView", 900, 640, 150, 80, dynamicTemplate) +
-            Template("ScopeWindow", "ScopeView", 660, 700, 260, 100, dynamicTemplate) +
-            Template("SonarWindow", "SonarView", 860, 560, 200, 130, dynamicTemplate) +
+            Template("BoardWindow", "BoardView", 900, 640, 150, 80, dynamicTemplate, 420, 240) +
+            Template("ScopeWindow", "ScopeView", 660, 700, 260, 100, dynamicTemplate, 340, 380) +
+            Template("SonarWindow", "SonarView", 860, 560, 200, 130, dynamicTemplate, 420, 240) +
             "</ResourceDictionary>");
 
     /// <summary>Called when the mission UI exists; true when everything is in place.</summary>
