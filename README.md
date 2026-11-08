@@ -19,6 +19,7 @@ measured before/after in the game on 0.8.7: [tools/perf-test/results-2026-11-04]
   last fix; the blind arcs of its search radars; the radar horizon against a target altitude you set with a slider (square-root scale, fine at low altitudes) or type in as feet (the ring is drawn only when it lies inside the scope's range, else its distance is written at the bottom); your other units as small diamonds (switch: *Own ships*); ESM and passive
   sonar bearing lines; strobes for radars warning you (RWR) and jammers; a ring and "LOCK" for contacts held by a fire-control radar.
   The sweep line follows the antenna and is decoration only. A measuring cursor shows bearing and range.
+  Radar contacts appear when the sweep passes over them and fade until the next pass (setting to switch it off). When no search radar is on, the scope says so.
 - **Sonar display** - bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, the baffle sector,
   the unit's own noise at its speed, a measuring cursor (bearing, seconds ago), and a depth strip with the thermal layer, own depth, the array, the seabed and the contacts the sonar holds at the depth the track estimates (with above / below the layer). The *Echoes* button swaps the waterfall for a bearing / range plot.
 

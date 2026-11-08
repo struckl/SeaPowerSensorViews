@@ -86,17 +86,38 @@ internal static class LineBuilder
         return k;
     }
 
+    private static bool KindShown(Kind k)
+    {
+        switch (k)
+        {
+            case Kind.Radar:
+            case Kind.FireControl: return Settings.LinesRadar.Value;
+            case Kind.Esm: return Settings.LinesEsm.Value;
+            case Kind.Visual: return Settings.LinesVisual.Value;
+            case Kind.Passive:
+            case Kind.Active: return Settings.LinesSonar.Value;
+            default: return true;
+        }
+    }
+
     private static void Fill(SensorPicture pic, UnitRow selected, List<LineSet.Line> lines)
     {
-        bool onlySelected = Settings.LinesWho.Value == Settings.SelectedOnly;
+        bool onlySelected = Settings.LinesWho.Value == Settings.SelectedOnly && !Settings.LinesAllUnits.Value;
         if (onlySelected && selected == null) return;              // nothing selected: no lines
         bool lost = Settings.LostLines.Value;
         float wedgeKm = Settings.WedgeNm.Value * 1.852f;
         foreach (ContactRow cr in pic.Contacts)
         {
+            // an ESM bearing of a contact that a ranging sensor holds live adds nothing: the game already linked them
+            bool ranged = false;
+            if (Settings.HideTrackedEsm.Value)
+                foreach (Hit r in cr.Hits)
+                    if (r.Live && !r.BearingOnly && !float.IsNaN(r.RangeM)) { ranged = true; break; }
             foreach (Hit h in cr.Hits)
             {
                 if (h.Unit?.Unit == null || h.Unit.Unit.IsDestroyed) continue;
+                if (!KindShown(h.Kind)) continue;
+                if (ranged && h.Kind == Kind.Esm) continue;
                 bool bright = selected == null || ReferenceEquals(h.Unit, selected);
                 if (onlySelected && !bright) continue;
                 if (!h.Live && !lost) continue;

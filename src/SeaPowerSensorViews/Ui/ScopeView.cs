@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Noesis;
 using SeaPower;
 using SeaPowerSensorViews.Data;
@@ -75,11 +76,13 @@ public sealed class ScopeView : UserControl
         // Three layers: the picture (redrawn with each snapshot), the sweep (drawn once, then only turned) and the measuring
         // cursor (redrawn on mouse moves). The sweep used to redraw the whole scope 25 times a second.
         var scope = new ScopeSurface();
+        var blips = new ScopeBlips { IsHitTestVisible = false };
         var sweep = new ScopeSweep { IsHitTestVisible = false };
         var cursorLayer = new ScopeCursor { IsHitTestVisible = false };
         scope.CursorLayer = cursorLayer;
         var stack = new Grid();
         stack.Children.Add(scope);
+        stack.Children.Add(blips);
         stack.Children.Add(sweep);
         stack.Children.Add(cursorLayer);
         Grid.SetRow(stack, 1);
@@ -280,6 +283,8 @@ public sealed class ScopeSurface : Surface
                 if (best == null || hit.FixTime > best.FixTime) best = hit;
             }
             if (best == null) continue;
+            // a radar-held contact is painted by the blip layer (only when the sweep passes) unless that is switched off
+            if (Settings.RealisticSweep.Value && ScopeBlips.RadarHeld(cr, unit)) continue;
             float ageS = (float)(pic.Time - best.FixTime);
             float alpha = best.Live ? Math.Max(0.55f, 1f - ageS / Math.Max(4f, best.MaxAge)) : Math.Max(0.12f, 0.5f * (1f - ageS / memory));
             float rNm = best.RangeM / 1852f, bNow = best.Bearing;
@@ -374,6 +379,110 @@ public sealed class ScopeSweep : Surface
         turn.CenterY = g.Cy;
         dc.DrawGeometry(Fade(Green, 0.10f), null, Sector(g.Cx, g.Cy, 0f, g.Radius, -18f, 0f));
         dc.DrawLine(PenOf(Fade(Green, 0.55f), 1.2f), new Point(g.Cx, g.Cy), Polar(g.Cx, g.Cy, g.Radius, 0f));
+    }
+}
+
+/// <summary>
+/// The scope's radar contacts as a real radar paints them: a contact appears (at its position then) when the sweep passes over it and
+/// fades until the next pass. Own layer, redrawn only when the sweep has turned a few degrees or the picture changed. Off with the
+/// setting "Radar scope: blips appear when the sweep passes" (the contacts are then drawn by the scope's own layer, always current).
+/// </summary>
+public sealed class ScopeBlips : Surface
+{
+    private struct Blip { public float Brg, Rng; }
+
+    private readonly Dictionary<int, Blip> blips = new Dictionary<int, Blip>();
+    private float prevSweep = float.NaN, drawnSweep = float.NaN;
+    private int uid = -1, version = -1;
+    private ScopeWindow Win => DataContext as ScopeWindow;
+
+    public ScopeBlips() => Background = null;
+
+    internal override bool Animated => true;
+
+    /// <summary>The unit holds this contact with a search radar (ranged): such contacts are painted by the sweep.</summary>
+    internal static bool RadarHeld(ContactRow cr, UnitRow unit)
+    {
+        foreach (Hit h in cr.Hits)
+            if (h.Unit == unit && h.Kind == Kind.Radar && !h.BearingOnly && !float.IsNaN(h.RangeM)) return true;
+        return false;
+    }
+
+    /// <summary>Where the contact is now (bearing from the unit, nm): the plotted position when the game has one, else the radar's own fix.</summary>
+    private static bool Now(ContactRow cr, UnitRow unit, out float brg, out float rng)
+    {
+        brg = rng = 0f;
+        Hit best = null;
+        foreach (Hit h in cr.Hits)
+            if (h.Unit == unit && h.Kind == Kind.Radar && !h.BearingOnly && !float.IsNaN(h.RangeM) && (best == null || h.FixTime > best.FixTime)) best = h;
+        if (best == null) return false;
+        brg = best.Bearing; rng = best.RangeM / 1852f;
+        if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out brg, out rng);
+        return true;
+    }
+
+    internal override void Animate()
+    {
+        ScopeWindow win = Win;
+        SensorPicture pic = SensorPicture.Current;
+        UnitRow unit = win?.Subject();
+        if (win == null || unit == null || !pic.InMission || !Settings.RealisticSweep.Value)
+        {
+            if (blips.Count > 0) { blips.Clear(); InvalidateVisual(); }
+            prevSweep = float.NaN;
+            return;
+        }
+        if (unit.Uid != uid) { blips.Clear(); uid = unit.Uid; prevSweep = float.NaN; }
+        float sweep = ScopeSurface.SweepBearing(unit.Unit);
+        bool changed = version != pic.Version && float.IsNaN(sweep);
+        if (!float.IsNaN(sweep))
+        {
+            if (!float.IsNaN(prevSweep))
+            {
+                float turned = SensorPicture.Wrap360(sweep - prevSweep);       // clockwise since the last step
+                if (turned > 0f && turned < 180f)
+                {
+                    foreach (ContactRow cr in pic.Contacts)
+                    {
+                        if (!Now(cr, unit, out float brg, out float rng)) continue;
+                        if (SensorPicture.Wrap360(brg - prevSweep) <= turned)
+                        {
+                            blips[cr.Id] = new Blip { Brg = brg, Rng = rng };      // the sweep is on it: painted at its position now
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            prevSweep = sweep;
+            if (float.IsNaN(drawnSweep) || Math.Abs(UnityEngine.Mathf.DeltaAngle(sweep, drawnSweep)) > 4f) changed = true;
+        }
+        else if (!float.IsNaN(drawnSweep)) { changed = true; prevSweep = float.NaN; }
+        if (changed)
+        {
+            version = pic.Version;
+            drawnSweep = sweep;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void Paint(DrawingContext dc, float w, float h)
+    {
+        ScopeWindow win = Win;
+        SensorPicture pic = SensorPicture.Current;
+        UnitRow unit = win?.Subject();
+        if (!Settings.RealisticSweep.Value || unit == null || !pic.InMission || !ScopeGeometry.Of(win, unit, w, h, out ScopeGeometry g)) return;
+        float sweep = ScopeSurface.SweepBearing(unit.Unit);
+        foreach (ContactRow cr in pic.Contacts)
+        {
+            if (!blips.TryGetValue(cr.Id, out Blip b)) continue;
+            if (b.Rng > g.RangeNm * 1.02f) continue;
+            // brightness: full where the sweep just passed, fading to a faint memory a whole turn later (no radar turning: faint)
+            float alpha = float.IsNaN(sweep) ? 0.3f : Math.Max(0.12f, 1f - 0.88f * SensorPicture.Wrap360(sweep - b.Brg) / 360f);
+            Point p = Polar(g.Cx, g.Cy, b.Rng * g.PxPerNm, b.Brg - g.Up);
+            Brush color = cr.Relation == 3 ? Hostile : cr.Relation == 1 ? Friendly : cr.Relation == 2 ? Neutral : Unknown;
+            dc.DrawRectangle(Fade(color, alpha), null, new Rect(p.X - 3.5f, p.Y - 3.5f, 7, 7));
+            Draw(dc, cr.Label, p.X + 7, p.Y - 6, 10, Fade(Highlight, Math.Max(0.3f, alpha)));
+        }
     }
 }
 

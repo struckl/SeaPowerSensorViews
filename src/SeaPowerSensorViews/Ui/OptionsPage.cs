@@ -90,6 +90,8 @@ internal static class OptionsPage
         panel.Children.Add(Note(look, "Switch the layer itself in the map's Layers menu or with Ctrl+Shift+PageUp."));
         panel.Children.Add(Choice(look, "Units shown", Settings.LinesWho, new[] { Settings.SelectedOnly, Settings.AllUnits },
             "Selected only: the lines of the unit you have selected (nothing while no unit is selected). All: every own unit's lines, the selected unit's bright. With many units, all lines are a lot to draw."));
+        panel.Children.Add(Check(look, "Hide ESM of tracked contacts", Settings.HideTrackedEsm,
+            "Leave out the ESM bearing line and cone of a contact that a radar holds as a live track (the game linked the emission to it). Also in the Layers menu."));
         panel.Children.Add(Check(look, "Show lost contacts", Settings.LostLines,
             "A contact a sensor has just lost keeps a faint line for the lost contact memory time."));
         panel.Children.Add(Check(look, "Fill wedges when zoomed in", Settings.ZoomedWedges,
@@ -112,6 +114,8 @@ internal static class OptionsPage
         panel.Children.Add(Header(look, "Windows"));
         panel.Children.Add(Check(look, "Follow the selected unit", Settings.FollowSelection,
             "The scope, the sonar display and the board's sensor panel show the unit selected in the game. Off: the unit clicked on the board."));
+        panel.Children.Add(Check(look, "Radar scope: blips appear when the sweep passes", Settings.RealisticSweep,
+            "On: a radar contact is painted when the sweep passes over it and fades until the next pass. Off: contacts are always shown at their latest position."));
         panel.Children.Add(Slider(look, "Lost contact memory", "How long a lost contact stays on the board and scope, dimmed.",
             Settings.MemorySeconds, 0f, 600f, 10f, v => Math.Round(v) + " s"));
         panel.Children.Add(Check(look, "Bottom bar buttons", Settings.BarButtons,

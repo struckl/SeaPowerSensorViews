@@ -12,6 +12,8 @@
 - **Lag when the map moves:** the map lines are rebuilt at most twice a second however often the snapshot comes (the 10-a-second snapshot of the scope made every line rebuild 10 times a second).
 - **Line labels** stand a quarter of the way back along the line instead of on the contact marker's own text.
 - **Scope:** 'SEARCH RADAR OFF' is written over the scope when none of the unit's search radars is on (the sweep is not drawn then).
+- **Quick switches in the map's Layers menu:** 'Sensor lines: all units', 'radar', 'ESM', 'visual', 'sonar' and 'hide ESM of tracked contacts' (also in the Options tab). An ESM bearing line and cone is left out for a contact that a radar holds as a live track.
+- **Radar scope like a radar:** a radar contact is painted when the sweep passes over it, at its position then, and fades until the next pass; the scope's contacts from other sensors stay always current. Setting 'Radar scope: blips appear when the sweep passes' (Options tab / config) switches back to the old always-current look.
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

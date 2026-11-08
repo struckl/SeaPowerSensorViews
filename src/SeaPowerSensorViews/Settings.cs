@@ -26,6 +26,9 @@ internal static class Settings
     public static ConfigEntry<float> WedgeNm;
     public static ConfigEntry<bool> ZoomedWedges;
     public static ConfigEntry<string> LinesKey;
+    // quick switches (also entries of the map's Layers menu)
+    public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
+    public static ConfigEntry<bool> RealisticSweep;
     public static ConfigEntry<bool> CoverageVisible;
     public static ConfigEntry<string> CoverageKey;
     public static ConfigEntry<float> CoverageAltitude;
@@ -80,6 +83,18 @@ internal static class Settings
             "Off: zoomed in so far that a bearing wedge is longer than the screen, it is drawn as its bearing line only (the filled wedges " +
             "covered the whole map there and cost frame rate). On: always filled.");
         LinesKey = file.Bind("4. Map: sensor lines", "Toggle key", "Ctrl+Shift+PageUp", "Hot key for the sensor lines layer. Empty = none.");
+        LinesAllUnits = file.Bind("4. Map: sensor lines", "Quick: all units", false,
+            "Layers menu entry 'Sensor lines: all units'. On = every own unit's lines whatever 'Units shown' says (the selected unit's bright).");
+        LinesRadar = file.Bind("4. Map: sensor lines", "Quick: radar lines", true, "Layers menu entry 'Sensor lines: radar' (search and fire-control radar).");
+        LinesEsm = file.Bind("4. Map: sensor lines", "Quick: ESM lines", true, "Layers menu entry 'Sensor lines: ESM' (bearing lines and cones).");
+        LinesVisual = file.Bind("4. Map: sensor lines", "Quick: visual lines", true, "Layers menu entry 'Sensor lines: visual'.");
+        LinesSonar = file.Bind("4. Map: sensor lines", "Quick: sonar lines", true, "Layers menu entry 'Sensor lines: sonar' (passive and active).");
+        HideTrackedEsm = file.Bind("4. Map: sensor lines", "Hide ESM of tracked contacts", true,
+            "Layers menu entry 'Sensor lines: hide ESM of tracked contacts'. An ESM bearing line and cone is left out for a contact that a radar " +
+            "(or other ranging sensor) holds as a live track: the game has linked the emission to that contact, so the cone adds nothing.");
+        RealisticSweep = file.Bind("3. Views", "Radar scope: blips appear when the sweep passes", true,
+            "On: a radar contact is painted on the scope only when the sweep passes over it and then fades until the next pass, like a real " +
+            "radar. Off: contacts are always shown at their latest position, as in version 0.3.0.");
 
         CoverageVisible = file.Bind("5. Map: coverage", "Show coverage", false,
             "The 'Sensor coverage' entry of the map's Layers menu (kept in step with it). For the unit selected in the game: where its sensors " +
