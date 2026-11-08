@@ -8,6 +8,7 @@
 - **Map cones:** overlapping bearing cones of one colour cancelled each other out (blue edges, empty inside); they fill as one now. A bearing line and its cone run to the distance of the contact's marker (plus 10 %) when the game plots the contact; the 'Bearing wedge length' setting is only the fallback. Lines to ranged contacts end on the position the marker follows.
 - **Cones:** a fainter fill (7 % instead of 16 %) with a firm outline, so they read on bright terrain and where they overlap.
 - **Map lines follow a moving map in the same frame:** the lines and cones were moved by the next frame's update, so they trailed the map by a frame while it was dragged or zoomed; the map's viewport event moves them now.
+- **Own ships on the scope** are drawn in a lighter blue (the game's friendly blue was hard to see on the dark scope).
 - **Sensor board:** double-click a contact's row to bring the camera to where your sensors estimate it (never the real object), a unit's header to bring it to that unit.
 
 ## 0.3.0 - 2026-11-08

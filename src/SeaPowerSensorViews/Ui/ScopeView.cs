@@ -134,6 +134,19 @@ public sealed class ScopeSurface : Surface
     private ScopeWindow Win => DataContext as ScopeWindow;
     internal ScopeCursor CursorLayer;
     private int strobeVersion = -1;
+    private Brush own;
+
+    /// <summary>The game's friendly blue is too dark on the scope's dark ground: the same hue, 60 % towards white.</summary>
+    private Brush Own
+    {
+        get
+        {
+            if (own != null) return own;
+            Color c = (Friendly as SolidColorBrush)?.Color ?? Color.FromArgb(255, 39, 125, 205);
+            byte L(byte v) => (byte)(v + (255 - v) * 0.6f);
+            return own = new SolidColorBrush(Color.FromArgb(255, L(c.R), L(c.G), L(c.B)));
+        }
+    }
 
     public ScopeSurface()
     {
@@ -229,9 +242,9 @@ public sealed class ScopeSurface : Surface
                 if (nm > rangeNm * 1.02f) continue;
                 Point fp = Polar(cx, cy, nm * pxPerNm, brg - up);
                 var diamond = new Point[] { new Point(fp.X, fp.Y - 4.5f), new Point(fp.X + 4.5f, fp.Y), new Point(fp.X, fp.Y + 4.5f), new Point(fp.X - 4.5f, fp.Y), new Point(fp.X, fp.Y - 4.5f) };
-                Pen fpen = PenOf(Fade(Friendly, 0.9f), 1.3f);
+                Pen fpen = PenOf(Own, 1.6f);
                 for (int i = 0; i < 4; i++) dc.DrawLine(fpen, diamond[i], diamond[i + 1]);
-                Draw(dc, other.Name, fp.X + 7, fp.Y - 6, 9, Fade(Friendly, 0.85f));
+                Draw(dc, other.Name, fp.X + 7, fp.Y - 6, 10, Own);
             }
         }
 
