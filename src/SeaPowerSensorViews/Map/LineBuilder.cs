@@ -105,13 +105,19 @@ internal static class LineBuilder
                 if (!h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f)
                 {
                     float km = h.RangeM * KmPerMeter;
+                    float bearing = h.Bearing;
+                    if (cr.HasPlot)   // end on the map marker, not on this sensor's older estimate
+                    {
+                        GeoMath.BearingRange(origin, cr.Plot, out float pb, out float pnm);
+                        if (pnm > 0.01f) { km = pnm * 1.852f; bearing = pb; }
+                    }
                     int steps = Math.Max(1, Math.Min(10, (int)Math.Ceiling(km / 46f)));   // a chord every ~25 nm follows the curve
                     var lat = new double[steps + 1];
                     var lon = new double[steps + 1];
                     lat[0] = origin._latitude; lon[0] = origin._longitude;
                     for (int i = 1; i <= steps; i++)
                     {
-                        GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(km * i / steps, h.Bearing);
+                        GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(km * i / steps, bearing);
                         lat[i] = p._latitude; lon[i] = p._longitude;
                     }
                     string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;

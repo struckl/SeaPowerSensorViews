@@ -269,9 +269,11 @@ public sealed class ScopeSurface : Surface
             if (best == null) continue;
             float ageS = (float)(pic.Time - best.FixTime);
             float alpha = best.Live ? Math.Max(0.55f, 1f - ageS / Math.Max(4f, best.MaxAge)) : Math.Max(0.12f, 0.5f * (1f - ageS / memory));
-            float rNm = best.RangeM / 1852f;
+            float rNm = best.RangeM / 1852f, bNow = best.Bearing;
+            if (cr.HasPlot)   // the map marker's place, from the unit as it is now: lines and marks agree with the map
+                GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
             if (rNm > rangeNm * 1.02f) continue;
-            Point p = Polar(cx, cy, rNm * pxPerNm, best.Bearing - up);
+            Point p = Polar(cx, cy, rNm * pxPerNm, bNow - up);
             Brush color = cr.Relation == 3 ? Hostile : cr.Relation == 1 ? Friendly : cr.Relation == 2 ? Neutral : Unknown;
             Brush c = Fade(color, alpha);
             dc.DrawRectangle(c, null, new Rect(p.X - 3.5f, p.Y - 3.5f, 7, 7));

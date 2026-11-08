@@ -104,7 +104,8 @@ internal sealed class Host : MonoBehaviour
                 // With the scope open the snapshot follows the game's clock (10 a second at most) so its lines and contacts are from the
                 // same moment as the world; the board and sonar are fine with one a second.
                 bool scopeOpen = windows && Kit.Window(1) is ScopeWindow sc && Kit.IsOpen(sc);
-                bool fresh = scopeOpen ? pic.Tick(Time.unscaledTime, 0.1, true) : pic.Tick(Time.unscaledTime);
+                bool fast = scopeOpen || Map.MapSet.NeedsPicture;       // the map's sensor lines follow the game's clock too
+                bool fresh = fast ? pic.Tick(Time.unscaledTime, 0.1, true) : pic.Tick(Time.unscaledTime);
                 Perf.Stop(Perf.Part.Picture, t);
                 if (fresh && windows)
                 {

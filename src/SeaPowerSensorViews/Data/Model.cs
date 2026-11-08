@@ -100,6 +100,8 @@ internal sealed class ContactRow
     public string LabelClass;
     public int Listed;              // stamp of the refresh that put it into Contacts
     public int Relation;            // 0 unknown, 1 friendly, 2 neutral, 3 hostile
+    public GeoPosition Plot;        // where the game's plotting table puts the contact (the map marker; its estimate, not the real object)
+    public bool HasPlot;
     public readonly List<Hit> Hits = new List<Hit>();
     public int Stamp;
 }

@@ -203,6 +203,15 @@ internal sealed class SensorPicture
             cr.LabelClass = cls;
             cr.Label = string.IsNullOrEmpty(cls) ? "T" + v.Id : "T" + v.Id + " " + cls;
         }
+        // The plotted position: what the map's marker shows (the track's estimate, extrapolated between fixes). Lines and scope
+        // marks that end here sit on the marker; one built from a sensor's own bearing and range lagged behind it.
+        try
+        {
+            var est = v.PositionEstimate;
+            cr.HasPlot = est.HasValue;
+            if (est.HasValue) cr.Plot = est.Value.Item1;
+        }
+        catch (Exception) { cr.HasPlot = false; }
         switch (v.CurrentRelationship())
         {
             case RelationsState.Friendly: cr.Relation = 1; break;
