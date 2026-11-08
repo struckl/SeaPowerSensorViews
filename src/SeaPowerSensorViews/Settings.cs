@@ -26,7 +26,7 @@ internal static class Settings
     public static ConfigEntry<float> WedgeNm;
     public static ConfigEntry<bool> ZoomedWedges;
     public static ConfigEntry<string> LinesKey;
-    // quick switches (also entries of the map's Layers menu)
+    // quick switches (in the bar-button flyout and on the sensor board)
     public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
     public static ConfigEntry<bool> RealisticSweep, RetroLook;
     public static ConfigEntry<float> VisualLifetime;
@@ -86,13 +86,13 @@ internal static class Settings
             "covered the whole map there and cost frame rate). On: always filled.");
         LinesKey = file.Bind("4. Map: sensor lines", "Toggle key", "Ctrl+Shift+PageUp", "Hot key for the sensor lines layer. Empty = none.");
         LinesAllUnits = file.Bind("4. Map: sensor lines", "Quick: all units", false,
-            "Layers menu entry 'Sensor lines: all units'. On = every own unit's lines whatever 'Units shown' says (the selected unit's bright).");
-        LinesRadar = file.Bind("4. Map: sensor lines", "Quick: radar lines", true, "Layers menu entry 'Sensor lines: radar' (search and fire-control radar).");
-        LinesEsm = file.Bind("4. Map: sensor lines", "Quick: ESM lines", true, "Layers menu entry 'Sensor lines: ESM' (bearing lines and cones).");
-        LinesVisual = file.Bind("4. Map: sensor lines", "Quick: visual lines", true, "Layers menu entry 'Sensor lines: visual'.");
-        LinesSonar = file.Bind("4. Map: sensor lines", "Quick: sonar lines", true, "Layers menu entry 'Sensor lines: sonar' (passive and active).");
+            "Switch in the bar-button flyout and on the sensor board. On = every own unit's lines whatever 'Units shown' says (the selected unit's bright).");
+        LinesRadar = file.Bind("4. Map: sensor lines", "Quick: radar lines", true, "Flyout / board switch for radar lines (search and fire-control radar).");
+        LinesEsm = file.Bind("4. Map: sensor lines", "Quick: ESM lines", true, "Flyout / board switch for ESM lines (bearing lines and cones).");
+        LinesVisual = file.Bind("4. Map: sensor lines", "Quick: visual lines", true, "Flyout / board switch for visual lines.");
+        LinesSonar = file.Bind("4. Map: sensor lines", "Quick: sonar lines", true, "Flyout / board switch for sonar lines (passive and active).");
         HideTrackedEsm = file.Bind("4. Map: sensor lines", "Hide ESM of tracked contacts", true,
-            "Layers menu entry 'Sensor lines: hide ESM of tracked contacts'. An ESM bearing line and cone is left out for a contact that a radar " +
+            "Flyout / board switch. An ESM bearing line and cone is left out for a contact that a radar " +
             "(or other ranging sensor) holds as a live track: the game has linked the emission to that contact, so the cone adds nothing.");
         ZoomAnimation = file.Bind("3. Views", "Radar scope: zoom animation", true,
             "On: when the range changes (mouse wheel, - and + buttons) the contacts glide to the new scale in about a quarter of a second instead of jumping. Off: they jump.");

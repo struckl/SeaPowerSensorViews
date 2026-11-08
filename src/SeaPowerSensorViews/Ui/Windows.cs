@@ -104,6 +104,7 @@ public sealed class ScopeWindow : SvWindow
     internal bool HeadingUp;
     internal bool ShowHorizon = true;
     internal bool ShowFriends = true;       // the other own units, as a reference
+    internal ContactRow SelContact;         // the contact picked with a click on the scope
 
     /// <summary>Raised when the range changes (mouse wheel on the scope, the - / + buttons) so the tool row can show it.</summary>
     internal event Action Changed;

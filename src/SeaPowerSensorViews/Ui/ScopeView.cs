@@ -167,12 +167,86 @@ public sealed class ScopeSurface : Surface
     {
         MouseMove += (s, e) => CursorLayer?.MoveTo(e.GetPosition(this));
         MouseLeave += (s, e) => CursorLayer?.MoveTo(new Point(-1, -1));
+        MouseLeftButtonDown += OnPick;
         MouseWheel += (s, e) =>
         {
             Win?.StepRange(e.Delta > 0 ? -1 : 1);
             e.Handled = true;
             Registry.RefreshAll();
         };
+    }
+
+
+    /// <summary>Where the scope draws a contact (the unit's own ranged track, the map marker's place when the game plots it); false when it has none or is out of range.</summary>
+    private static bool ContactPoint(ContactRow cr, UnitRow unit, in ScopeGeometry g, out Point p)
+    {
+        p = default;
+        Hit best = null;
+        foreach (Hit hit in cr.Hits)
+        {
+            if (hit.Unit != unit || hit.BearingOnly || float.IsNaN(hit.RangeM)) continue;
+            if (best == null || hit.FixTime > best.FixTime) best = hit;
+        }
+        if (best == null) return false;
+        float rNm = best.RangeM / 1852f, bNow = best.Bearing;
+        if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
+        if (rNm > g.RangeNm * 1.02f) return false;
+        p = Polar(g.Cx, g.Cy, rNm * g.PxPerNm, bNow - g.Up);
+        return true;
+    }
+
+    /// <summary>A click on the scope picks the contact or own ship nearest to the pointer (within 14 px) and brings the game's camera to it.</summary>
+    private void OnPick(object sender, MouseButtonEventArgs e)
+    {
+        ScopeWindow win = Win;
+        SensorPicture pic = SensorPicture.Current;
+        UnitRow unit = win?.Subject();
+        if (win == null || unit == null || !pic.InMission) { ModLog.Debug("Scope click: no window, unit or mission."); return; }
+        if (!ScopeGeometry.Of(win, unit, (float)ActualWidth, (float)ActualHeight, out ScopeGeometry g)) { ModLog.Debug("Scope click: no geometry."); return; }
+        Point click = e.GetPosition(this);
+        ContactRow pick = null;
+        UnitRow pickUnit = null;
+        float bestD = 14f * 14f, nearest = float.MaxValue;
+        int candidates = 0;
+        foreach (ContactRow cr in pic.Contacts)
+        {
+            if (!ContactPoint(cr, unit, g, out Point p)) continue;
+            candidates++;
+            float d = (p.X - (float)click.X) * (p.X - (float)click.X) + (p.Y - (float)click.Y) * (p.Y - (float)click.Y);
+            nearest = Math.Min(nearest, d);
+            if (d < bestD) { bestD = d; pick = cr; pickUnit = null; }
+        }
+        if (win.ShowFriends)       // the other own ships, drawn as diamonds
+        {
+            GeoPosition here = unit.Unit.getGeoPosition();
+            foreach (UnitRow other in pic.Units)
+            {
+                if (ReferenceEquals(other, unit) || other.Unit == null) continue;
+                GeoMath.BearingRange(here, other.Unit.getGeoPosition(), out float brg, out float nm);
+                if (nm > g.RangeNm * 1.02f) continue;
+                Point fp = Polar(g.Cx, g.Cy, nm * g.PxPerNm, brg - g.Up);
+                candidates++;
+                float d = (fp.X - (float)click.X) * (fp.X - (float)click.X) + (fp.Y - (float)click.Y) * (fp.Y - (float)click.Y);
+                nearest = Math.Min(nearest, d);
+                if (d < bestD) { bestD = d; pickUnit = other; pick = null; }
+            }
+        }
+        ModLog.Debug("Scope click at " + click.X.ToString("0") + "," + click.Y.ToString("0") + ": " + candidates + " on the scope, nearest " +
+                     (nearest == float.MaxValue ? "-" : Math.Sqrt(nearest).ToString("0") + " px") + " -> " +
+                     (pick != null ? pick.Label : pickUnit != null ? pickUnit.Name : "nothing"));
+        if (pick != null)
+        {
+            win.SelContact = pick;
+            Jump.ToContact(pick, unit);
+        }
+        else if (pickUnit != null)
+        {
+            win.SelContact = null;
+            Jump.ToUnit(pickUnit);
+        }
+        else return;
+        e.Handled = true;
+        Registry.RefreshAll();
     }
 
     /// <summary>Between snapshots the picture is redrawn only when a radar warning or jam strobe came or went.</summary>
@@ -311,6 +385,10 @@ public sealed class ScopeSurface : Surface
             if (lock_) dc.DrawEllipse(null, PenOf(Hostile, 1.5f), p, 9, 9);
             Draw(dc, cr.Label + (lock_ ? " LOCK" : ""), p.X + 7, p.Y - 6, 10, Fade(lock_ ? Hostile : Highlight, Math.Max(0.35f, alpha)));
         }
+
+        // ---- the picked contact -------------------------------------------------------------------------------------
+        if (win.SelContact != null && pic.Contacts.Contains(win.SelContact) && ContactPoint(win.SelContact, unit, g, out Point sp))
+            dc.DrawEllipse(null, PenOf(Highlight, 1.5f), sp, 12, 12);
 
         // ---- own ship ------------------------------------------------------------------------------------------------
         dc.DrawEllipse(Highlight, null, new Point(cx, cy), 3, 3);

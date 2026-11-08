@@ -35,22 +35,10 @@ internal static class MapSet
         coverageLayer ??= new LayerEntry(604, "SEWERLABS_SENSOR_COVERAGE", "Sensor coverage (selected unit)", Settings.CoverageVisible);
         linesLayer.EnsureRegistered();
         coverageLayer.EnsureRegistered();
-        // quick switches in the same menu: one click, no settings screen (numbers 605..610 are free: see LayerEntry)
-        if (quick.Count == 0)
-        {
-            quick.Add(new LayerEntry(605, "SEWERLABS_SENSOR_LINES_ALL", "Sensor lines: all units", Settings.LinesAllUnits));
-            quick.Add(new LayerEntry(606, "SEWERLABS_SENSOR_LINES_RADAR", "Sensor lines: radar", Settings.LinesRadar));
-            quick.Add(new LayerEntry(607, "SEWERLABS_SENSOR_LINES_ESM", "Sensor lines: ESM", Settings.LinesEsm));
-            quick.Add(new LayerEntry(608, "SEWERLABS_SENSOR_LINES_VISUAL", "Sensor lines: visual", Settings.LinesVisual));
-            quick.Add(new LayerEntry(609, "SEWERLABS_SENSOR_LINES_SONAR", "Sensor lines: sonar", Settings.LinesSonar));
-            quick.Add(new LayerEntry(610, "SEWERLABS_SENSOR_LINES_HIDE_TRACKED_ESM", "Sensor lines: hide ESM of tracked contacts", Settings.HideTrackedEsm));
-        }
-        foreach (LayerEntry q in quick) q.EnsureRegistered();
+        // The per-sensor, all-units and hide-tracked switches (605..610) moved to the sensor board's map bar.
         Coverage.Reset();
         linesPictureVersion = -1;
     }
-
-    private static readonly List<LayerEntry> quick = new List<LayerEntry>();
 
     public static void MissionEnded()
     {

@@ -12,9 +12,108 @@ namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full n
 /// <summary>Sensor board window content: legend line, the unit x contact grid, and the selected unit's sensors.</summary>
 public sealed class BoardView : UserControl
 {
+    private bool syncing;
+    private readonly System.Collections.Generic.List<System.Action> syncers = new System.Collections.Generic.List<System.Action>();
+
+    /// <summary>A check box bound to a bool getter/setter; <paramref name="read"/> re-reads it on Sync.</summary>
+    private CheckBox Check(Panel into, string text, System.Func<bool> read, System.Action<bool> write, string tip)
+    {
+        var box = new CheckBox { Content = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), ToolTip = tip };
+        box.Click += (s, e) => { if (!syncing) write(box.IsChecked == true); };
+        syncers.Add(() => { bool v = read(); if (box.IsChecked != v) box.IsChecked = v; });
+        into.Children.Add(box);
+        return box;
+    }
+
+    private void Sync()
+    {
+        syncing = true;
+        try { foreach (var s in syncers) s(); }
+        finally { syncing = false; }
+    }
+
+    /// <summary>
+    /// Map layer switches: what used to live in the map's Layers menu. One "Map layers" button with the three dots; it opens a
+    /// list with the switches, like the kebab button in the title bar of Pop-Out and Topo, instead of a wide row of check boxes.
+    /// </summary>
+    private Grid BuildMapBar()
+    {
+        var list = new StackPanel { Orientation = Orientation.Vertical };
+        var white = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
+        list.Children.Add(new TextBlock { Text = "Map layers", FontWeight = FontWeight.Bold, Foreground = white, Margin = new Thickness(0, 0, 0, 4) });
+        Check(list, "Sensor lines", () => Map.MapSet.LinesOn, v => { if (v != Map.MapSet.LinesOn) Map.MapSet.ToggleLines(); }, "Lines from each own unit to the contacts it holds").Margin = new Thickness(0, 2, 10, 2);
+        Check(list, "Coverage", () => Map.MapSet.CoverageOn, v => { if (v != Map.MapSet.CoverageOn) Map.MapSet.ToggleCoverage(); }, "Where the selected unit's sensors would hold an imagined target").Margin = new Thickness(0, 2, 10, 2);
+
+        var who = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        who.Children.Add(new TextBlock { Text = "Lines for", Foreground = white, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        var sel = new RadioButton { Content = "selected unit", GroupName = "who" + GetHashCode(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        var all = new RadioButton { Content = "all units", GroupName = "who" + GetHashCode(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 0), ToolTip = "Lines of every own unit, the selected one bright (coverage stays selected-unit only)" };
+        sel.Click += (s, e) => { if (syncing) return; Settings.LinesAllUnits.Value = false; Settings.LinesWho.Value = Settings.SelectedOnly; };
+        all.Click += (s, e) => { if (syncing) return; Settings.LinesAllUnits.Value = false; Settings.LinesWho.Value = Settings.AllUnits; };
+        syncers.Add(() =>
+        {
+            bool everyone = Settings.LinesAllUnits.Value || Settings.LinesWho.Value == Settings.AllUnits;
+            if (all.IsChecked != everyone) all.IsChecked = everyone;
+            if (sel.IsChecked != !everyone) sel.IsChecked = !everyone;
+        });
+        who.Children.Add(sel);
+        who.Children.Add(all);
+        list.Children.Add(who);
+
+        list.Children.Add(new TextBlock { Text = "Lines of", Foreground = white, Margin = new Thickness(0, 6, 0, 2) });
+        var kinds = new StackPanel { Orientation = Orientation.Horizontal };
+        Check(kinds, "radar", () => Settings.LinesRadar.Value, v => Settings.LinesRadar.Value = v, "Search and fire-control radar");
+        Check(kinds, "ESM", () => Settings.LinesEsm.Value, v => Settings.LinesEsm.Value = v, "ESM bearing lines and cones");
+        Check(kinds, "visual", () => Settings.LinesVisual.Value, v => Settings.LinesVisual.Value = v, "Visual and infrared");
+        Check(kinds, "sonar", () => Settings.LinesSonar.Value, v => Settings.LinesSonar.Value = v, "Passive and active sonar");
+        list.Children.Add(kinds);
+        Check(list, "hide ESM of tracked", () => Settings.HideTrackedEsm.Value, v => Settings.HideTrackedEsm.Value = v,
+            "Leave out an ESM line for a contact a radar holds as a live track").Margin = new Thickness(0, 4, 10, 0);
+
+        var host = new Grid { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 4) };
+        var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        if (Noesis.GUI.ParseXaml("<Path xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Width=\"12\" Height=\"12\" " +
+                "StrokeThickness=\"1.3\" StrokeStartLineCap=\"Round\" StrokeEndLineCap=\"Round\" VerticalAlignment=\"Center\" " +
+                "Data=\"M1,11 L11,2 M1,11 L11,6.5 M1,11 L6,1.5\" " +
+                "Stroke=\"{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}\"/>") is UIElement dots)
+            content.Children.Add(dots);
+        content.Children.Add(new TextBlock { Text = "Map layers", Margin = new Thickness(6, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center });
+        var button = new Button { Content = content, Focusable = false, Padding = new Thickness(6, 2, 8, 2), ToolTip = "Sensor lines and coverage on the map" };
+        var popup = new Popup
+        {
+            Child = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(240, 32, 32, 32)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 128, 128, 128)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(10),
+                Child = list,
+            },
+            PlacementTarget = button,
+            Placement = PlacementMode.Bottom,
+            StaysOpen = false,
+        };
+        // A click on the button while the list is open: the popup's light dismiss closes it first, so that click must not reopen it.
+        DateTime closedAt = DateTime.MinValue;
+        popup.Closed += (s, e) => closedAt = DateTime.UtcNow;
+        button.Click += (s, e) =>
+        {
+            e.Handled = true;
+            if (popup.IsOpen) { popup.IsOpen = false; return; }
+            if ((DateTime.UtcNow - closedAt).TotalMilliseconds < 250)
+                return;
+            Sync();
+            popup.IsOpen = true;
+        };
+        host.Children.Add(button);
+        host.Children.Add(popup);
+        return host;
+    }
+
     public BoardView()
     {
         var grid = new Grid { Margin = new Thickness(6) };
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(175) });
@@ -26,15 +125,24 @@ public sealed class BoardView : UserControl
             Text = "R search radar   F fire control   E ESM   S passive sonar   A active sonar   V visual / infrared   M MAD" +
                    "      lower case = bearing only      dim = lost, last fix       number = age of the freshest fix",
         };
-        Grid.SetRow(legend, 0);
+        Grid.SetRow(legend, 1);
+        Grid mapBar;
+        try { mapBar = BuildMapBar(); ModLog.Debug("Board: map bar built."); }
+        catch (Exception ex) { ModLog.Error("Board map bar failed, board opens without it: " + ex); mapBar = new Grid(); }
+        Grid.SetRow(mapBar, 0);
         var board = new BoardSurface { Margin = new Thickness(0, 0, 0, 4) };
-        Grid.SetRow(board, 1);
+        Grid.SetRow(board, 2);
         var panel = new PanelSurface();
-        Grid.SetRow(panel, 2);
+        Grid.SetRow(panel, 3);
+        grid.Children.Add(mapBar);
         grid.Children.Add(legend);
         grid.Children.Add(board);
         grid.Children.Add(panel);
         Content = grid;
+        ModLog.Debug("Board: view built.");
+        Loaded += (s, e) => { try { Sync(); } catch (Exception ex) { ModLog.Error("Board sync: " + ex); } };
+        DataContextChanged += (s, e) => Sync();
+        board.MouseEnter += (s, e) => Sync();      // catches a change made in the Layers menu or by hot key
     }
 }
 

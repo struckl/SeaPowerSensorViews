@@ -17,6 +17,7 @@ internal static class Jump
         {
             if (row?.Unit == null || row.Unit.IsDestroyed || !Singleton<RenderPosition>.InstanceExists()) return;
             Singleton<RenderPosition>.Instance.switchToObject(row.Unit, true);
+            ModLog.Debug("Jump to unit " + row.Name + ".");
         }
         catch (Exception ex) { ModLog.Warn("Jump to unit failed: " + ex.Message); }
     }
@@ -50,6 +51,7 @@ internal static class Jump
             RenderPosition cam = Singleton<RenderPosition>.Instance;
             cam.detachCameraFromTarget();
             cam.setGlobalPosition(at);
+            ModLog.Debug("Jump to contact " + cr.Label + ".");
         }
         catch (Exception ex) { ModLog.Warn("Jump to contact failed: " + ex.Message); }
     }

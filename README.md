@@ -37,7 +37,7 @@ target altitude you choose, not for a hidden contact.
 
 ## Opening the windows
 
-- Three small buttons - **Board**, **Scope**, **Sonar** - at the right end of the bottom bar, next to the game's window toggles;
+- One icon button (a radar scope) at the right end of the bottom bar, next to the game's window toggles; its flyout opens **Board**, **Radar scope** and **Sonar** one by one and holds the map switches (sensor lines, coverage, selected unit or all units, lines per sensor);
   they light up while their window is open.
 - Hot keys (configurable): `Ctrl+Insert` board, `Ctrl+PageUp` scope, `Ctrl+PageDown` sonar, `Ctrl+Shift+PageUp` sensor lines, `Ctrl+Shift+PageDown` coverage.
 

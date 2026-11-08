@@ -30,10 +30,12 @@ internal sealed class MapView
     private int labelsUsed;
     private bool viewDirty = true;
     private double nextViewBuild;
+    private LineSet lastLines;
+    private CoverageSet lastCoverage;
     private int linesVersion = -1, coverageVersion = -1, settingsVersion = -1;
     private bool linesShown, coverageShown;
     private readonly Fit linesFit, coverageFit;
-    // The area paths are cut to, in view pixels: the view plus half a view size on each side. Zoomed in, a sensor line or wedge runs
+    // The area paths are cut to, in view pixels: the view plus a view size on each side. Zoomed in, a sensor line or wedge runs
     // hundreds of thousands of pixels past the screen; uncut, Noesis tessellated all of it (every dash of a dotted line), which froze
     // the game when zoomed in on a contact.
     private float clipX0, clipY0, clipX1, clipY1;
@@ -94,8 +96,16 @@ internal sealed class MapView
             // and cones trailed the map by one frame while it was dragged or zoomed. (Update still rebuilds what a transform cannot follow.)
             try
             {
-                if (linesShown) Follow(linesFit);
-                if (coverageShown) Follow(coverageFit);
+                bool linesOk = !linesShown || Follow(linesFit), coverOk = !coverageShown || Follow(coverageFit);
+                double now = UnityEngine.Time.unscaledTimeAsDouble;
+                // What the transform cannot follow (a turning globe, a pan beyond the cut area) is rebuilt right here, in the frame the map
+                // moved, not by the next Update; at most about once per frame.
+                if ((!linesOk || !coverOk) && lastLines != null && lastCoverage != null && now >= nextViewBuild)
+                {
+                    nextViewBuild = now + 0.016;
+                    BuildView(!linesOk, !coverOk);
+                    viewDirty = false;
+                }
             }
             catch (Exception) { /* Update will deal with it */ }
         };
@@ -160,8 +170,30 @@ internal sealed class MapView
 
     // ---- update ------------------------------------------------------------------------------------------------------
 
+    /// <summary>Projects and builds the panels again for the current view (the data is the last one Update was given).</summary>
+    private void BuildView(bool lines, bool coverage)
+    {
+        SetClip();
+        if (lines && linesShown)
+        {
+            long t = Perf.Start();
+            BuildLines(lastLines);
+            Anchor(linesFit);
+            Perf.Stop(Perf.Part.MapBuild, t);
+        }
+        if (coverage && coverageShown)
+        {
+            long t = Perf.Start();
+            BuildCoverage(lastCoverage);
+            Anchor(coverageFit);
+            Perf.Stop(Perf.Part.MapBuild, t);
+        }
+    }
+
     public void Update(bool showLines, LineSet lines, bool showCoverage, CoverageSet coverage)
     {
+        lastLines = lines;
+        lastCoverage = coverage;
         if (showLines != linesShown)
         {
             linesShown = showLines;
@@ -196,13 +228,13 @@ internal sealed class MapView
         // A view change first tries the transform; what it cannot follow needs a rebuild.
         bool linesView = showLines && (view && !Follow(linesFit) || Settled(linesFit, now));
         bool coverageView = showCoverage && (view && !Follow(coverageFit) || Settled(coverageFit, now));
-        // While the map turns (globe) the view changes every frame: such rebuilds run at most 20 times a second.
+        // While the map turns (globe) the view changes every frame: such rebuilds run at most once per frame.
         if ((linesView || coverageView) && !settingsChanged && !linesData && !coverageData && now < nextViewBuild)
         {
             viewDirty = true;
             return;
         }
-        if (linesView || coverageView) nextViewBuild = now + 0.05;
+        if (linesView || coverageView) nextViewBuild = now + 0.016;
         if ((showLines && (settingsChanged || linesData || linesView)) || (showCoverage && (settingsChanged || coverageData || coverageView)))
             SetClip();
         if (showLines && (settingsChanged || linesData || linesView))
@@ -259,20 +291,20 @@ internal sealed class MapView
         double sx = x0 - scale * fit.X0, sy = y0 - scale * fit.Y0;
         double vx0 = (0 - sx) / scale, vy0 = (0 - sy) / scale;
         double vx1 = (Map.ActualWidth - sx) / scale, vy1 = (Map.ActualHeight - sy) / scale;
-        if (vx0 < fit.ClipX0 || vy0 < fit.ClipY0 || vx1 > fit.ClipX1 || vy1 > fit.ClipY1) return false;
+        // Move with the map in any case (a panel that stops while the map still moves is the lag), then say whether it still covers the view.
         fit.Scale.ScaleX = fit.Scale.ScaleY = (float)scale;
         fit.Shift.X = (float)(x0 - scale * fit.X0);
         fit.Shift.Y = (float)(y0 - scale * fit.Y0);
         bool zoomed = Math.Abs(scale - 1.0) > 1e-3;
         fit.SettleAt = zoomed ? UnityEngine.Time.unscaledTimeAsDouble + 0.3 : fit.SettleAt;
-        return true;
+        return !(vx0 < fit.ClipX0 || vy0 < fit.ClipY0 || vx1 > fit.ClipX1 || vy1 > fit.ClipY1);
     }
 
     // ---- cutting to the view ---------------------------------------------------------------------------------------------
 
     private void SetClip()
     {
-        float w = Map.ActualWidth, h = Map.ActualHeight, m = 0.5f * Math.Max(w, h);
+        float w = Map.ActualWidth, h = Map.ActualHeight, m = 1.0f * Math.Max(w, h);     // a whole view size each side: fast pans stay inside it longer
         clipX0 = -m; clipY0 = -m; clipX1 = w + m; clipY1 = h + m;
     }
 
