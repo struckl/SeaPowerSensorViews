@@ -1,31 +1,68 @@
 [h1]R.A.T.S. Sensor Views[/h1]
 [i]R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals[/i]
-Shows which of your units sees which contact, with which sensor. Three windows that look like the game's own, plus two layers for the tactical map.
 
-[h2]Sensor board[/h2]
-Your units across, the contacts down. Each cell lists the sensors that hold the contact: R search radar, F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD. A lower-case letter means bearing only, dimmed letters lost the contact a moment ago, and the number is the age of the freshest fix. Click a cell for bearing, range and fix age per sensor. For a bearing-only contact there is a small strip with its bearing over the last minutes and the drift in degrees per minute. Below the grid: the selected unit's sensors with on / off, damage, arcs and EMCON.
+[b]Sit down, Commander. Your cruiser has a real radar room now.[/b]
+See who sees what: a green phosphor radar scope, a sonar waterfall, a sensor board and live sensor lines on your tactical map. Everything opens from one radar button at the bottom right.
 
-[h2]Radar scope[/h2]
-A scope around the selected unit with the contacts its radars and eyes hold, fading with the age of the last fix. It shows the blind arcs of the search radars, the radar horizon against a target altitude you set with a slider, ESM and passive sonar bearing lines, strobes for radars warning you and for jammers, and a ring with "LOCK" for contacts held by a fire-control radar. Range, north-up or heading-up, and a measuring cursor with bearing and range. The turning sweep line is decoration.
-
-[h2]Sonar display[/h2]
-Bearing over time relative to the bow, newest at the top, for the sonar you pick (< and >). The baffle sector is shaded, your own noise at your speed is shown, and a measuring cursor reads bearing and age. The depth strip shows the thermal layer, your depth, the array and the seabed, plus the contacts the sonar holds at the depth the game's track estimates, with above / below the layer. The Echoes button switches the waterfall to a bearing / range plot: active echoes filled, passive contacts with a range estimate as rings.
-
-[h2]On the map[/h2]
-Two entries in the map's Layers menu:
+[h2]The highlights[/h2]
 [list]
-[*][b]Sensor lines (who sees what)[/b]: a line from each of your units to where each sensor puts a contact. Amber for search radar, thick red for a fire-control lock, blue for active sonar, dotted for visual. ESM and passive sonar are a bearing line with a wedge. The selected unit's lines are bright, the others dimmed.
-[*][b]Sensor coverage (selected unit)[/b], off by default: where the selected unit's sensors would hold an imagined target. Radar against the scope's target altitude with terrain shadows, ESM, visual range, and passive sonar with the dent of its baffle sector.
+[*][b]A radar that looks like one.[/b] Green phosphor tube, the sweep leaves a glowing trail, contacts light up when it hits them and fade until the next pass
+[*][b]Sonar with depth.[/b] Waterfall with baffle sectors, your own noise and a depth strip with thermal layer and seabed
+[*][b]Know where you are blind.[/b] Coverage on the map shows where your radar goes dark behind hills
+[*][b]Click and fly.[/b] Click a contact on the scope and the camera flies to it. Click your own ships too
+[*][b]Everything on one button.[/b] One flyout opens every window and flips every map layer
 [/list]
 
-[h2]Opening it[/h2]
-One radar-scope button at the right end of the bottom bar opens a flyout: Board, Radar scope and Sonar (each one alone), plus the map switches (sensor lines, coverage, selected unit or all units, lines per sensor, what the coverage shows). Click a contact or one of your own ships on the radar scope and the camera jumps to it. Hot keys: Ctrl+Insert, Ctrl+PageUp, Ctrl+PageDown for the windows, Ctrl+Shift+PageUp and Ctrl+Shift+PageDown for the map layers. All can be changed in the config. With [b]R.A.T.S. Pop-Out Windows[/b] the windows get its pop-out button and can go to a second monitor.
+[h2]Radar scope[/h2]
+[list]
+[*]The contacts your radars and eyes hold, fading with the age of the last fix
+[*]Range changes glide instead of jumping
+[*]Radar horizon ring: set the target altitude with the slider or type it in
+[*]Blind arcs of your search radars
+[*]ESM and passive sonar bearing lines, strobes for radars warning you and for jammers
+[*]A LOCK ring on contacts held by a fire-control radar
+[*]North-up or heading-up, and a measuring cursor with bearing and range
+[/list]
 
-[h2]Where the data comes from[/h2]
-Display only. Everything comes from what your own sensors already report to the game's plotting table: track bearing, range, depth and age estimates. The mod never shows a contact's real position and changes nothing in a mission; the mission's own rules decide what a sensor can detect. Passive sonar depth is the game's own rough estimate and can be off by hundreds of feet.
+[h2]Sonar display[/h2]
+[list]
+[*]Bearing over time, newest at the top, for the sonar you pick
+[*]Baffle sector shaded, your own noise at your speed shown
+[*]Depth strip: thermal layer, your depth, the array, the seabed and the contacts at the depth the game estimates
+[*]Echoes button: switch the waterfall to a bearing and range plot
+[/list]
 
-[b]A mod loader[/b] is required, either one: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459]R.A.T.S. Keel[/url] (needed on the 3D globe beta) or [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757]Anchor Chain[/url].
-Run in the game on Sea Power 0.8.7. The mod also contains a build for the 3D globe beta (the right one loads on each game, the other stays off); that one was run in the game on the beta build 261107. No game files are changed. If a game update moves something the mod hooks into, the log says what turned off.
+[h2]Sensor board[/h2]
+[list]
+[*]Your units across, the contacts down, and which sensor holds what: R search radar, F fire control, E ESM, S passive sonar, A active sonar, V visual or infrared, M MAD
+[*]Click a cell for bearing, range and age per sensor. Double-click a contact to bring the camera to it
+[*]The selected unit's sensors with on or off, damage, arcs and EMCON
+[/list]
+
+[h2]On the map[/h2]
+[list]
+[*][b]Sensor lines:[/b] a line from each of your units to where each sensor puts a contact. Amber for search radar, thick red for a fire-control lock, blue for active sonar, dotted for visual, a wedge for ESM and passive sonar
+[*][b]Coverage:[/b] where the selected unit's sensors would hold an imagined target. Radar with terrain shadows, ESM, visual range and passive sonar. Off by default
+[*]Lines for the selected unit or for all of your units, per sensor type
+[/list]
+
+[h2]Open it[/h2]
+[list]
+[*]One radar button at the right end of the bottom bar opens the flyout: Board, Radar scope and Sonar (each one alone) plus the map switches
+[*]Hot keys: Ctrl+Insert, Ctrl+PageUp, Ctrl+PageDown for the windows, Ctrl+Shift+PageUp and Ctrl+Shift+PageDown for the map layers. All can be changed in the config
+[*]With [b]R.A.T.S. Pop-Out Windows[/b] the windows can go to a second monitor
+[/list]
+
+[h2]Good to know[/h2]
+[list]
+[*]Display only. It shows what your own sensors already report to the game's plotting table. The real position of a contact is never shown, and nothing in a mission changes: the mission's own rules decide what a sensor can detect
+[*]Passive sonar depth is the game's own rough estimate and can be off by hundreds of feet
+[*]No game files are changed. If a game update moves something the mod hooks into, the log says what turned off
+[/list]
+
+[h2]Install[/h2]
+[b]R.A.T.S. Keel[/b] is required: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459]subscribe[/url] and switch it on in the Mods menu; its page has the one install step. It replaces Anchor Chain.
+Run in the game on the 3D globe public beta (build 261107). The build for 0.8.7 passes the offline checks; the right DLL loads on each game and the other stays off.
 
 [h2]Problems?[/h2]
 For a bug, attach [i]<Sea Power>\BepInEx\LogOutput.log[/i] (as a link) and say which window and which unit. Settings are in [i]BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg[/i].
