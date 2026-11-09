@@ -2,7 +2,7 @@
 
 ## 0.4.2 - 2026-11-09 - radar scope and sonar display show only what those sensors detect
 
-Compiled and checked offline for both game versions (compat check). Not run in the game yet.
+Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik: radar contacts and an own ship paint and fade with the sweep, the sonar display opened with contacts and no errors in the log. Radar and sonar switched off, and own ships on the sonar display, not run in the game yet. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **A contact seen only by eye, sonar or another sensor no longer shows on the radar scope.** Only a live track from this unit's own radar does. ESM and passive sonar bearing lines left the scope too; they stay on the map, the board and the sonar display.
 - **Nothing on the scope while the radar is off.** With no search radar radiating (switched off, EMCON, broken) the scope is empty and says so; blips go at once, and RWR and jam strobes show only while the radar is on. A fire-control radar alone does not count.
