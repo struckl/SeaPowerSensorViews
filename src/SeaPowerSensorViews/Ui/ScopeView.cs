@@ -143,25 +143,95 @@ internal struct ScopeGeometry
     }
 }
 
+/// <summary>
+/// What the scope may show: only what the unit's own radar holds, and only while a search radar radiates. Contacts come from the game's
+/// radar tracks. The game makes no tracks of the player's own task force, so its other ships go through the game's own search-radar
+/// tests here (same range, horizon, terrain, arc, altitude, role, jamming), once a second of game time. Display only.
+/// </summary>
+internal static class ScopeRadar
+{
+    private const double OwnCheckSeconds = 1.0;
+    private static readonly HashSet<int> own = new HashSet<int>();
+    private static int ownFor = -1;
+    private static double ownAt = -1.0;
+
+    /// <summary>This radar system is switched on, working and able to make contacts.</summary>
+    internal static bool Radiating(SensorSystemRadar r) => r.CanProduceContacts && r._radar != null && r._mountObject != null;
+
+    private static bool IsSearch(SensorSystemRadar r) => r._type == SensorSystemRadar.RadarType.Search || r._type == SensorSystemRadar.RadarType.DirectedSearch;
+
+    /// <summary>A search radar of the unit (turning or directed) is radiating.</summary>
+    internal static bool On(ObjectBase unit)
+    {
+        var systems = unit?._obp?._sensorSystems;
+        if (systems == null) return false;
+        foreach (SensorSystem s in systems)
+            if (s is SensorSystemRadar r && IsSearch(r) && Radiating(r)) return true;
+        return false;
+    }
+
+    /// <summary>The unit's newest live radar track of the contact; null when its radars do not hold it or no search radar is on.</summary>
+    internal static Hit Best(ContactRow cr, UnitRow unit)
+    {
+        if (!On(unit.Unit)) return null;
+        Hit best = null;
+        foreach (Hit h in cr.Hits)
+            if (h.Unit == unit && h.Live && (h.Kind == Kind.Radar || h.Kind == Kind.FireControl) && !h.BearingOnly && !float.IsNaN(h.RangeM)
+                && (best == null || h.FixTime > best.FixTime)) best = h;
+        return best;
+    }
+
+    internal static bool Locked(ContactRow cr, UnitRow unit)
+    {
+        foreach (Hit h in cr.Hits)
+            if (h.Unit == unit && h.Kind == Kind.FireControl && h.Live) return true;
+        return false;
+    }
+
+    /// <summary>The unit's search radar holds this other ship of the player's task force.</summary>
+    internal static bool SeesOwn(UnitRow unit, UnitRow other, SensorPicture pic)
+    {
+        if (ReferenceEquals(other, unit) || other.Unit == null || !On(unit.Unit)) return false;
+        if (unit.Uid != ownFor || pic.Time < ownAt || pic.Time - ownAt >= OwnCheckSeconds)
+        {
+            ownFor = unit.Uid;
+            ownAt = pic.Time;
+            own.Clear();
+            foreach (UnitRow o in pic.Units)
+                if (!ReferenceEquals(o, unit) && o.Unit != null && Detects(unit.Unit, o.Unit)) own.Add(o.Uid);
+        }
+        return own.Contains(other.Uid);
+    }
+
+    private static bool Detects(ObjectBase home, ObjectBase target)
+    {
+        try
+        {
+            foreach (SensorSystem s in home._obp._sensorSystems)
+            {
+                if (!(s is SensorSystemRadar r) || !IsSearch(r) || !Radiating(r)) continue;
+                var pos = r.SensorPosition;
+                if (pos.y < 0f && (!(home is Submarine sub) || sub.isBelowPeriscopeDepth())) continue;
+                Radar radar = r._radar;
+                RadarParameters rp = radar._rp;
+                if (!radar.IsDetectableTarget_Unconditional(target, true, true) || !radar.IsDetectableTarget_Conditional(target)) continue;
+                // the arguments of the game's SearchRadar.createRadarEchoes
+                if (RadarCalculator.createRadarEcho(pos, target, rp._waveLength, rp._gainFactor, rp._peakPower, home._ECMSystemsTryingToJamMe, rp._frequency, home._crew,
+                        out SensorEcho _, false, rp._jamResistance, true, null, false, RadarCalculator.IsAirborneSensor(home) ? null : rp, pos.y, r._lookDownMultiplier < 1f))
+                    return true;
+            }
+        }
+        catch (Exception ex) { ModLog.Debug("Scope own-ship radar check: " + ex.Message); }
+        return false;
+    }
+}
+
 public sealed class ScopeSurface : Surface
 {
     internal override bool Retro => Settings.RetroLook.Value;
     private ScopeWindow Win => DataContext as ScopeWindow;
     internal ScopeCursor CursorLayer;
     private int strobeVersion = -1;
-    private Brush own;
-
-    /// <summary>The game's friendly blue is too dark on the scope's dark ground: the same hue, 60 % towards white.</summary>
-    private Brush Own
-    {
-        get
-        {
-            if (own != null) return own;
-            Color c = (Friendly as SolidColorBrush)?.Color ?? Color.FromArgb(255, 39, 125, 205);
-            byte L(byte v) => (byte)(v + (255 - v) * 0.6f);
-            return own = new SolidColorBrush(Color.FromArgb(255, L(c.R), L(c.G), L(c.B)));
-        }
-    }
 
     public ScopeSurface()
     {
@@ -177,16 +247,11 @@ public sealed class ScopeSurface : Surface
     }
 
 
-    /// <summary>Where the scope draws a contact (the unit's own ranged track, the map marker's place when the game plots it); false when it has none or is out of range.</summary>
+    /// <summary>Where the scope draws a contact (the unit's own radar track, the map marker's place when the game plots it); false when the radar does not hold it or it is out of range.</summary>
     private static bool ContactPoint(ContactRow cr, UnitRow unit, in ScopeGeometry g, out Point p)
     {
         p = default;
-        Hit best = null;
-        foreach (Hit hit in cr.Hits)
-        {
-            if (hit.Unit != unit || hit.BearingOnly || float.IsNaN(hit.RangeM)) continue;
-            if (best == null || hit.FixTime > best.FixTime) best = hit;
-        }
+        Hit best = ScopeRadar.Best(cr, unit);
         if (best == null) return false;
         float rNm = best.RangeM / 1852f, bNow = best.Bearing;
         if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
@@ -216,12 +281,12 @@ public sealed class ScopeSurface : Surface
             nearest = Math.Min(nearest, d);
             if (d < bestD) { bestD = d; pick = cr; pickUnit = null; }
         }
-        if (win.ShowFriends)       // the other own ships, drawn as diamonds
+        if (win.ShowFriends)       // the other own ships the radar holds, drawn as diamonds
         {
             GeoPosition here = unit.Unit.getGeoPosition();
             foreach (UnitRow other in pic.Units)
             {
-                if (ReferenceEquals(other, unit) || other.Unit == null) continue;
+                if (!ScopeRadar.SeesOwn(unit, other, pic)) continue;
                 GeoMath.BearingRange(here, other.Unit.getGeoPosition(), out float brg, out float nm);
                 if (nm > g.RangeNm * 1.02f) continue;
                 Point fp = Polar(g.Cx, g.Cy, nm * g.PxPerNm, brg - g.Up);
@@ -321,25 +386,26 @@ public sealed class ScopeSurface : Surface
             }
         }
 
-        // ---- the other own units, as a reference -------------------------------------------------------------------------
-        if (win.ShowFriends)
+        // The scope shows what the unit's radar holds and nothing while no search radar is on. With a turning antenna the blip layer
+        // paints it; without one (a directed radar, or the setting is off) this layer does, always current.
+        bool radarOn = ScopeRadar.On(unit.Unit);
+        bool drawnHere = radarOn && (!Settings.RealisticSweep.Value || float.IsNaN(SweepBearing(unit.Unit)));
+
+        // ---- the other own units the radar holds -------------------------------------------------------------------------
+        if (drawnHere && win.ShowFriends)
         {
             GeoPosition here = unit.Unit.getGeoPosition();
             foreach (UnitRow other in pic.Units)
             {
-                if (ReferenceEquals(other, unit) || other.Unit == null) continue;
+                if (!ScopeRadar.SeesOwn(unit, other, pic)) continue;
                 GeoMath.BearingRange(here, other.Unit.getGeoPosition(), out float brg, out float nm);
                 if (nm > rangeNm * 1.02f) continue;
-                Point fp = Polar(cx, cy, nm * pxPerNm, brg - up);
-                var diamond = new Point[] { new Point(fp.X, fp.Y - 4.5f), new Point(fp.X + 4.5f, fp.Y), new Point(fp.X, fp.Y + 4.5f), new Point(fp.X - 4.5f, fp.Y), new Point(fp.X, fp.Y - 4.5f) };
-                Pen fpen = PenOf(Own, 1.6f);
-                for (int i = 0; i < 4; i++) dc.DrawLine(fpen, diamond[i], diamond[i + 1]);
-                Draw(dc, other.Name, fp.X + 7, fp.Y - 6, 10, Own);
+                DrawOwnShip(dc, Polar(cx, cy, nm * pxPerNm, brg - up), other.Name, 1f);
             }
         }
 
         // ---- RWR and jam strobes ------------------------------------------------------------------------------------
-        foreach (Strobe st in unit.Strobes)
+        if (radarOn) foreach (Strobe st in unit.Strobes)
         {
             float age = (float)(pic.Time - st.Time);
             float alpha = Math.Max(0.15f, 1f - age / 8f);
@@ -350,30 +416,14 @@ public sealed class ScopeSurface : Surface
             DrawCentered(dc, st.Jam ? "JAM" : "RWR", label.X, label.Y - 6, 9, b);
         }
 
-        // ---- contacts: track estimates, fading with the age of the last fix ----------------------------------------------
-        float memory = Math.Max(5f, Settings.MemorySeconds.Value);
-        foreach (ContactRow cr in pic.Contacts)
+        // ---- radar contacts, when this layer draws them -------------------------------------------------------------------
+        if (drawnHere) foreach (ContactRow cr in pic.Contacts)
         {
-            Hit best = null;
-            bool lock_ = false;
-            foreach (Hit hit in cr.Hits)
-            {
-                if (hit.Unit != unit) continue;
-                if (hit.Kind == Kind.FireControl && hit.Live) lock_ = true;
-                bool ranged = !hit.BearingOnly && !float.IsNaN(hit.RangeM);
-                if (!ranged)
-                {
-                    if (hit.Kind == Kind.Esm || hit.Kind == Kind.Passive)
-                        DrawBearingLine(dc, cx, cy, radius, hit, GeoMath.BearingNow(cr, hit, unit.Unit.getGeoPosition()), pic.Time, up);
-                    continue;
-                }
-                if (best == null || hit.FixTime > best.FixTime) best = hit;
-            }
+            Hit best = ScopeRadar.Best(cr, unit);
             if (best == null) continue;
-            // a radar-held contact is painted by the blip layer (only when the sweep passes) unless that is switched off
-            if (Settings.RealisticSweep.Value && ScopeBlips.RadarHeld(cr, unit)) continue;
+            bool lock_ = ScopeRadar.Locked(cr, unit);
             float ageS = (float)(pic.Time - best.FixTime);
-            float alpha = best.Live ? Math.Max(0.55f, 1f - ageS / Math.Max(4f, best.MaxAge)) : Math.Max(0.12f, 0.5f * (1f - ageS / memory));
+            float alpha = Math.Max(0.55f, 1f - ageS / Math.Max(4f, best.MaxAge));
             float rNm = best.RangeM / 1852f, bNow = best.Bearing;
             if (cr.HasPlot)   // the map marker's place, from the unit as it is now: lines and marks agree with the map
                 GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
@@ -395,25 +445,13 @@ public sealed class ScopeSurface : Surface
         dc.DrawLine(PenOf(Highlight, 1.5f), new Point(cx, cy), Polar(cx, cy, 22f, unit.Heading - up));
         Draw(dc, unit.Name + "   hdg " + Fmt.Compass(unit.Heading) + "   " + unit.SpeedKts.ToString("0") + " kt" +
                  (unit.Emcon ? "   EMCON" : ""), 6, 4, 11, Highlight);
-        if (float.IsNaN(SweepBearing(unit.Unit)))   // no search radar is on: the sweep is not drawn, so say why
+        if (!radarOn)   // no search radar is on: the scope is empty, so say why
         {
-            dc.DrawRectangle(Fade(Back, 0.35f), null, new Rect(0, 0, w, h));
             DrawCentered(dc, "SEARCH RADAR OFF", cx, cy + radius * 0.45f, 14, Emphasis);
-            DrawCentered(dc, "contacts shown are from other sensors or remembered", cx, cy + radius * 0.45f + 18f, 10, Normal);
+            DrawCentered(dc, "no radar picture", cx, cy + radius * 0.45f + 18f, 10, Normal);
         }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
-    }
-
-    private void DrawBearingLine(DrawingContext dc, float cx, float cy, float radius, Hit hit, float bearing, double now, float up)
-    {
-        float age = (float)(now - hit.FixTime);
-        float alpha = hit.Live ? 0.9f : Math.Max(0.1f, 0.4f * (1f - age / Math.Max(5f, Settings.MemorySeconds.Value)));
-        Brush b = Fade(hit.Kind == Kind.Esm ? Blue : Green, alpha);
-        float a = bearing - up;
-        dc.DrawLine(PenOf(b, 1f), Polar(cx, cy, 0f, a), Polar(cx, cy, radius, a));
-        Point p = Polar(cx, cy, radius * 0.93f, a);
-        DrawCentered(dc, (hit.Kind == Kind.Esm ? "E" : "S") + hit.ContactId, p.X, p.Y - 5, 9, b);
     }
 
     internal static float SweepBearing(ObjectBase unit)
@@ -422,7 +460,7 @@ public sealed class ScopeSurface : Surface
         if (systems == null) return float.NaN;
         foreach (SensorSystem s in systems)
         {
-            if (s is SensorSystemRadar r && r._type == SensorSystemRadar.RadarType.Search && r.IsOn.Value && r._mountObject != null)
+            if (s is SensorSystemRadar r && r._type == SensorSystemRadar.RadarType.Search && ScopeRadar.Radiating(r))
                 return SensorPicture.Wrap360(r._mountObject.transform.eulerAngles.y);
         }
         return float.NaN;
@@ -488,13 +526,17 @@ public sealed class ScopeSweep : Surface
 /// The scope's radar contacts as a real radar paints them: a contact appears (at its position then) when the sweep passes over it and
 /// fades until the next pass. Own layer, redrawn only when the sweep has turned a few degrees or the picture changed. Off with the
 /// setting "Radar scope: blips appear when the sweep passes" (the contacts are then drawn by the scope's own layer, always current).
+/// Only what the radar holds is painted; a blip the radar no longer holds goes at the next pass, and all go when the radar is switched off.
 /// </summary>
 public sealed class ScopeBlips : Surface
 {
     internal override bool Retro => Settings.RetroLook.Value;
-    private struct Blip { public float Brg, Rng; }
+    private struct Blip { public float Brg, Rng; public int Pass; }
 
     private readonly Dictionary<int, Blip> blips = new Dictionary<int, Blip>();
+    private readonly Dictionary<int, Blip> ownBlips = new Dictionary<int, Blip>();     // the other own units the radar holds, by unit id
+    private readonly List<int> lost = new List<int>();
+    private int pass;
     private float prevSweep = float.NaN, drawnSweep = float.NaN, drawnRange = float.NaN;
     private int uid = -1, version = -1;
     private ScopeWindow Win => DataContext as ScopeWindow;
@@ -503,25 +545,33 @@ public sealed class ScopeBlips : Surface
 
     internal override bool Animated => true;
 
-    /// <summary>The unit holds this contact with a search radar (ranged): such contacts are painted by the sweep.</summary>
-    internal static bool RadarHeld(ContactRow cr, UnitRow unit)
-    {
-        foreach (Hit h in cr.Hits)
-            if (h.Unit == unit && h.Kind == Kind.Radar && !h.BearingOnly && !float.IsNaN(h.RangeM)) return true;
-        return false;
-    }
-
     /// <summary>Where the contact is now (bearing from the unit, nm): the plotted position when the game has one, else the radar's own fix.</summary>
     private static bool Now(ContactRow cr, UnitRow unit, out float brg, out float rng)
     {
         brg = rng = 0f;
-        Hit best = null;
-        foreach (Hit h in cr.Hits)
-            if (h.Unit == unit && h.Kind == Kind.Radar && !h.BearingOnly && !float.IsNaN(h.RangeM) && (best == null || h.FixTime > best.FixTime)) best = h;
+        Hit best = ScopeRadar.Best(cr, unit);
         if (best == null) return false;
         brg = best.Bearing; rng = best.RangeM / 1852f;
         if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out brg, out rng);
         return true;
+    }
+
+    private bool ClearBlips()
+    {
+        if (blips.Count == 0 && ownBlips.Count == 0) return false;
+        blips.Clear();
+        ownBlips.Clear();
+        return true;
+    }
+
+    /// <summary>The sweep passed over these blips without painting them again: the radar no longer holds them.</summary>
+    private bool DropUnpainted(Dictionary<int, Blip> from, float turned)
+    {
+        lost.Clear();
+        foreach (var kv in from)
+            if (kv.Value.Pass != pass && SensorPicture.Wrap360(kv.Value.Brg - prevSweep) <= turned) lost.Add(kv.Key);
+        foreach (int id in lost) from.Remove(id);
+        return lost.Count > 0;
     }
 
     internal override void Animate()
@@ -531,11 +581,11 @@ public sealed class ScopeBlips : Surface
         UnitRow unit = win?.Subject();
         if (win == null || unit == null || !pic.InMission || !Settings.RealisticSweep.Value)
         {
-            if (blips.Count > 0) { blips.Clear(); InvalidateVisual(); }
+            if (ClearBlips()) InvalidateVisual();
             prevSweep = float.NaN;
             return;
         }
-        if (unit.Uid != uid) { blips.Clear(); uid = unit.Uid; prevSweep = float.NaN; }
+        if (unit.Uid != uid) { ClearBlips(); uid = unit.Uid; prevSweep = float.NaN; }
         float sweep = ScopeSurface.SweepBearing(unit.Unit);
         bool changed = version != pic.Version && float.IsNaN(sweep);
         if (!float.IsNaN(sweep))
@@ -545,21 +595,38 @@ public sealed class ScopeBlips : Surface
                 float turned = SensorPicture.Wrap360(sweep - prevSweep);       // clockwise since the last step
                 if (turned > 0f && turned < 180f)
                 {
+                    pass++;
                     foreach (ContactRow cr in pic.Contacts)
                     {
                         if (!Now(cr, unit, out float brg, out float rng)) continue;
                         if (SensorPicture.Wrap360(brg - prevSweep) <= turned)
                         {
-                            blips[cr.Id] = new Blip { Brg = brg, Rng = rng };      // the sweep is on it: painted at its position now
+                            blips[cr.Id] = new Blip { Brg = brg, Rng = rng, Pass = pass };      // the sweep is on it: painted at its position now
                             changed = true;
                         }
                     }
+                    // the other own ships go by the same rule as any contact: painted only when this radar holds them
+                    GeoPosition here = unit.Unit.getGeoPosition();
+                    foreach (UnitRow other in pic.Units)
+                    {
+                        if (!ScopeRadar.SeesOwn(unit, other, pic)) continue;
+                        GeoMath.BearingRange(here, other.Unit.getGeoPosition(), out float ownBrg, out float ownRng);
+                        if (SensorPicture.Wrap360(ownBrg - prevSweep) > turned) continue;
+                        ownBlips[other.Uid] = new Blip { Brg = ownBrg, Rng = ownRng, Pass = pass };
+                        changed = true;
+                    }
+                    if (DropUnpainted(blips, turned)) changed = true;
+                    if (DropUnpainted(ownBlips, turned)) changed = true;
                 }
             }
             prevSweep = sweep;
             if (float.IsNaN(drawnSweep) || Math.Abs(UnityEngine.Mathf.DeltaAngle(sweep, drawnSweep)) > 4f) changed = true;
         }
-        else if (!float.IsNaN(drawnSweep)) { changed = true; prevSweep = float.NaN; }
+        else
+        {
+            if (ClearBlips()) changed = true;      // radar off: nothing stays on the scope
+            if (!float.IsNaN(drawnSweep)) { changed = true; prevSweep = float.NaN; }
+        }
         if (!float.IsNaN(drawnRange) && Math.Abs(win.RangeShown - drawnRange) > 0.0001f) changed = true;   // the range glides
         if (changed)
         {
@@ -581,14 +648,25 @@ public sealed class ScopeBlips : Surface
         {
             if (!blips.TryGetValue(cr.Id, out Blip b)) continue;
             if (b.Rng > g.RangeNm * 1.02f) continue;
-            // brightness: full where the sweep just passed, fading to a faint memory a whole turn later (no radar turning: faint)
-            float alpha = float.IsNaN(sweep) ? 0.3f : Math.Max(0.12f, 1f - 0.88f * SensorPicture.Wrap360(sweep - b.Brg) / 360f);
+            float alpha = Brightness(sweep, b);
             Point p = Polar(g.Cx, g.Cy, b.Rng * g.PxPerNm, b.Brg - g.Up);
             Brush color = cr.Relation == 3 ? Hostile : cr.Relation == 1 ? Friendly : cr.Relation == 2 ? Neutral : Unknown;
             dc.DrawRectangle(Fade(color, alpha), null, new Rect(p.X - 3.5f, p.Y - 3.5f, 7, 7));
-            Draw(dc, cr.Label, p.X + 7, p.Y - 6, 10, Fade(Highlight, Math.Max(0.3f, alpha)));
+            bool lock_ = ScopeRadar.Locked(cr, unit);
+            if (lock_) dc.DrawEllipse(null, PenOf(Hostile, 1.5f), p, 9, 9);
+            Draw(dc, cr.Label + (lock_ ? " LOCK" : ""), p.X + 7, p.Y - 6, 10, Fade(lock_ ? Hostile : Highlight, Math.Max(0.3f, alpha)));
+        }
+        if (!win.ShowFriends) return;
+        foreach (UnitRow other in pic.Units)
+        {
+            if (ReferenceEquals(other, unit) || !ownBlips.TryGetValue(other.Uid, out Blip own) || own.Rng > g.RangeNm * 1.02f) continue;
+            DrawOwnShip(dc, Polar(g.Cx, g.Cy, own.Rng * g.PxPerNm, own.Brg - g.Up), other.Name, Brightness(sweep, own));
         }
     }
+
+    /// <summary>Full where the sweep just passed, fading to a faint memory a whole turn later.</summary>
+    private static float Brightness(float sweep, in Blip b) =>
+        float.IsNaN(sweep) ? 0.3f : Math.Max(0.12f, 1f - 0.88f * SensorPicture.Wrap360(sweep - b.Brg) / 360f);
 }
 
 /// <summary>The scope's measuring cursor: bearing and range from own ship, on its own layer.</summary>

@@ -1,7 +1,1 @@
-0.4.1: bearing lines fixed, passive sonar no longer gives away the range.
-
-- Sensor lines no longer point 5 to 20 degrees away from a contact. The farther from the equator you were, the worse it got.
-- ESM and passive sonar lines point at the contact once radar or active sonar has its position.
-- Passive sonar is bearing only now: no exact range on the Echoes plot, the board or the scope.
-
-Run in the game on the 3D-globe beta. The build for 0.8.7 passed the offline checks.
+0.4.2: the radar scope shows only what radar detects. Contacts seen only by eye or another sensor stay off it, nothing shows while the radar is off, and your own ships follow the same rule.

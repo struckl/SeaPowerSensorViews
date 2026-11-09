@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2 - 2026-11-09 - the radar scope shows only what radar detects
+
+Compiled and checked offline for both game versions (compat check). Not run in the game yet.
+
+- **A contact seen only by eye, sonar or another sensor no longer shows on the radar scope.** Only a live track from this unit's own radar does. ESM and passive sonar bearing lines left the scope too; they stay on the map, the board and the sonar display.
+- **Nothing on the scope while the radar is off.** With no search radar radiating (switched off, EMCON, broken) the scope is empty and says so; blips go at once, and RWR and jam strobes show only while the radar is on. A fire-control radar alone does not count.
+- **Your own ships follow the same rule.** The game makes no radar tracks of your own task force, so the diamonds used to show every ship at all times. They now appear only when this radar would detect the ship by the game's own search-radar tests (range, horizon, terrain, arcs, altitude, jamming), when the sweep passes over them. *Own ships* still hides them.
+- **A blip the radar has lost goes at the next pass.** It used to flash up again on every turn of the sweep, at its old place.
+- **LOCK ring in sweep mode.** A fire-control lock is now marked on the blip too; the sweep layer used to leave it out.
+- Clicks on the scope pick only what the radar shows.
+
 ## 0.4.1 - 2026-11-09 - corrected bearing lines, passive sonar without a range
 
 Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik at 68 N: radar and passive sonar lines end on the map markers, the board shows passive sonar in lower case, the Echoes plot stays empty with only passive contacts, no errors in the log. The flat build for 0.8.7 passes the offline checks, not run in the game.

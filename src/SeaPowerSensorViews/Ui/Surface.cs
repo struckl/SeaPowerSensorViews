@@ -96,6 +96,24 @@ public abstract class Surface : UserControl
         return result;
     }
 
+    private Brush ownShip;
+
+    /// <summary>An own ship on a scope: a diamond and its name. The game's friendly blue is too dark on the dark ground, so the same hue 60 % towards white.</summary>
+    internal void DrawOwnShip(DrawingContext dc, Point p, string name, float alpha)
+    {
+        if (ownShip == null)
+        {
+            Color c = (Friendly as SolidColorBrush)?.Color ?? Color.FromArgb(255, 39, 125, 205);
+            byte L(byte v) => (byte)(v + (255 - v) * 0.6f);
+            ownShip = new SolidColorBrush(Color.FromArgb(255, L(c.R), L(c.G), L(c.B)));
+        }
+        Brush b = Fade(ownShip, alpha);
+        var d = new Point[] { new Point(p.X, p.Y - 4.5f), new Point(p.X + 4.5f, p.Y), new Point(p.X, p.Y + 4.5f), new Point(p.X - 4.5f, p.Y), new Point(p.X, p.Y - 4.5f) };
+        Pen pen = PenOf(b, 1.6f);
+        for (int i = 0; i < 4; i++) dc.DrawLine(pen, d[i], d[i + 1]);
+        Draw(dc, name, p.X + 7, p.Y - 6, 10, Fade(ownShip, Math.Max(0.3f, alpha)));
+    }
+
     internal Pen PenOf(Brush brush, float thickness)
     {
         var key = (brush, (int)(thickness * 4f));
