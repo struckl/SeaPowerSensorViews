@@ -18,7 +18,7 @@ sonar a submarine or a ship with a hull sonar. Do it on 0.8.7 and on the 3D-glob
 ## Radar scope
 1. Open Scope (Ctrl+PageUp). Contacts appear at the right bearing and range relative to the unit; compare with the game map.
 2. Wheel and +/- change the range; Heading up rotates; the altitude slider moves the horizon ring (about 1.23 * (sqrt h1 + sqrt h2) nm, heights in ft).
-3. A unit with a limited search-radar arc shows a shaded blind sector. Fire-control lock: red ring and LOCK. ESM contacts: blue bearing line.
+3. A unit with a limited search-radar arc (F-4, F-15C nose radar) shows its covered sector shaded green, not the blind side. Fire-control lock: red ring and LOCK. ESM contacts: blue bearing line.
 4. Let an enemy radar paint your ship: an RWR strobe at its bearing for a few seconds. Jamming: a JAM strobe.
 
 ## Sonar display

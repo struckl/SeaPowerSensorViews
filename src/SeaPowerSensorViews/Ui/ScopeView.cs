@@ -155,8 +155,10 @@ internal static class ScopeRadar
     private static int ownFor = -1;
     private static double ownAt = -1.0;
 
-    /// <summary>This radar system is switched on, working and able to make contacts.</summary>
-    internal static bool Radiating(SensorSystemRadar r) => r.CanProduceContacts && r._radar != null && r._mountObject != null;
+    /// <summary>This radar system is switched on and working - the same switch the game's own sensor panel shows. Not
+    /// CanProduceContacts: that also needs the unit's _hasControl and no pending switch request, and on aircraft (F-4, F-15C
+    /// directed-search radars) it read "off" while the game showed the radar on.</summary>
+    internal static bool Radiating(SensorSystemRadar r) => r.IsOn.Value && !r.Inoperable.Value && r._radar != null;
 
     private static bool IsSearch(SensorSystemRadar r) => r._type == SensorSystemRadar.RadarType.Search || r._type == SensorSystemRadar.RadarType.DirectedSearch;
 
@@ -358,12 +360,14 @@ public sealed class ScopeSurface : Surface
             DrawCentered(dc, label, p.X, p.Y - 6, 10, b % 90 == 0 ? Highlight : Normal);
         }
 
-        // ---- blind arcs of the unit's search radars (arcs are from the mount forward; the hull heading is used) -----
+        // ---- covered arcs of the unit's limited search radars (arcs are from the mount forward; the hull heading is used).
+        // The covered sector is shaded, not the blind one: a fighter's nose radar (-60..+60) used to paint the 240 degrees
+        // behind the aircraft, which read as coverage. All-round radars get no shading.
         foreach (SensorRow s in unit.Sensors)
         {
             if (s.Letter != "R" || !s.On || s.ArcMin <= -180f && s.ArcMax >= 180f) continue;
-            float from = unit.Heading + s.ArcMax - up, to = unit.Heading + s.ArcMin + 360f - up;
-            dc.DrawGeometry(Fade(Hostile, 0.12f), null, Sector(cx, cy, 0f, radius, from, to));
+            float from = unit.Heading + s.ArcMin - up, to = unit.Heading + s.ArcMax - up;
+            dc.DrawGeometry(Fade(Green, 0.14f), null, Sector(cx, cy, 0f, radius, from, to));
         }
 
         // ---- radar horizon against the chosen target altitude ----------------------------------------------------------
@@ -460,7 +464,7 @@ public sealed class ScopeSurface : Surface
         if (systems == null) return float.NaN;
         foreach (SensorSystem s in systems)
         {
-            if (s is SensorSystemRadar r && r._type == SensorSystemRadar.RadarType.Search && ScopeRadar.Radiating(r))
+            if (s is SensorSystemRadar r && r._type == SensorSystemRadar.RadarType.Search && ScopeRadar.Radiating(r) && r._mountObject != null)
                 return SensorPicture.Wrap360(r._mountObject.transform.eulerAngles.y);
         }
         return float.NaN;

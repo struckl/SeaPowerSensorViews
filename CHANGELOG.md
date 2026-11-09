@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased - radar scope fixes for aircraft
+
+Reported by a player with F-4 and F-15C flights. Builds for both game versions; not run in the game yet.
+
+- **Fix: "SEARCH RADAR OFF" on aircraft whose radar is on.** The scope asked whether the radar could make contacts right now, which also depends on the unit's control state and a pending switch request; on fighters' directed-search radars (F-4 AN/APQ-120, F-15C AN/APG-63) that read "off" while the game's own panel showed the radar on. The scope now uses the same on/off switch as the game's panel.
+- **Fix: the shaded radar arc sat behind the aircraft.** The scope shaded the blind side of a radar that does not look all round; with a nose radar of -60..+60 that was the 240 degrees behind the jet, which looked like coverage. It now shades the covered sector in front, in green.
+
 ## 0.4.2 - 2026-11-09 - radar scope and sonar display show only what those sensors detect
 
 Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik: radar contacts and own units paint and fade with the sweep, EMCON empties the scope at once and passive sonar keeps listening, an own ship appears on the sonar waterfall in passive and active mode, no errors from the mod in the log. A sonar switched off or a retracted towed array, and the Echoes plot with an own ship, not run in the game yet. The flat build for 0.8.7 passes the offline checks, not run in the game.
