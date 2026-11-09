@@ -2,7 +2,7 @@
 
 ## 0.4.1 - 2026-11-09 - corrected bearing lines, passive sonar without a range
 
-Passes the offline checks (build and `modtool compat`, both game builds); not run in the game yet.
+Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik at 68 N: radar and passive sonar lines end on the map markers, the board shows passive sonar in lower case, the Echoes plot stays empty with only passive contacts, no errors in the log. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **Fix: lines pointing 5 to 20 degrees away from a contact.** Bearings to the plotted position were worked out on a great circle, while the game's sensors and the lines' own drawing use the game's map measure. The two differ more the farther from the equator (on the flat map up to about 10 degrees at 45 N and 18 at 60 N). Map lines, scope marks and the scope's click targets now use the game's measure.
 - **Fix: a bearing line stayed on the sensor's old bearing after a ping.** Once radar, active sonar or another ranging sensor gives a live position, the ESM and passive sonar lines of that contact point at it.
