@@ -4,12 +4,13 @@
 
 Run in the game on build 0.8.7-261107 (globe) on 2026-11-09, Showdown off Guam - Blue, under Keel: an F-4E with its radar switched on shows
 no "SEARCH RADAR OFF" and its 120-degree arc shaded in front of the aircraft (`docs/test-2026-11-09/`); a Mk-48 fired from the Guardfish on the
-wire. The torpedo on the sonar display was NOT checked in the game yet (the window was popped out on a side monitor). The flat build for 0.8.7
-passes the offline checks, not run in the game.
+wire and showed on the Guardfish's sonar display as a trace curving out from the bow, with an "own" depth mark (`docs/test-2026-11-09/`).
+The windows' new fallback when a weapon is selected is not run in the game yet. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **Fix: "SEARCH RADAR OFF" on aircraft whose radar is on.** The scope asked whether the radar could make contacts right now, which also depends on the unit's control state and a pending switch request; on fighters' directed-search radars (F-4 AN/APQ-120, F-15C AN/APG-63) that read "off" while the game's own panel showed the radar on. The scope now uses the same on/off switch as the game's panel.
 - **Fix: the shaded radar arc sat behind the aircraft.** The scope shaded the blind side of a radar that does not look all round; with a nose radar of -60..+60 that was the 240 degrees behind the jet, which looked like coverage. It now shades the covered sector in front, in green.
 - **Fix: Sensor Views blocked on game build 261107.** The game added a parameter to the radar-echo call the scope uses for your own ships, so a loader that checks DLLs refused the mod (and the own-ship check would have failed). The scope now uses the game's per-radar call, which is the same in every build.
+- **Fix: the windows jumped to the airbase.** With a weapon selected (your wire-guided torpedo, say) or nothing of yours, the board, scope and sonar display fell back to the first unit of the task force, often an airbase with no sonar. A selected weapon now shows the unit that launched it; otherwise the window stays on the unit it showed last.
 - **New: your own torpedoes on the sonar display.** A torpedo of your side in the water shows on the sonar display when that sonar would hear it (its noise, the baffles, line of sight and the detection threshold, as for an enemy torpedo), labelled "own Mk-48 ..."; in active mode with a range. Steer a wire-guided torpedo by ear with the game's track display off. Option *Sonar display: own torpedoes* (on).
 
 ## 0.4.2 - 2026-11-09 - radar scope and sonar display show only what those sensors detect

@@ -54,10 +54,17 @@ public abstract class SvWindow : INotifyPropertyChanged, IDisposeOnClose
         if (Settings.FollowSelection.Value)
         {
             UnitRow row = pic.RowFor(sel);
-            if (row != null) return row;
+            // A selected weapon (a wire-guided torpedo, say) is not a unit: show the unit that launched it.
+            if (row == null && sel is WeaponBase w && w._launchPlatform != null) row = pic.RowFor(w._launchPlatform);
+            if (row != null) return last = row;
         }
-        return pic.Units.Count > 0 ? pic.Units[0] : null;
+        // Nothing of ours selected (a contact, a weapon of another side, empty sea): stay on the unit shown last
+        // instead of jumping to the first unit of the task force (often an airbase).
+        if (last != null && pic.Units.Contains(last)) return last;
+        return last = pic.Units.Count > 0 ? pic.Units[0] : null;
     }
+
+    private UnitRow last;
 
     public void Dispose() { }
 }
