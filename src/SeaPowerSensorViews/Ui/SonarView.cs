@@ -323,7 +323,7 @@ public sealed class SonarSurface : Surface
     /// <summary>The waterfall's rectangle in a surface of this size (shared with the cursor layer).</summary>
     internal static bool Layout(float w, float h, out float x0, out float y0, out float ww, out float hh, out float stripW)
     {
-        stripW = Math.Min(190f, w * 0.28f);
+        stripW = Math.Min(250f, w * 0.3f);
         x0 = 8; y0 = 34; ww = w - stripW - 24; hh = h - y0 - 26;
         return ww >= 60 && hh >= 60;
     }
@@ -492,7 +492,8 @@ public sealed class SonarSurface : Surface
         var right = new System.Collections.Generic.List<DepthLabel>();
         left.Add(new DepthLabel { Y = top + 8, Text = "surface", Brush = Normal });
         if (!float.IsNaN(st.LayerFt)) left.Add(new DepthLabel { Y = yOf(st.LayerFt), Text = "layer " + st.LayerFt.ToString("0"), Brush = Emphasis });
-        float ownX = sx + sw * 0.42f, arrX = sx + sw * 0.5f, conX = sx + sw * 0.62f;
+        // columns: own labels | own mark, array | contact marks | contact labels (to the right of their marks, never over them)
+        float ownX = sx + sw * 0.30f, arrX = sx + sw * 0.36f, conX = sx + sw * 0.44f;
         if (!float.IsNaN(st.DepthFt))
         {
             float yd = yOf(st.DepthFt);
@@ -514,7 +515,13 @@ public sealed class SonarSurface : Surface
             float ym = yOf(m.DepthFt);
             Brush mc = Fade(m.Active ? Blue : Green, Math.Max(0.4f, 1f - m.Age / 60f));
             if (m.DepthErrFt > 1f)
-                dc.DrawLine(PenOf(mc, 1f), new Point(conX, yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt))), new Point(conX, yOf(m.DepthFt + m.DepthErrFt)));
+                {   // the depth uncertainty: faint, with small end caps, so a vague estimate does not cut through the strip
+                Brush eb = Fade(mc, 0.3f);
+                float ya0 = yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt)), ya1 = yOf(m.DepthFt + m.DepthErrFt);
+                dc.DrawLine(PenOf(eb, 1f), new Point(conX, ya0), new Point(conX, ya1));
+                dc.DrawLine(PenOf(eb, 1f), new Point(conX - 3, ya0), new Point(conX + 3, ya0));
+                dc.DrawLine(PenOf(eb, 1f), new Point(conX - 3, ya1), new Point(conX + 3, ya1));
+            }
             dc.DrawEllipse(mc, null, new Point(conX, ym), 3, 3);
             right.Add(new DepthLabel { Y = ym, Text = m.Label + "  " + m.DepthFt.ToString("0"), Brush = mc, MarkX = conX });
         }
@@ -527,8 +534,8 @@ public sealed class SonarSurface : Surface
         }
         foreach (DepthLabel l in right)
         {
-            if (Math.Abs(l.Shown - l.Y) > 3f) dc.DrawLine(PenOf(Fade(l.Brush, 0.5f), 1f), new Point(conX + 4, l.Y), new Point(sx + sw - 60, l.Shown));
-            DrawRight(dc, l.Text, sx + sw - 3, l.Shown - 6, 9, l.Brush);
+            if (Math.Abs(l.Shown - l.Y) > 3f) dc.DrawLine(PenOf(Fade(l.Brush, 0.5f), 1f), new Point(conX + 4, l.Y), new Point(conX + 10, l.Shown));
+            Draw(dc, l.Text, conX + 12, l.Shown - 6, 9, l.Brush);
         }
     }
 
