@@ -1,5 +1,5 @@
-0.3.0: fixes the windows on the 3D globe beta, and adds settings in the game.
-On the globe beta (build 261107) the Board, Scope and Sonar windows failed with an error; they work now, and the sonar seabed depth is right again.
-Sensor lines now show only the selected unit by default (you can switch back to all units); they are redrawn only when a line really moves on screen; zoomed in far, bearing wedges draw just their line unless you turn the fill on.
-New: a Sensor Views tab in the game's Options menu.
+0.4.0: one bottom-bar button with a flyout, click a contact on the radar to jump to it, snappier map layers.
+The three text buttons are now one radar-scope icon in the style of the game's bar icons. Its flyout opens Board, Radar scope and Sonar one by one (the map stays usable around it) and holds the map switches: sensor lines, coverage, lines for the selected unit or all units, lines per sensor, and what the coverage shows (radar, ESM, visual, sonar, terrain shadows). The same switches are on the sensor board.
+A click on a contact or one of your own ships on the radar scope picks it and brings the camera to it (to where your sensors place the contact, never the real object).
+Map lines and coverage keep moving with the map while you pan fast.
 Run in the game on the globe beta 261107. The 0.8.7 build passes the offline checks.

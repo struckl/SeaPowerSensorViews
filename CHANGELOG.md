@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 – 2026-11-09 – one button with a flyout, click a contact on the radar to jump to it, snappier map layers
+
+Run in the game on the globe beta (build 261107) on 2026-11-09: the bottom-bar button and its flyout, the three windows from it, the map switches, coverage with terrain shadows, a click on a contact and on an own ship on the radar scope. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **Snappier map layers while panning.** Lines and coverage kept their last position once the view left the area they were cut to and waited for the next rebuild (up to 50 ms, and a frame late). They now keep moving with the map in any case, the cut area is a whole view size wide on each side, and what a transform cannot follow (a turning globe, a long pan) is rebuilt in the frame the map moved, about once per frame.
 - **Flyout is a panel on the map, not a popup** (the map stays usable around it); window chips follow the real window state; the flyout has the coverage options (radar, ESM, visual, sonar, terrain shadows).
