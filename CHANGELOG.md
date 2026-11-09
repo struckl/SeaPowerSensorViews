@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - radar scope fixes for aircraft, own torpedoes on sonar, game build 261107
+## 0.4.3 - 2026-11-10 - own torpedoes on sonar, radar scope fixes for aircraft, game build 261107
 
 Run in the game on build 0.8.7-261107 (globe) on 2026-11-09, Showdown off Guam - Blue, under Keel: an F-4E with its radar switched on shows
 no "SEARCH RADAR OFF" and its 120-degree arc shaded in front of the aircraft (`docs/test-2026-11-09/`); a Mk-48 fired from the Guardfish on the
