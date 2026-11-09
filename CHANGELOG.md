@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 - 2026-11-09 - corrected bearing lines, passive sonar without a range
+
+Passes the offline checks (build and `modtool compat`, both game builds); not run in the game yet.
+
+- **Fix: lines pointing 5 to 20 degrees away from a contact.** Bearings to the plotted position were worked out on a great circle, while the game's sensors and the lines' own drawing use the game's map measure. The two differ more the farther from the equator (on the flat map up to about 10 degrees at 45 N and 18 at 60 N). Map lines, scope marks and the scope's click targets now use the game's measure.
+- **Fix: a bearing line stayed on the sensor's old bearing after a ping.** Once radar, active sonar or another ranging sensor gives a live position, the ESM and passive sonar lines of that contact point at it.
+- **Fix: passive sonar showed the exact range.** The game's passive track carries a range value that is the true distance (or nothing), and the Echoes plot, the board and the scope read it. Passive sonar is bearing-only everywhere now: it no longer appears on the Echoes plot, the board shows a lower-case S with the bearing history, the scope draws a bearing line. A passive contact the game has plotted still jumps to its map marker on double-click.
+
 ## 0.4.0 – 2026-11-09 – one button with a flyout, click a contact on the radar to jump to it, snappier map layers
 
 Run in the game on the globe beta (build 261107) on 2026-11-09: the bottom-bar button and its flyout, the three windows from it, the map switches, coverage with terrain shadows, a click on a contact and on an own ship on the radar scope. The flat build for 0.8.7 passes the offline checks, not run in the game.

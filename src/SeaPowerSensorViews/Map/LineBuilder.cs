@@ -166,9 +166,10 @@ internal static class LineBuilder
                         GeoMath.BearingRange(origin, cr.Plot, out float _, out float pnm);
                         lenKm = Math.Max(1.852f, Math.Min(300f * 1.852f, pnm * 1.852f * 1.1f));
                     }
-                    GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing - half);
-                    GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing);
-                    GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(lenKm, h.Bearing + half);
+                    float bearingNow = GeoMath.BearingNow(cr, h, origin);
+                    GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow - half);
+                    GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow);
+                    GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow + half);
                     // the wedge, filled
                     lines.Add(new LineSet.Line
                     {

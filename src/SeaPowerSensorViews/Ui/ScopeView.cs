@@ -364,7 +364,7 @@ public sealed class ScopeSurface : Surface
                 if (!ranged)
                 {
                     if (hit.Kind == Kind.Esm || hit.Kind == Kind.Passive)
-                        DrawBearingLine(dc, cx, cy, radius, hit, pic.Time, up);
+                        DrawBearingLine(dc, cx, cy, radius, hit, GeoMath.BearingNow(cr, hit, unit.Unit.getGeoPosition()), pic.Time, up);
                     continue;
                 }
                 if (best == null || hit.FixTime > best.FixTime) best = hit;
@@ -405,12 +405,12 @@ public sealed class ScopeSurface : Surface
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
     }
 
-    private void DrawBearingLine(DrawingContext dc, float cx, float cy, float radius, Hit hit, double now, float up)
+    private void DrawBearingLine(DrawingContext dc, float cx, float cy, float radius, Hit hit, float bearing, double now, float up)
     {
         float age = (float)(now - hit.FixTime);
         float alpha = hit.Live ? 0.9f : Math.Max(0.1f, 0.4f * (1f - age / Math.Max(5f, Settings.MemorySeconds.Value)));
         Brush b = Fade(hit.Kind == Kind.Esm ? Blue : Green, alpha);
-        float a = hit.Bearing - up;
+        float a = bearing - up;
         dc.DrawLine(PenOf(b, 1f), Polar(cx, cy, 0f, a), Polar(cx, cy, radius, a));
         Point p = Polar(cx, cy, radius * 0.93f, a);
         DrawCentered(dc, (hit.Kind == Kind.Esm ? "E" : "S") + hit.ContactId, p.X, p.Y - 5, 9, b);

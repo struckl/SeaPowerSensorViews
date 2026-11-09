@@ -3,17 +3,29 @@ using SeaPower;
 
 namespace SeaPowerSensorViews.Data;
 
-/// <summary>Bearing and distance between two positions (great circle).</summary>
+/// <summary>Bearing and distance between two positions, measured the way the game measures them.</summary>
 internal static class GeoMath
 {
+    /// <summary>
+    /// The game's own measure: the one its sensors use for a track's bearing and the one that fits the offset the map lines are drawn
+    /// with. A great-circle bearing differs from it away from the equator (on the flat map by up to about 10 degrees at 45 N and 18 at
+    /// 60 N), which turned lines away from the marker they were meant to end on.
+    /// </summary>
     public static void BearingRange(GeoPosition a, GeoPosition b, out float bearing, out float nm)
     {
-        const double Rad = Math.PI / 180.0, EarthNm = 3440.065;
-        double la = a._latitude * Rad, lb = b._latitude * Rad, dl = (b._longitude - a._longitude) * Rad;
-        double s = Math.Sin((lb - la) / 2), t = Math.Sin(dl / 2);
-        double h = s * s + Math.Cos(la) * Math.Cos(lb) * t * t;
-        nm = (float)(2 * EarthNm * Math.Asin(Math.Min(1.0, Math.Sqrt(h))));
-        double y = Math.Sin(dl) * Math.Cos(lb), x = Math.Cos(la) * Math.Sin(lb) - Math.Sin(la) * Math.Cos(lb) * Math.Cos(dl);
-        bearing = SensorPicture.Wrap360((float)(Math.Atan2(y, x) / Rad));
+        (float heading, float meters) = a.HeadingRangeMeters(b);
+        bearing = SensorPicture.Wrap360(heading);
+        nm = meters / 1852f;
+    }
+
+    /// <summary>
+    /// Where a bearing line of this hit points from <paramref name="origin"/>: once the game holds the contact's position from a ranging
+    /// sensor, at that position; until then along the sensor's own last bearing, which ages as both ships move.
+    /// </summary>
+    public static float BearingNow(ContactRow cr, Hit hit, GeoPosition origin)
+    {
+        if (!cr.HasRangedFix) return hit.Bearing;
+        BearingRange(origin, cr.Plot, out float bearing, out float nm);
+        return nm > 0.01f ? bearing : hit.Bearing;
     }
 }

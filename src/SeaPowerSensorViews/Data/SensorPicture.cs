@@ -149,7 +149,9 @@ internal sealed class SensorPicture
                     while (hit.History.Count > 1 && (float)fix - hit.History[0].Key > 600f) hit.History.RemoveAt(0);
                 }
                 hit.BearingError = kind == Kind.Esm ? b.Error : Mathf.Sqrt(Mathf.Max(0f, b.Error));
-                hit.BearingOnly = !em.HasComponent<TrackRangeInMeters>(e);
+                // Passive sonar is bearing-only here. Its track does carry a range component, but that holds the true distance
+                // (with a large error, for the game's own analysis) or nothing at all: it is not something the sonar measured.
+                hit.BearingOnly = kind == Kind.Passive || !em.HasComponent<TrackRangeInMeters>(e);
                 hit.RangeM = hit.BearingOnly ? float.NaN : em.GetComponentData<TrackRangeInMeters>(e).Estimate.Estimate;
                 hit.RangeErrorM = hit.BearingOnly ? 0f : Mathf.Sqrt(Mathf.Max(0f, em.GetComponentData<TrackRangeInMeters>(e).Estimate.Error));
                 hit.AltitudeUnits = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Estimate : float.NaN;
@@ -222,6 +224,10 @@ internal sealed class SensorPicture
             }
         }
         catch (Exception) { cr.HasPlot = false; }
+        cr.HasRangedFix = false;
+        if (cr.HasPlot)
+            foreach (Hit h in cr.Hits)
+                if (h.Live && !h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f) { cr.HasRangedFix = true; break; }
         switch (v.CurrentRelationship())
         {
             case RelationsState.Friendly: cr.Relation = 1; break;

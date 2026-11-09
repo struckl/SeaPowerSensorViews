@@ -5,7 +5,7 @@
     <AssemblyName>SeaPowerSensorViews</AssemblyName>
     <RootNamespace>SeaPowerSensorViews</RootNamespace>
     <Product>Sensor board, radar scope and sonar display as game windows.</Product>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>

@@ -103,6 +103,7 @@ internal sealed class ContactRow
     public int Relation;            // 0 unknown, 1 friendly, 2 neutral, 3 hostile
     public GeoPosition Plot;        // where the game's plotting table puts the contact (the map marker; its estimate, not the real object)
     public bool HasPlot;
+    public bool HasRangedFix;       // plotted, and a live track from a ranging sensor (radar, active sonar, visual, MAD) backs that position
     public readonly List<Hit> Hits = new List<Hit>();
     public int Stamp;
 }

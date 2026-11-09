@@ -292,7 +292,7 @@ public sealed class SonarSurface : Surface
         DrawRight(dc, "now", x0 + ww - 4, y0 + 2, 9, Normal);
         DrawRight(dc, SonarWindow.Rows + " s ago", x0 + ww - 4, y0 + hh - 12, 9, Normal);
         }
-        Draw(dc, win.ShowEchoes ? "Echoes by bearing relative to the bow and range; filled = active, ring = passive with a range estimate; fades with the age of the fix." : "Bearing relative to the bow (the stern is at both edges), newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
+        Draw(dc, win.ShowEchoes ? "Active echoes by bearing relative to the bow and range; fades with the age of the fix. Passive sonar gives no range: see the waterfall." : "Bearing relative to the bow (the stern is at both edges), newest at the top.  Brighter = stronger signal excess.", x0, y0 + hh + 6, 10, Normal);
 
         // ---- own noise line -------------------------------------------------------------------------------------------
         string noise = float.IsNaN(st.OwnNoise) ? "own noise n/a" : "own noise " + st.OwnNoise.ToString("0") + " dB";
@@ -384,12 +384,11 @@ public sealed class SonarSurface : Surface
             if (float.IsNaN(m.RangeM)) continue;
             n++;
             float x = x0 + (m.Rel + 180f) / 360f * ww, y = y0 + hh - hh * m.RangeM / maxM;
-            Brush c = Fade(m.Active ? Blue : Green, Math.Max(0.35f, 1f - m.Age / 90f));
-            if (m.Active) dc.DrawEllipse(c, null, new Point(x, y), 4, 4);
-            else dc.DrawEllipse(null, PenOf(c, 1.5f), new Point(x, y), 4, 4);
+            Brush c = Fade(Blue, Math.Max(0.35f, 1f - m.Age / 90f));
+            dc.DrawEllipse(c, null, new Point(x, y), 4, 4);
             Draw(dc, m.Label + " " + (m.RangeM / 1852f).ToString("0.0") + " nm  " + m.Age.ToString("0") + " s", x + 7, y - 6, 10, c);
         }
-        if (n == 0) DrawCentered(dc, "no echo with a range yet", x0 + ww / 2, y0 + hh / 2f, 12, Normal);
+        if (n == 0) DrawCentered(dc, "no active echo yet", x0 + ww / 2, y0 + hh / 2f, 12, Normal);
     }
 
     internal static string KeyOf(SonarWindow win)

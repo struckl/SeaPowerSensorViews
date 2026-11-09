@@ -40,7 +40,7 @@ internal static class Jump
                     || (h.Unit == prefer) != (best.Unit == prefer) ? h.Unit == prefer : h.FixTime > best.FixTime;
                 if (better) best = h;
             }
-            if (best == null)
+            if (best == null && !cr.HasPlot)      // only bearings and no place plotted: go to the unit that holds it
             {
                 foreach (Hit h in cr.Hits)
                     if (h.Unit?.Unit != null && (best == null || h.FixTime > best.FixTime)) best = h;
