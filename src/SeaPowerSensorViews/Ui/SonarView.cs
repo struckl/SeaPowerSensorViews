@@ -104,22 +104,51 @@ internal static class SonarSampler
                 if (!float.IsNaN(st.BaffleFrom) && (st.BaffleFrom < st.BaffleTo ? (st.BaffleFrom < rel && rel < st.BaffleTo) : (st.BaffleTo >= rel || rel >= st.BaffleFrom))) continue;
                 float dist = (t.transform.position - home.transform.position).magnitude;
                 if (!Singleton<UnitSensorCache>.Instance.UnitsHaveDirectlLOS(home, t, dist)) continue;
+                float unityDist = (t.transform.position - pos).magnitude;
+                bool shipToShip = home._type == ObjectBase.ObjectType.Vessel && t._type == ObjectBase.ObjectType.Vessel;
                 float y = t.transform.position.y;
                 float depth = y < 0f && t is Submarine ? -y * SensorPicture.FeetPerUnit : float.NaN;
                 if (t._sensorData._baseNoise >= 0f)
                 {
-                    float signal = (float)SonarCalculator.GetPassiveSonarEcho(t, home, pos, sp._gain, ambient, xLayer, duct)._signalValue;
+                    float signal = shipToShip ? ShipPassive(t, sp, ambient, duct, unityDist)
+                                              : (float)SonarCalculator.GetPassiveSonarEcho(t, home, pos, sp._gain, ambient, xLayer, duct)._signalValue;
                     if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, DepthFt = depth, Signal = signal });
                 }
                 if (active && t._sensorData._maxTargetReflectionStrength >= 0f)
                 {
                     bool lf = sp._frequency == SonarParameters.SonarFrequency.LF, mf = sp._frequency == SonarParameters.SonarFrequency.MF;
-                    float signal = (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
+                    float signal = shipToShip ? ShipActive(t, sp, ambient, duct, unityDist)
+                                              : (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
                     if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
                 }
             }
         }
         catch (Exception ex) { ModLog.Debug("Sonar own-ship check: " + ex.Message); }
+    }
+
+    // The public per-contact sums return "not heard" for any surface ship listening to a surface ship, while the game's batch model, the one
+    // enemy ships go through, does hear them. So for that pair the same sums without the block; two surface ships are both above the layer.
+    private const float NmPerUnityDistance = 0.036285132f;
+
+    private static float TransmissionLoss(float unityDist)
+    {
+        float nm = Math.Max(0.001f, unityDist * NmPerUnityDistance);
+        return 20f * (float)Math.Log10(nm * 2025f) + nm * Globals._sonarEnvironmentParameters._absorptionFactor;
+    }
+
+    private static float ShipPassive(ObjectBase t, SonarParameters sp, float ambient, float duct, float unityDist)
+    {
+        SensorData d = t._sensorData;
+        float noise = d._baseNoise + (t._powerSystemInUse?.AdditionalNoise ?? 0f)
+            + Math.Max(0f, Math.Abs(t._velocityInKnots) - d._creepSpeedKts) * d._flowNoise + t._cavitationIntensity * d._cavitationNoise;
+        return noise - ambient + sp._gain - TransmissionLoss(unityDist) + duct;
+    }
+
+    private static float ShipActive(ObjectBase t, SonarParameters sp, float ambient, float duct, float unityDist)
+    {
+        SensorData d = t._sensorData;
+        float reflection = (d._minTargetReflectionStrength + d._maxTargetReflectionStrength) / 2f;
+        return sp._outputPower + reflection - ambient + sp._activeGain - 2f * TransmissionLoss(unityDist) + duct;
     }
 
     public static void Update(SonarWindow win)

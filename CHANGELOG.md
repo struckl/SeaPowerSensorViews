@@ -2,7 +2,7 @@
 
 ## 0.4.2 - 2026-11-09 - radar scope and sonar display show only what those sensors detect
 
-Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik: radar contacts and an own ship paint and fade with the sweep, the sonar display opened with contacts and no errors in the log. Radar and sonar switched off, and own ships on the sonar display, not run in the game yet. The flat build for 0.8.7 passes the offline checks, not run in the game.
+Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik: radar contacts and own units paint and fade with the sweep, EMCON empties the scope at once and passive sonar keeps listening, an own ship appears on the sonar waterfall in passive and active mode, no errors from the mod in the log. A sonar switched off or a retracted towed array, and the Echoes plot with an own ship, not run in the game yet. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **A contact seen only by eye, sonar or another sensor no longer shows on the radar scope.** Only a live track from this unit's own radar does. ESM and passive sonar bearing lines left the scope too; they stay on the map, the board and the sonar display.
 - **Nothing on the scope while the radar is off.** With no search radar radiating (switched off, EMCON, broken) the scope is empty and says so; blips go at once, and RWR and jam strobes show only while the radar is on. A fire-control radar alone does not count.
@@ -10,7 +10,7 @@ Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik:
 - **A blip the radar has lost goes at the next pass.** It used to flash up again on every turn of the sweep, at its old place.
 - **LOCK ring in sweep mode.** A fire-control lock is now marked on the blip too; the sweep layer used to leave it out.
 - Clicks on the scope pick only what the radar shows.
-- **Sonar display, same idea.** Nothing new appears while the sonar is off, broken or a towed array is retracted; the rows already on the waterfall scroll away. Your own ships, which never appeared there, now show when this sonar would pick them up: the game makes no sonar tracks of your own task force, so they go through its per-contact sonar sums with the same baffles, line of sight and detection threshold. The game's newer batch sonar model is private, so their detection ranges can differ a little from enemy contacts'.
+- **Sonar display, same idea.** Nothing new appears while the sonar is off, broken or a towed array is retracted; the rows already on the waterfall scroll away. Your own ships, which never appeared there, now show when this sonar would pick them up: the game makes no sonar tracks of your own task force, so they go through its per-contact sonar sums with the same baffles, line of sight and detection threshold. Those sums never let a surface ship hear a surface ship, so that pair uses the same equations without the block. The game's newer batch sonar model is private, so their detection ranges can differ a little from enemy contacts'.
 
 ## 0.4.1 - 2026-11-09 - corrected bearing lines, passive sonar without a range
 

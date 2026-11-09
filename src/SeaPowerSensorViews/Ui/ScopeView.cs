@@ -447,8 +447,8 @@ public sealed class ScopeSurface : Surface
                  (unit.Emcon ? "   EMCON" : ""), 6, 4, 11, Highlight);
         if (!radarOn)   // no search radar is on: the scope is empty, so say why
         {
-            DrawCentered(dc, "SEARCH RADAR OFF", cx, cy + radius * 0.45f, 14, Emphasis);
-            DrawCentered(dc, "no radar picture", cx, cy + radius * 0.45f + 18f, 10, Normal);
+            DrawCentered(dc, "SEARCH RADAR OFF", cx, cy - radius * 0.45f, 14, Emphasis);
+            DrawCentered(dc, "no radar picture", cx, cy - radius * 0.45f + 18f, 10, Normal);
         }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
         DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
