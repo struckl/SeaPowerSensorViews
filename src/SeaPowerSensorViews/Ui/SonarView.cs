@@ -122,8 +122,51 @@ internal static class SonarSampler
                     if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
                 }
             }
+            CollectOwnTorpedoes(unit, home, pos, here, sp, active, st, ambient, xLayer, duct);
         }
         catch (Exception ex) { ModLog.Debug("Sonar own-ship check: " + ex.Message); }
+    }
+
+    /// <summary>
+    /// The player's own torpedoes in the water. The game makes no sonar tracks of them either, so they go through the same public sonar
+    /// sums as an enemy torpedo (its noise from speed and cavitation; an echo when pinging), with the same baffles, line of sight and threshold.
+    /// Lets a player switch off the game's track display and steer a wire-guided torpedo by ear. Display only.
+    /// </summary>
+    private static void CollectOwnTorpedoes(UnitRow unit, ObjectBase home, UnityEngine.Vector3 pos, GeoPosition here, SonarParameters sp, bool active,
+        SonarState st, float ambient, float xLayer, float duct)
+    {
+        if (!Settings.SonarOwnTorpedoes.Value || home._taskforce == null || !Singleton<ObjectsManager>.InstanceExists()) return;
+        var weapons = Singleton<ObjectsManager>.Instance._listOfAllWeapons;
+        for (int i = 0; i < weapons.Count; i++)
+        {
+            if (!(weapons[i] is Torpedo t) || t == null || t.IsDestroyed || t._launchPlatform == null || t._sensorData == null) continue;
+            if (!ReferenceEquals(t._taskforce, home._taskforce) || t.transform.position.y >= 0f) continue;   // own side, in the water
+            if (sp._isActiveIntercept) continue;          // an intercept receiver hears pings only
+            GeoMath.BearingRange(here, t.getGeoPosition(), out float brg, out float nm);
+            float rel = Ang.DeltaAngle(unit.Heading, brg);
+            if (!float.IsNaN(st.BaffleFrom) && (st.BaffleFrom < st.BaffleTo ? (st.BaffleFrom < rel && rel < st.BaffleTo) : (st.BaffleTo >= rel || rel >= st.BaffleFrom))) continue;
+            float dist = (t.transform.position - home.transform.position).magnitude;
+            if (!Singleton<UnitSensorCache>.Instance.UnitsHaveDirectlLOS(home, t, dist)) continue;
+            float depth = -t.transform.position.y * SensorPicture.FeetPerUnit;
+            string name = "own " + TorpedoName(t) + (ReferenceEquals(t._launchPlatform, home) ? "" : " (" + t._launchPlatform.getName() + ")");
+            if (t._sensorData._baseNoise >= 0f)
+            {
+                float signal = (float)SonarCalculator.GetPassiveSonarEcho(t, home, pos, sp._gain, ambient, xLayer, duct)._signalValue;
+                if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = name, Rel = rel, DepthFt = depth, Signal = signal });
+            }
+            if (active && t._sensorData._maxTargetReflectionStrength >= 0f)
+            {
+                bool lf = sp._frequency == SonarParameters.SonarFrequency.LF, mf = sp._frequency == SonarParameters.SonarFrequency.MF;
+                float signal = (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
+                if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
+            }
+        }
+    }
+
+    private static string TorpedoName(Torpedo t)
+    {
+        try { string n = t.getName(); if (!string.IsNullOrEmpty(n)) return n; } catch (Exception) { }
+        return "torpedo";
     }
 
     // The public per-contact sums return "not heard" for any surface ship listening to a surface ship, while the game's batch model, the one

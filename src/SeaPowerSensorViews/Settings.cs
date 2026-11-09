@@ -28,7 +28,7 @@ internal static class Settings
     public static ConfigEntry<string> LinesKey;
     // quick switches (in the bar-button flyout and on the sensor board)
     public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
-    public static ConfigEntry<bool> RealisticSweep, RetroLook;
+    public static ConfigEntry<bool> RealisticSweep, RetroLook, SonarOwnTorpedoes;
     public static ConfigEntry<float> VisualLifetime;
     public static ConfigEntry<bool> ZoomAnimation;
     public static ConfigEntry<bool> CoverageVisible;
@@ -105,6 +105,9 @@ internal static class Settings
         RealisticSweep = file.Bind("3. Views", "Radar scope: blips appear when the sweep passes", true,
             "On: a radar contact is painted on the scope only when the sweep passes over it and then fades until the next pass, like a real " +
             "radar. Off: contacts are always shown at their latest position, as in version 0.3.0.");
+        SonarOwnTorpedoes = file.Bind("3. Views", "Sonar display: own torpedoes", true,
+            "On: your own torpedoes in the water show on the sonar display when that sonar would hear them (same noise, baffles and " +
+            "threshold as an enemy torpedo), so a wire-guided torpedo can be followed by ear. Off: only ships, as in 0.4.2.");
 
         CoverageVisible = file.Bind("5. Map: coverage", "Show coverage", false,
             "The 'Sensor coverage' entry of the map's Layers menu (kept in step with it). For the unit selected in the game: where its sensors " +

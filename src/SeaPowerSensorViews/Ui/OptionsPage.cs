@@ -120,6 +120,8 @@ internal static class OptionsPage
             "The contacts glide to the new scale when the range changes, instead of jumping."));
         panel.Children.Add(Check(look, "Radar scope: blips appear when the sweep passes", Settings.RealisticSweep,
             "On: a radar contact is painted when the sweep passes over it and fades until the next pass. Off: contacts are always shown at their latest position."));
+        panel.Children.Add(Check(look, "Sonar display: own torpedoes", Settings.SonarOwnTorpedoes,
+            "Your own torpedoes in the water show on the sonar display when that sonar would hear them, so a wire-guided torpedo can be followed by ear."));
         panel.Children.Add(Slider(look, "Lost contact memory", "How long a lost contact stays on the board and scope, dimmed.",
             Settings.MemorySeconds, 0f, 600f, 10f, v => Math.Round(v) + " s"));
         panel.Children.Add(Check(look, "Bottom bar buttons", Settings.BarButtons,

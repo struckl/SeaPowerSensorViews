@@ -19,6 +19,7 @@ measured before/after in the game on 0.8.7: [tools/perf-test/results-2026-11-04]
   The sweep line follows the antenna and is decoration only. A measuring cursor shows bearing and range.
   Radar contacts appear when the sweep passes over them and fade until the next pass (setting to switch it off); one the radar has lost goes at the next pass. When no search radar is on, the scope is empty and says so.
 - **Sonar display** - bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, the baffle sector,
+  your own torpedoes in the water when this sonar would hear them (follow a wire-guided torpedo by ear; switch: *Sonar display: own torpedoes*),
   the unit's own noise at its speed, a measuring cursor (bearing, seconds ago), and a depth strip with the thermal layer, own depth, the array, the seabed and the contacts the sonar holds at the depth the track estimates (with above / below the layer). The *Echoes* button swaps the waterfall for a bearing / range plot of active sonar echoes; passive sonar gives a bearing only, so it appears on the waterfall and not there. Only what this sonar hears shows: nothing new while it is off, broken or a towed array is retracted (older rows scroll away), and your own ships appear under the same rule as any contact, when this sonar would pick them up.
 
 Everything is **display only**. The windows show what your units' sensors already report to the game's plotting table (track

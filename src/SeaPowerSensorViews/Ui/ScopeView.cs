@@ -215,11 +215,12 @@ internal static class ScopeRadar
                 var pos = r.SensorPosition;
                 if (pos.y < 0f && (!(home is Submarine sub) || sub.isBelowPeriscopeDepth())) continue;
                 Radar radar = r._radar;
-                RadarParameters rp = radar._rp;
+                if (radar._rp == null) continue;
                 if (!radar.IsDetectableTarget_Unconditional(target, true, true) || !radar.IsDetectableTarget_Conditional(target)) continue;
-                // the arguments of the game's SearchRadar.createRadarEchoes
-                if (RadarCalculator.createRadarEcho(pos, target, rp._waveLength, rp._gainFactor, rp._peakPower, home._ECMSystemsTryingToJamMe, rp._frequency, home._crew,
-                        out SensorEcho _, false, rp._jamResistance, true, null, false, RadarCalculator.IsAirborneSensor(home) ? null : rp, pos.y, r._lookDownMultiplier < 1f))
+                // The game's own per-radar overload: it fills in wavelength, power, jammers, crew, low-altitude and look-down from the radar
+                // itself, and its signature stays the same across game builds (the long overload gained parameters in build 261107).
+                var opts = new ObjectBase.SensorRangeOptions { IgnoreSelfScreeningJammers = true };
+                if (RadarCalculator.createRadarEcho(pos, target, r, out SensorEcho _, false, opts))
                     return true;
             }
         }
