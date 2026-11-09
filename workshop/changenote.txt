@@ -1,1 +1,1 @@
-0.4.2: the radar scope shows only what radar detects. Contacts seen only by eye or another sensor stay off it, nothing shows while the radar is off, and your own ships follow the same rule.
+0.4.2: the radar scope and sonar display show only what those sensors detect. Contacts seen only by eye or another sensor stay off the scope, nothing new shows while the sensor is off, and your own ships follow the same rules.

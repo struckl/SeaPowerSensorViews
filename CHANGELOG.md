@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.2 - 2026-11-09 - the radar scope shows only what radar detects
+## 0.4.2 - 2026-11-09 - radar scope and sonar display show only what those sensors detect
 
 Compiled and checked offline for both game versions (compat check). Not run in the game yet.
 
@@ -10,6 +10,7 @@ Compiled and checked offline for both game versions (compat check). Not run in t
 - **A blip the radar has lost goes at the next pass.** It used to flash up again on every turn of the sweep, at its old place.
 - **LOCK ring in sweep mode.** A fire-control lock is now marked on the blip too; the sweep layer used to leave it out.
 - Clicks on the scope pick only what the radar shows.
+- **Sonar display, same idea.** Nothing new appears while the sonar is off, broken or a towed array is retracted; the rows already on the waterfall scroll away. Your own ships, which never appeared there, now show when this sonar would pick them up: the game makes no sonar tracks of your own task force, so they go through its per-contact sonar sums with the same baffles, line of sight and detection threshold. The game's newer batch sonar model is private, so their detection ranges can differ a little from enemy contacts'.
 
 ## 0.4.1 - 2026-11-09 - corrected bearing lines, passive sonar without a range
 

@@ -73,6 +73,55 @@ public sealed class SonarView : UserControl
 /// <summary>Takes the sonar display's numbers from the snapshot and the game's environment, once a second.</summary>
 internal static class SonarSampler
 {
+    private struct Heard { public string Name; public float Rel, RangeM, DepthFt, Signal; public bool Active; }
+    private static readonly System.Collections.Generic.List<Heard> ownHeard = new System.Collections.Generic.List<Heard>();
+
+    /// <summary>
+    /// The game makes no sonar tracks of the player's own task force, so its other ships go through the game's sonar sums here, with the
+    /// same filters, baffles, line of sight and detection threshold as a contact (the public per-contact sums; the game's batch model is private). Display only.
+    /// </summary>
+    private static void CollectOwnShips(UnitRow unit, SensorPicture pic, SensorSystemSonar sonar, SonarParameters sp, bool active, SonarState st)
+    {
+        if (sp == null) return;
+        try
+        {
+            ObjectBase home = unit.Unit;
+            var pos = sonar.SensorPosition;
+            if (pos.y > 0f) return;      // not in the water
+            var env = Singleton<SeaPower.Environment>.Instance;
+            GeoPosition here = home.getGeoPosition();
+            float ambient = env.getOceanNoise(here);
+            if (!float.IsNaN(st.OwnNoise))
+                ambient = 10f * (float)Math.Log10(Math.Pow(10.0, ambient / 10.0) + Math.Pow(10.0, st.OwnNoise / 10.0));
+            float xLayer = env.getXLayerAttenuation(), duct = env.getSurfaceDuct(here);
+            foreach (UnitRow other in pic.Units)
+            {
+                ObjectBase t = other.Unit;
+                if (ReferenceEquals(other, unit) || t == null || !(t is Vessel || t is Submarine) || t._isUndetectable || t._sensorData == null || !t._hasControl) continue;
+                if (sp._isActiveIntercept && !t.IsActiveSonarsOn.Value) continue;
+                GeoMath.BearingRange(here, t.getGeoPosition(), out float brg, out float nm);
+                float rel = Ang.DeltaAngle(unit.Heading, brg);
+                if (!float.IsNaN(st.BaffleFrom) && (st.BaffleFrom < st.BaffleTo ? (st.BaffleFrom < rel && rel < st.BaffleTo) : (st.BaffleTo >= rel || rel >= st.BaffleFrom))) continue;
+                float dist = (t.transform.position - home.transform.position).magnitude;
+                if (!Singleton<UnitSensorCache>.Instance.UnitsHaveDirectlLOS(home, t, dist)) continue;
+                float y = t.transform.position.y;
+                float depth = y < 0f && t is Submarine ? -y * SensorPicture.FeetPerUnit : float.NaN;
+                if (t._sensorData._baseNoise >= 0f)
+                {
+                    float signal = (float)SonarCalculator.GetPassiveSonarEcho(t, home, pos, sp._gain, ambient, xLayer, duct)._signalValue;
+                    if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, DepthFt = depth, Signal = signal });
+                }
+                if (active && t._sensorData._maxTargetReflectionStrength >= 0f)
+                {
+                    bool lf = sp._frequency == SonarParameters.SonarFrequency.LF, mf = sp._frequency == SonarParameters.SonarFrequency.MF;
+                    float signal = (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
+                    if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
+                }
+            }
+        }
+        catch (Exception ex) { ModLog.Debug("Sonar own-ship check: " + ex.Message); }
+    }
+
     public static void Update(SonarWindow win)
     {
         SensorPicture pic = SensorPicture.Current;
@@ -98,7 +147,9 @@ internal static class SonarSampler
         st.Heading = unit.Heading;
         st.SpeedKts = unit.SpeedKts;
         st.Towed = sonar.IsTowedSensor || sonar.IsVDS;
-        st.On = sonar.IsOn.Value;
+        // Off, broken or a towed array still on its winch: the sonar hears nothing, whatever tracks the game still keeps for a moment.
+        bool listening = sonar._sonar != null && sonar.CanProduceContacts && (sonar._parentTowedSystem == null || sonar._parentTowedSystem.TowedSystemState != TowedSystem.SystemState.SystemRetracted);
+        st.On = listening;
         bool active = sonar._sonar != null && sonar._sonar.IsActive.Value;
         st.Mode = (st.Towed ? "towed " : "") + (active ? "active" : "passive") + (sonar.IsOn.Value ? "" : ", off");
         if (sp != null && sp._baffles != UnityEngine.Vector2.zero && !st.Towed) { st.BaffleFrom = sp._baffles.x; st.BaffleTo = sp._baffles.y; }
@@ -126,7 +177,14 @@ internal static class SonarSampler
         st.SeabedFt = bed < 0f ? -bed * SensorPicture.MetersPerUnit * 3.28084f : float.NaN;
 
         st.Marks.Clear();
-        foreach (ContactRow cr in pic.Contacts)
+        ownHeard.Clear();
+        if (listening) CollectOwnShips(unit, pic, sonar, sp, active, st);
+        foreach (Heard o in ownHeard)
+            st.Marks.Add(new SonarState.Mark
+            {
+                Label = o.Name, Rel = o.Rel, RangeM = o.Active ? o.RangeM : float.NaN, Age = 0f, DepthFt = o.DepthFt, Active = o.Active,
+            });
+        if (listening) foreach (ContactRow cr in pic.Contacts)
             foreach (Hit h in cr.Hits)
             {
                 if (h.Unit != unit || !h.Live || (h.Kind != Kind.Passive && h.Kind != Kind.Active) || h.SensorName != name) continue;
@@ -140,7 +198,12 @@ internal static class SonarSampler
         if (wf.LastVersion == pic.Version) return;
         wf.LastVersion = pic.Version;
         var dots = wf.Push(float.IsNaN(st.OwnNoise) ? 0f : st.OwnNoise, unit.Heading);
-        foreach (ContactRow cr in pic.Contacts)
+        foreach (Heard o in ownHeard)
+        {
+            int ownBin = Math.Max(0, Math.Min(SonarWindow.Bins - 1, (int)((o.Rel + 180f) / 360f * SonarWindow.Bins)));
+            dots.Add(new Waterfall.Dot { Bin = (short)ownBin, Width = 1, Level = (byte)(70 + 185 * Math.Max(0f, Math.Min(1f, o.Signal / 30f))), Active = o.Active });
+        }
+        if (listening) foreach (ContactRow cr in pic.Contacts)
         {
             foreach (Hit h in cr.Hits)
             {
@@ -284,7 +347,7 @@ public sealed class SonarSurface : Surface
             batchList.Clear();
         }
         if (!st.On)
-            DrawCentered(dc, "sonar is off - nothing is listening", x0 + ww / 2, y0 + hh / 2f - 24, 12, Emphasis);
+            DrawCentered(dc, "sonar is not listening", x0 + ww / 2, y0 + hh / 2f - 24, 12, Emphasis);
         }
         else DrawEchoes(dc, st, x0, y0, ww, hh);
         if (!win.ShowEchoes)
