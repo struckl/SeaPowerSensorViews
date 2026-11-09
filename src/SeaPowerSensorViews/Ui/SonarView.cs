@@ -450,54 +450,100 @@ public sealed class SonarSurface : Surface
         }
 
         // ---- depth strip ---------------------------------------------------------------------------------------------------
+        // Scaled to what the player works with (own depth, array, layer, contacts), not to a seabed miles down: with the bottom at
+        // 30,000 ft everything of interest sat in the top few pixels and the labels piled up. A deep seabed is written at the bottom.
         float sx = x0 + ww + 16, sw = stripW - 8;
         float maxDepth = 300f;
-        foreach (float d in new[] { st.SeabedFt, st.LayerFt * 1.4f, st.DepthFt * 1.3f, st.ArrayFt * 1.3f })
+        foreach (float d in new[] { st.LayerFt * 1.4f, st.DepthFt * 1.3f, st.ArrayFt * 1.3f })
             if (!float.IsNaN(d) && d > maxDepth) maxDepth = d;
+        foreach (SonarState.Mark m in st.Marks)
+            if (!float.IsNaN(m.DepthFt) && m.DepthFt * 1.2f > maxDepth) maxDepth = m.DepthFt * 1.2f;
+        bool bedShown = !float.IsNaN(st.SeabedFt) && st.SeabedFt <= maxDepth * 1.5f;
+        if (bedShown) maxDepth = Math.Max(maxDepth, st.SeabedFt);
         maxDepth = (float)Math.Ceiling(maxDepth / 100f) * 100f;
         float top = y0, bottom = y0 + hh;
         dc.DrawRectangle(Header, PenOf(Lines, 1f), new Rect(sx, top, sw, bottom - top));
         DrawCentered(dc, "Depth (ft)", sx + sw / 2, y0 - 28, 10, Highlight);
-        Func<float, float> yOf = d => top + (bottom - top) * Math.Min(1f, d / maxDepth);
+        Func<float, float> yOf = d => top + (bottom - top) * Math.Max(0f, Math.Min(1f, d / maxDepth));
         dc.DrawRectangle(Fade(Blue, 0.18f), null, new Rect(sx + 1, top + 1, sw - 2, (!float.IsNaN(st.LayerFt) ? yOf(st.LayerFt) : bottom) - top - 1));
-        if (!float.IsNaN(st.SeabedFt))
+        // scale ticks on the left edge
+        float tick = maxDepth > 4000f ? 1000f : maxDepth > 1500f ? 500f : maxDepth > 600f ? 200f : 100f;
+        for (float d = tick; d < maxDepth; d += tick)
+        {
+            float y = yOf(d);
+            dc.DrawLine(PenOf(Fade(Lines, 0.8f), 1f), new Point(sx, y), new Point(sx + 5, y));
+            Draw(dc, d.ToString("0"), sx + 7, y - 6, 8, Fade(Normal, 0.7f));
+        }
+        if (bedShown)
         {
             float yb = yOf(st.SeabedFt);
             dc.DrawRectangle(Fade(Normal, 0.45f), null, new Rect(sx + 1, yb, sw - 2, Math.Max(1f, bottom - yb)));
-            DrawRight(dc, "seabed " + st.SeabedFt.ToString("0"), sx + sw - 3, Math.Min(bottom - 13, yb - 13), 10, Normal);
         }
+        DrawRight(dc, !float.IsNaN(st.SeabedFt) ? "seabed " + st.SeabedFt.ToString("0") + (bedShown ? "" : " (below)") : "", sx + sw - 3, bottom - 13, 9, Normal);
         if (!float.IsNaN(st.LayerFt))
         {
             float yl = yOf(st.LayerFt);
             dc.DrawLine(PenOf(Emphasis, 1.5f), new Point(sx, yl), new Point(sx + sw, yl));
-            Draw(dc, "layer " + st.LayerFt.ToString("0"), sx + 4, yl - 13, 10, Emphasis);
         }
-        Draw(dc, "surface", sx + 4, top + 2, 10, Normal);
+
+        // Labels: own things in the left column, contacts in the right one; each column pushed apart so no two overlap,
+        // with a short leader line from the label to its mark when it had to move.
+        var left = new System.Collections.Generic.List<DepthLabel>();
+        var right = new System.Collections.Generic.List<DepthLabel>();
+        left.Add(new DepthLabel { Y = top + 8, Text = "surface", Brush = Normal });
+        if (!float.IsNaN(st.LayerFt)) left.Add(new DepthLabel { Y = yOf(st.LayerFt), Text = "layer " + st.LayerFt.ToString("0"), Brush = Emphasis });
+        float ownX = sx + sw * 0.42f, arrX = sx + sw * 0.5f, conX = sx + sw * 0.62f;
         if (!float.IsNaN(st.DepthFt))
         {
             float yd = yOf(st.DepthFt);
-            dc.DrawEllipse(Highlight, null, new Point(sx + sw * 0.3f, yd), 4, 4);
-            Draw(dc, "own " + st.DepthFt.ToString("0"), sx + sw * 0.3f + 8, yd - 6, 10, Highlight);
+            dc.DrawEllipse(Highlight, null, new Point(ownX, yd), 4, 4);
+            left.Add(new DepthLabel { Y = yd, Text = "own " + st.DepthFt.ToString("0"), Brush = Highlight, MarkX = ownX });
         }
         if (!float.IsNaN(st.ArrayFt))
         {
             float ya = yOf(st.ArrayFt);
-            dc.DrawLine(PenOf(Green, 1.5f), new Point(sx + sw * 0.3f, yOf(float.IsNaN(st.DepthFt) ? 0f : st.DepthFt)), new Point(sx + sw * 0.7f, ya));
-            dc.DrawRectangle(Green, null, new Rect(sx + sw * 0.7f - 3, ya - 3, 6, 6));
-            Draw(dc, "array " + st.ArrayFt.ToString("0"), sx + 4, ya + 4, 10, Green);
+            dc.DrawLine(PenOf(Green, 1.5f), new Point(ownX, yOf(float.IsNaN(st.DepthFt) ? 0f : st.DepthFt)), new Point(arrX, ya));
+            dc.DrawRectangle(Green, null, new Rect(arrX - 3, ya - 3, 6, 6));
+            if (float.IsNaN(st.DepthFt) || Math.Abs(st.ArrayFt - st.DepthFt) > 1f)
+                left.Add(new DepthLabel { Y = ya, Text = "array " + st.ArrayFt.ToString("0"), Brush = Green, MarkX = arrX });
         }
+        var seen = new System.Collections.Generic.HashSet<string>();
         foreach (SonarState.Mark m in st.Marks)
         {
-            if (float.IsNaN(m.DepthFt)) continue;
-            float ym = yOf(m.DepthFt), mx = sx + sw * 0.88f;
+            if (float.IsNaN(m.DepthFt) || !seen.Add(m.Label)) continue;     // one mark per contact (passive and active of the same)
+            float ym = yOf(m.DepthFt);
             Brush mc = Fade(m.Active ? Blue : Green, Math.Max(0.4f, 1f - m.Age / 60f));
             if (m.DepthErrFt > 1f)
-                dc.DrawLine(PenOf(mc, 1f), new Point(mx, yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt))), new Point(mx, yOf(m.DepthFt + m.DepthErrFt)));
-            dc.DrawEllipse(mc, null, new Point(mx, ym), 3, 3);
-            DrawRight(dc, m.Label + " " + m.DepthFt.ToString("0"), mx - 6, ym - 6, 9, mc);
-            if (!float.IsNaN(st.LayerFt))
-                DrawRight(dc, m.DepthFt < st.LayerFt ? "above layer" : "below layer", mx - 6, ym + 4, 8, Fade(Normal, 0.8f));
+                dc.DrawLine(PenOf(mc, 1f), new Point(conX, yOf(Math.Max(0f, m.DepthFt - m.DepthErrFt))), new Point(conX, yOf(m.DepthFt + m.DepthErrFt)));
+            dc.DrawEllipse(mc, null, new Point(conX, ym), 3, 3);
+            right.Add(new DepthLabel { Y = ym, Text = m.Label + "  " + m.DepthFt.ToString("0"), Brush = mc, MarkX = conX });
         }
+        LayOut(left, top + 2, bottom - 14);
+        LayOut(right, top + 2, bottom - 26);
+        foreach (DepthLabel l in left)
+        {
+            if (l.MarkX > 0f && Math.Abs(l.Shown - l.Y) > 3f) dc.DrawLine(PenOf(Fade(l.Brush, 0.5f), 1f), new Point(sx + 34, l.Shown), new Point(l.MarkX - 4, l.Y));
+            Draw(dc, l.Text, sx + 4, l.Shown - 6, 9, l.Brush);
+        }
+        foreach (DepthLabel l in right)
+        {
+            if (Math.Abs(l.Shown - l.Y) > 3f) dc.DrawLine(PenOf(Fade(l.Brush, 0.5f), 1f), new Point(conX + 4, l.Y), new Point(sx + sw - 60, l.Shown));
+            DrawRight(dc, l.Text, sx + sw - 3, l.Shown - 6, 9, l.Brush);
+        }
+    }
+
+    private sealed class DepthLabel { public float Y, Shown, MarkX; public string Text; public Brush Brush; }
+
+    /// <summary>Spreads labels so that each sits at least one text line below the one above it, as close to its mark as it can.</summary>
+    private static void LayOut(System.Collections.Generic.List<DepthLabel> labels, float minY, float maxY)
+    {
+        const float line = 12f;
+        labels.Sort((p, q) => p.Y.CompareTo(q.Y));
+        float next = minY + 6f;
+        foreach (DepthLabel l in labels) { l.Shown = Math.Max(l.Y, next); next = l.Shown + line; }
+        // too many to fit: pull the bottom ones back up
+        float limit = maxY;
+        for (int i = labels.Count - 1; i >= 0; i--) { if (labels[i].Shown > limit) labels[i].Shown = limit; limit = labels[i].Shown - line; }
     }
 
     private void DrawEchoes(DrawingContext dc, SonarState st, float x0, float y0, float ww, float hh)
