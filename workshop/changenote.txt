@@ -1,5 +1,7 @@
-0.4.0: one bottom-bar button with a flyout, click a contact on the radar to jump to it, snappier map layers.
-The three text buttons are now one radar-scope icon in the style of the game's bar icons. Its flyout opens Board, Radar scope and Sonar one by one (the map stays usable around it) and holds the map switches: sensor lines, coverage, lines for the selected unit or all units, lines per sensor, and what the coverage shows (radar, ESM, visual, sonar, terrain shadows). The same switches are on the sensor board.
-A click on a contact or one of your own ships on the radar scope picks it and brings the camera to it (to where your sensors place the contact, never the real object).
-Map lines and coverage keep moving with the map while you pan fast.
-Run in the game on the globe beta 261107. The 0.8.7 build passes the offline checks.
+0.4.1: bearing lines fixed, passive sonar no longer gives away the range.
+
+- Sensor lines no longer point 5 to 20 degrees away from a contact. The farther from the equator you were, the worse it got.
+- ESM and passive sonar lines point at the contact once radar or active sonar has its position.
+- Passive sonar is bearing only now: no exact range on the Echoes plot, the board or the scope.
+
+Run in the game on the 3D-globe beta. The build for 0.8.7 passed the offline checks.
