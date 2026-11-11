@@ -1,5 +1,7 @@
 # Sea Power: R.A.T.S. Sensor Views
 
+> **Sea Power 0.9.0 (11 November 2026):** 0.4.4 declares the new game version in its `_info.ini` (0.8.7 up to every 0.9.x), so the game no longer lists it as "not declared to be compatible" and Steam passes its updates to 0.9.0 players. Checked offline against 0.9.0 (build 261111); not run in the game on 0.9.0 yet.
+
 *Reconnaissance, Acoustics, Terrain & Signals*
 
 A mod for [Sea Power: Naval Combat in the Missile Age](https://store.steampowered.com/app/1286220/) that shows **which of your

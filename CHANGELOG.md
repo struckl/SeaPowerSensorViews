@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4 – 2026-11-11 – declared for game 0.9.0
+
+- **Declared for game 0.9.0.** The mod's `_info.ini` now says it fits 0.8.7 up to every 0.9.x, so the game no longer lists it as "not declared to be compatible", and Steam hands this and later updates to 0.9.0 players (the game skips Workshop updates whose declaration does not fit its version). Checked offline against 0.9.0 (build 261111): every game type, member, Harmony target and by-name lookup the mod uses is there; not run in the game on 0.9.0 yet.
+
 ## 0.4.3 - 2026-11-10 - own torpedoes on sonar, radar scope fixes for aircraft, game build 261107
 
 Run in the game on build 0.8.7-261107 (globe) on 2026-11-09, Showdown off Guam - Blue, under Keel: an F-4E with its radar switched on shows

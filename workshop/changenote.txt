@@ -1,1 +1,3 @@
-0.4.3: steer a wire-guided torpedo by ear - your own torpedoes now show on the sonar display when that sonar would hear them. Fighters' radar scope fixed: no more "SEARCH RADAR OFF" with the radar on, and the shaded arc sits in front of the jet. A sonar depth strip you can actually read. Windows no longer jump to the airbase when you select a weapon. Loads again on the latest game update.
+0.4.4: ready for Sea Power 0.9.0.
+The game no longer lists this mod as "not declared to be compatible", and 0.9.0 players get this and later updates from the Workshop (the game skips updates from items that do not declare its version).
+Nothing else changed. Checked against 0.9.0 (build 261111) without starting the game: everything the mod uses is still there. Not yet run in the game on 0.9.0.
