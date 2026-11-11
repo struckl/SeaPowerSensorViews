@@ -137,4 +137,8 @@ internal sealed class CoverageSet
     public readonly List<Ring> Rings = new List<Ring>();
     public int Version;
     public string Status = "";
+    // The rings are built around Origin; the maps shift them each frame by how far Unit has moved since, so they stay on the unit
+    // between rebuilds (a new shape comes only about every nm).
+    public SeaPower.ObjectBase Unit;
+    public SeaPower.GeoPosition Origin;
 }

@@ -107,11 +107,12 @@ internal static class MapSet
                 foreach (MapView v in Views) tolerance = Math.Min(tolerance, v.DegreesPerPixel());
                 if (tolerance == double.MaxValue) tolerance = 0.002;
                 bool finer = tolerance < LineBuilder.LastTolerance * 0.5;
-                // The snapshot can come 10 times a second (scope open), but the map's paths cost a rebuild each time: at most twice a second.
+                // Every snapshot (up to 10 a second while the game runs). Twice a second let the lines trail a moving unit visibly,
+                // more so at higher time compression; Build still leaves the paths alone unless a line moved a pixel.
                 bool pictureDue = pic.Version != linesPictureVersion && realNow >= linesNextAt;
                 if (pictureDue || Settings.Version != linesSettings || selUid != linesSelection || finer)
                 {
-                    linesNextAt = realNow + 0.5;
+                    linesNextAt = realNow + 0.09;
                     linesPictureVersion = pic.Version;
                     linesSettings = Settings.Version;
                     linesSelection = selUid;

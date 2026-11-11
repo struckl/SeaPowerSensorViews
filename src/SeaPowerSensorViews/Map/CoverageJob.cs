@@ -62,6 +62,7 @@ internal sealed class CoverageJob
         running = false;
         haveShown = false;
         job = null;
+        Result.Unit = null;
         Result.Rings.Clear();
         Result.Version++;
     }
@@ -260,6 +261,8 @@ internal sealed class CoverageJob
         haveShown = true;
         CoverageSet set = Result;
         set.Rings.Clear();
+        set.Unit = job;
+        set.Origin = origin;
         if (haveRadar && Settings.CoverRadar.Value) AddPolygon(set, CoverageKind.Radar, limit, true);
         if (haveSonar && Settings.CoverSonar.Value) AddPolygon(set, CoverageKind.Sonar, sonarRange, true);
         if (haveEsm && Settings.CoverEsm.Value) AddCircle(set, CoverageKind.Esm, esmUnits);

@@ -59,11 +59,13 @@ internal sealed class MapView
         public bool Valid;
         public float ClipX0, ClipY0, ClipX1, ClipY1;   // the cut area of the last build, in its view pixels
         public double SettleAt;             // when > 0: rebuild at this time (the view was zoomed)
+        public readonly TranslateTransform Drift = new TranslateTransform();   // screen pixels the unit moved since the build (coverage)
 
         public Fit()
         {
             Group.Children.Add(Scale);
             Group.Children.Add(Shift);
+            Group.Children.Add(Drift);
         }
     }
 
@@ -108,6 +110,7 @@ internal sealed class MapView
                 }
             }
             catch (Exception) { /* Update will deal with it */ }
+            FollowUnit();
         };
         map.ViewportChanged += onViewport;
         linesFit = new Fit();
@@ -194,6 +197,7 @@ internal sealed class MapView
     {
         lastLines = lines;
         lastCoverage = coverage;
+        FollowUnit();
         if (showLines != linesShown)
         {
             linesShown = showLines;
@@ -253,6 +257,32 @@ internal sealed class MapView
             Anchor(coverageFit);
             Perf.Stop(Perf.Part.MapBuild, t);
         }
+    }
+
+    /// <summary>
+    /// Keeps the coverage on its unit: the rings are built around where the unit was when the job started (a new job only about every
+    /// nm, so a fast unit ran out of its own circle). Every frame they are shifted by the screen distance from that place to where the
+    /// unit is now - the place it was built at and the unit both projected through the current view, so zoom and pan need nothing more.
+    /// </summary>
+    private void FollowUnit()
+    {
+        float dx = 0f, dy = 0f;
+        try
+        {
+            CoverageSet c = lastCoverage;
+            if (coverageShown && c != null && c.Unit != null && !c.Unit.IsDestroyed && c.Rings.Count > 0)
+            {
+                GeoPosition now = c.Unit.getGeoPosition();
+                if (Project(c.Origin._latitude, c.Origin._longitude, out float x0, out float y0) && Project(now._latitude, now._longitude, out float x1, out float y1))
+                {
+                    dx = x1 - x0;
+                    dy = y1 - y0;
+                }
+            }
+        }
+        catch (Exception) { dx = dy = 0f; }
+        if (coverageFit.Drift.X != dx) coverageFit.Drift.X = dx;
+        if (coverageFit.Drift.Y != dy) coverageFit.Drift.Y = dy;
     }
 
     private bool Settled(Fit fit, double now) => fit.SettleAt > 0 && now >= fit.SettleAt;

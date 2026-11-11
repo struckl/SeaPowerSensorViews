@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Built and checked offline (both DLLs, `compat` clean on 0.9.0 and 0.8.7); not run in the game yet.
+
+- **Fix: the coverage rings trailed a moving unit.** The rings (visual, ESM, radar, sonar) were drawn around the place the unit had when they were last worked out, and that happens only after it moves about a nautical mile, so a fast helicopter or jet flew out of the middle of its own circle. They now move with the unit every frame; the shape is still worked out again every nm or so.
+- **Fix: the sensor lines lagged behind.** The lines were redrawn at most twice a second, so at speed or with time compression their start sat behind the unit's marker. They now follow every update of the sensor picture (up to 10 a second), and are still left alone when nothing moved by a pixel.
+
 ## 0.4.4 – 2026-11-11 – declared for game 0.9.0
 
 - **Declared for game 0.9.0.** The mod's `_info.ini` now says it fits 0.8.7 up to every 0.9.x, so the game no longer lists it as "not declared to be compatible", and Steam hands this and later updates to 0.9.0 players (the game skips Workshop updates whose declaration does not fit its version). Checked offline against 0.9.0 (build 261111): every game type, member, Harmony target and by-name lookup the mod uses is there; not run in the game on 0.9.0 yet.
