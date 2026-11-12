@@ -1,74 +1,96 @@
 [h1]R.A.T.S. Sensor Views[/h1]
 [i]R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals[/i]
-[b]Bugs, ideas, questions:[/b] [url=https://hub.sewerlabs.dev/s/sensorviews]R.A.T.S. feedback board[/url]
 
 [b]Sit down, Commander. Your cruiser has a real radar room now.[/b]
-See who sees what: a green phosphor radar scope, a sonar waterfall, a sensor board and live sensor lines on your tactical map. Everything opens from one radar button at the bottom right.
+See who sees what: a phosphor radar scope, a sonar waterfall, a sensor board and live sensor lines on your map.
 
-[h2]The highlights[/h2]
+[quote]▶ [b]Requires[/b] a mod loader: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459]R.A.T.S. Keel[/url] or Anchor Chain, either one
+✉ Bugs, ideas, questions: [url=https://hub.sewerlabs.dev/s/sensorviews]R.A.T.S. feedback board[/url]
+⭐ A favourite helps other captains find it[/quote]
+
+[h2]✦ New in 0.4[/h2]
 [list]
-[*][b]A radar that looks like one.[/b] Green phosphor tube, the sweep leaves a glowing trail, contacts light up when it hits them and fade until the next pass
-[*][b]Sonar with depth.[/b] Waterfall with baffle sectors, your own noise and a depth strip with thermal layer and seabed
-[*][b]Know where you are blind.[/b] Coverage on the map shows where your radar goes dark behind hills
-[*][b]Click and fly.[/b] Click a contact on the scope and the camera flies to it. Click your own ships too
-[*][b]Everything on one button.[/b] One flyout opens every window and flips every map layer
+[*][b]Scope and sonar show only[/b] what those sensors detect
+[*][b]Your own torpedoes on sonar:[/b] steer a wire-guided torpedo by ear
+[*][b]Coverage follows the unit[/b] as it moves
+[*][b]Runs on 0.9.1[/b] and the flat map (0.8.7)
 [/list]
 
-[h2]Radar scope[/h2]
+[h2]✦ Highlights[/h2]
 [list]
-[*]Only what your radar really holds, fading until the next pass of the sweep; nothing while the radar is off
-[*]Range changes glide instead of jumping
-[*]Radar horizon ring: set the target altitude with the slider or type it in
-[*]Blind arcs of your search radars
-[*]Your own ships under the same rule, strobes for radars warning you and for jammers
-[*]A LOCK ring on contacts held by a fire-control radar
-[*]North-up or heading-up, and a measuring cursor with bearing and range
+[*][b]A radar that looks like one.[/b] Green phosphor, a glowing sweep, contacts that light up and fade until the next pass
+[*][b]Sonar with depth.[/b] Waterfall with baffles, your own noise, a depth strip with thermal layer and seabed
+[*][b]Know where you are blind.[/b] Coverage shows where your radar goes dark behind hills
+[*][b]Who holds what.[/b] The sensor board: your units across, contacts down, every sensor in a letter
+[*][b]Click and fly.[/b] Click a contact on the scope and the camera flies there
+[*][b]Everything on one button[/b] at the bottom right
 [/list]
 
-[h2]Sonar display[/h2]
+[h2]▶ Quick start[/h2]
+[olist]
+[*]Subscribe, and a mod loader if you have none (Keel above)
+[*]Switch R.A.T.S. Sensor Views on in Mods
+[*]In a mission: the radar button at the right end of the bottom bar
+[/olist]
 [list]
-[*]Bearing over time, newest at the top, for the sonar you pick
-[*]Baffle sector shaded, your own noise at your speed shown
-[*]Your own torpedoes show when your sonar would hear them: steer a wire-guided torpedo by ear
-[*]Depth strip: thermal layer, your depth, the array and the contacts at the depth the game estimates, each on its own line
-[*]Echoes button: switch the waterfall to a bearing and range plot
+[*][b]Keys:[/b] Ctrl+Insert, Ctrl+PageUp, Ctrl+PageDown for the windows; Ctrl+Shift+PageUp/PageDown for the map layers
+[*][b]Second monitor:[/b] with R.A.T.S. Pop-Out Windows the windows go there too
 [/list]
 
-[h2]Sensor board[/h2]
+[h2]⚙ Radar scope[/h2]
 [list]
-[*]Your units across, the contacts down, and which sensor holds what: R search radar, F fire control, E ESM, S passive sonar, A active sonar, V visual or infrared, M MAD
-[*]Click a cell for bearing, range and age per sensor. Double-click a contact to bring the camera to it
-[*]The selected unit's sensors with on or off, damage, arcs and EMCON
+[*][b]Only what your radar holds;[/b] nothing while it is off
+[*][b]Radar horizon ring[/b] for a target altitude you set
+[*][b]Blind arcs,[/b] strobes for radars and jammers on you, a LOCK ring for fire control
+[*][b]North-up or heading-up,[/b] a cursor with bearing and range, ranges that glide
 [/list]
 
-[h2]On the map[/h2]
+[h2]⚙ Sonar and sensor board[/h2]
 [list]
-[*][b]Sensor lines:[/b] a line from each of your units to where each sensor puts a contact. Amber for search radar, thick red for a fire-control lock, blue for active sonar, dotted for visual, a wedge for ESM and passive sonar
-[*][b]Coverage:[/b] where the selected unit's sensors would hold an imagined target. Radar with terrain shadows, ESM, visual range and passive sonar. Off by default
-[*]Lines for the selected unit or for all of your units, per sensor type
+[*][b]Waterfall[/b] for the sonar you pick, or Echoes: bearing and range
+[*][b]Depth strip:[/b] layer, your depth, the array, contacts at the game's estimated depth
+[*][b]Board letters:[/b] R search, F fire control, E ESM, S passive, A active, V visual, M MAD; a click for bearing, range, age
+[*][b]The selected unit's sensors:[/b] on or off, damage, arcs, EMCON
 [/list]
 
-[h2]Open it[/h2]
+[h2]⚙ On the map[/h2]
 [list]
-[*]One radar button at the right end of the bottom bar opens the flyout: Board, Radar scope and Sonar (each one alone) plus the map switches
-[*]Hot keys: Ctrl+Insert, Ctrl+PageUp, Ctrl+PageDown for the windows, Ctrl+Shift+PageUp and Ctrl+Shift+PageDown for the map layers. All can be changed in the config
-[*]With [b]R.A.T.S. Pop-Out Windows[/b] the windows can go to a second monitor
+[*][b]Sensor lines:[/b] amber search radar, thick red lock, blue active sonar, dotted visual, wedges for ESM and passive
+[*][b]For the selected unit or all units,[/b] per sensor type
+[*][b]Coverage:[/b] radar with terrain shadows, ESM, visual, passive sonar; off by default
 [/list]
 
-[h2]Good to know[/h2]
+[h2]⚠ Good to know[/h2]
 [list]
-[*]Display only. It shows what your own sensors already report to the game's plotting table. The real position of a contact is never shown, and nothing in a mission changes: the mission's own rules decide what a sensor can detect
-[*]Passive sonar depth is the game's own rough estimate and can be off by hundreds of feet
-[*]No game files are changed. If a game update moves something the mod hooks into, the log says what turned off
+[*][b]Display only.[/b] It shows what your sensors already report; the real position of a contact is never shown, missions don't change
+[*][b]Passive sonar depth[/b] is the game's rough estimate and can be off by hundreds of feet
+[*][b]Many units:[/b] sensor lines for all units can cost frame rate; use the selected unit's lines (a fix is in the works)
+[*][b]No game files are changed.[/b] If an update moves a hook, the log says what turned off
 [/list]
 
-[h2]Install[/h2]
-[b]R.A.T.S. Keel[/b] is required: [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459]subscribe[/url] and switch it on in the Mods menu; its page has the one install step. It replaces Anchor Chain.
-Run in the game on the 3D globe public beta (build 261107). The build for 0.8.7 passes the offline checks; the right DLL loads on each game and the other stays off.
+[h2]⚙ Install and game versions[/h2]
+[list]
+[*][b]Run in the game on 0.9.1[/b] (build 261112): coverage in Red Sea Breakout, under R.A.T.S. Keel
+[*][b]0.8.7 (flat map):[/b] checked offline; the right build switches on by itself
+[*][b]Settings:[/b] [i]BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg[/i]
+[*][b]More:[/b] [url=https://github.com/struckl/SeaPowerSensorViews]README on GitHub[/url]
+[/list]
 
-[h2]Problems?[/h2]
-For a bug, attach [i]<Sea Power>\BepInEx\LogOutput.log[/i] (as a link) and say which window and which unit. Settings are in [i]BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg[/i].
+[h2]✉ Problems, feedback, ideas[/h2]
+[list]
+[*][url=https://hub.sewerlabs.dev/s/sensorviews]R.A.T.S. feedback board[/url]: say which window and which unit
+[*][b]With Keel:[/b] Send report in its report window (Ctrl+Shift+K) sends the logs
+[*][b]Videos:[/b] [url=https://www.youtube.com/@SewerRatte]R.A.T.S. on YouTube[/url]
+[/list]
 
-Source code (MIT): [url=https://github.com/struckl/SeaPowerSensorViews]github.com/struckl/SeaPowerSensorViews[/url]
+[h2]Support[/h2]
+[list]
+[*]Sensor Views is free and stays free. If you want to keep the rats fed: [url=https://ko-fi.com/kanalratte_sewerlabs]a cheese on Ko-fi[/url] or [url=https://www.patreon.com/cw/Kanalratte]Patreon[/url]
+[/list]
+
+[h2]Credits[/h2]
+[list]
+[*]Source (MIT): https://github.com/struckl/SeaPowerSensorViews
+[/list]
 
 [i]R.A.T.S. – Ratte's Assorted Tactical Systems[/i]
