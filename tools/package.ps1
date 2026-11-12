@@ -5,7 +5,7 @@
 .DESCRIPTION
     Release builds without the automatic deploy, then dist\SeaPowerSensorViews\ with exactly what players get:
     SeaPowerSensorViews.dll (the 3D-globe game) and SeaPowerSensorViewsFlat.dll (Sea Power 0.8.7's flat map), the same sources
-    built against each game's assemblies, each staying off on the other game; _info.ini, LICENSE.txt, preview.jpg (the
+    built against each game's assemblies, each staying off on the other game; _info.ini, LICENSE.txt, CHANGELOG.md, preview.jpg (the
     Workshop preview, if present).
     The flat build needs a copy of 0.8.7's Sea Power_Data\Managed (-FlatManagedDir; default: _gamerefs next to the mod
     folders in the workspace), the globe build the globe game's (-GlobeManagedDir when the installed game is 0.8.7).
@@ -67,6 +67,7 @@ if (Test-Path $tool) {
 else { Write-Warning 'tools\compat-check not found (the workspace next to this repo) - the DLLs were not checked against both games.' }
 Copy-Item (Join-Path $root 'src\SeaPowerSensorViews\mod\_info.ini') $dist
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $dist 'LICENSE.txt')
+Copy-Item (Join-Path $root 'CHANGELOG.md') $dist   # Keel's What's new shows its newest lines when there are no Workshop notes (local copies, GitHub zips)
 $preview = Join-Path $root 'workshop\preview.jpg'
 if (Test-Path $preview) { Copy-Item $preview $dist } else { Write-Warning 'workshop\preview.jpg missing - nothing to pick as the Workshop preview.' }
 $version = (Select-String -Path (Join-Path $root 'src\SeaPowerSensorViews\Plugin.cs') -Pattern 'Version = "([^"]+)"').Matches[0].Groups[1].Value

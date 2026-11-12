@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The mod folder carries this CHANGELOG.md, so R.A.T.S. Keel's What's new can show what changed when there are no Workshop notes (a local copy, the GitHub zip).
+
 ## 0.4.5 – 2026-11-12 – coverage follows the unit, in-game name
 
 Run in the game on 0.9.1 (build 261112) on 2026-11-12: the name in Keel's list, and an E-2C's coverage ring staying centred on it over about 30 nm (Red Sea Breakout). 0.8.7 checked offline only.
