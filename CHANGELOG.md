@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.5 – 2026-11-12 – coverage follows the unit, in-game name
 
-Built and checked offline (both DLLs, `compat` clean on 0.9.0 and 0.8.7); not run in the game yet.
+Run in the game on 0.9.1 (build 261112) on 2026-11-12: the name in Keel's list, and an E-2C's coverage ring staying centred on it over about 30 nm (Red Sea Breakout). 0.8.7 checked offline only.
 
 - **Shows as just "R.A.T.S. Sensor Views" in the game.** The game's mod list and the mod loader's list (Keel or Anchor Chain) now both say R.A.T.S. Sensor Views, without "Sea Power" and the same name for both game versions (the flat-map build said "(flat map)").
 - **Fix: the coverage rings trailed a moving unit.** The rings (visual, ESM, radar, sonar) were drawn around the place the unit had when they were last worked out, and that happens only after it moves about a nautical mile, so a fast helicopter or jet flew out of the middle of its own circle. They now move with the unit every frame; the shape is still worked out again every nm or so.

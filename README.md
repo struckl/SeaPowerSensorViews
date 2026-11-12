@@ -2,7 +2,7 @@
 
 **Bugs, ideas, questions:** [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews)
 
-> **Sea Power 0.9.0 (11 November 2026):** 0.4.4 declares the new game version in its `_info.ini` (0.8.7 up to every 0.9.x), so the game no longer lists it as "not declared to be compatible" and Steam passes its updates to 0.9.0 players. Checked offline against 0.9.0 (build 261111); not run in the game on 0.9.0 yet.
+> **Sea Power 0.9.1 (12 November 2026):** 0.4.5 shows as "R.A.T.S. Sensor Views" in the game and declares 0.8.7 up to every 0.9.x in its `_info.ini`. 0.4.4 was run in the game on 0.9.1 (build 261112) on 12 November 2026; checked offline against 0.9.1.
 
 *Reconnaissance, Acoustics, Terrain & Signals*
 
