@@ -4,6 +4,7 @@
 
 Built and checked offline (both DLLs, `compat` clean on 0.9.0 and 0.8.7); not run in the game yet.
 
+- **Shows as just "R.A.T.S. Sensor Views" in the game.** The game's mod list and the mod loader's list (Keel or Anchor Chain) now both say R.A.T.S. Sensor Views, without "Sea Power" and the same name for both game versions (the flat-map build said "(flat map)").
 - **Fix: the coverage rings trailed a moving unit.** The rings (visual, ESM, radar, sonar) were drawn around the place the unit had when they were last worked out, and that happens only after it moves about a nautical mile, so a fast helicopter or jet flew out of the middle of its own circle. They now move with the unit every frame; the shape is still worked out again every nm or so.
 - **Fix: the sensor lines lagged behind.** The lines were redrawn at most twice a second, so at speed or with time compression their start sat behind the unit's marker. They now follow every update of the sensor picture (up to 10 a second), and are still left alone when nothing moved by a pixel.
 
