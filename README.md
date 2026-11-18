@@ -55,4 +55,6 @@ other game; checked offline against the assemblies of both; run in the game on b
 How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Frame-time test: [tools/perf-test](tools/perf-test/README.md). Notes and plan:
 [HANDOVER.md](HANDOVER.md).
 
-MIT licence. *R.A.T.S. - Ratte's Assorted Tactical Systems*
+[R.A.T.S. Source License](LICENSE): read it, fork it, send fixes; no re-uploads, no reuse in other projects.
+
+*R.A.T.S. - Ratte's Assorted Tactical Systems*
