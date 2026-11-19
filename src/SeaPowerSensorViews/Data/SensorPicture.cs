@@ -16,9 +16,6 @@ internal sealed class SensorPicture
 {
     public static readonly SensorPicture Current = new SensorPicture();
 
-    public const float NmPerUnit = 1f / 27.5603f;
-    public const float MetersPerUnit = 67.2f;
-    public const float FeetPerUnit = 220.47266f;
 
     public readonly List<UnitRow> Units = new List<UnitRow>();
     public readonly List<ContactRow> Contacts = new List<ContactRow>();
@@ -245,8 +242,8 @@ internal sealed class SensorPicture
         row.Heading = u.getHeading();
         row.SpeedKts = Mathf.Abs(u._velocityInKnots);
         float y = u.transform.position.y;
-        row.DepthFt = u._type == ObjectBase.ObjectType.Submarine && y < 0f ? -y * FeetPerUnit : float.NaN;
-        row.AltitudeFt = u.IsAirUnit ? y * FeetPerUnit : float.NaN;
+        row.DepthFt = u._type == ObjectBase.ObjectType.Submarine && y < 0f ? -y * Conv.FeetPerUnit : float.NaN;
+        row.AltitudeFt = u.IsAirUnit ? y * Conv.FeetPerUnit : float.NaN;
         row.Kind ??= u._type.ToString();
         float height = y;
         var systems = u._obp?._sensorSystems;
@@ -307,7 +304,7 @@ internal sealed class SensorPicture
         {
             case SensorSystemRadar r:
                 sr.Letter = r._type == SensorSystemRadar.RadarType.Targeting ? "F" : "R";
-                sr.Detail = r._type + (r._radar?._rp != null ? ", max " + (r._radar._rp._maxRange * NmPerUnit).ToString("0") + " nm" : "");
+                sr.Detail = r._type + (r._radar?._rp != null ? ", max " + (r._radar._rp._maxRange * Conv.NmPerUnit).ToString("0") + " nm" : "");
                 break;
             case SensorSystemESM: sr.Letter = "E"; sr.Detail = "passive"; break;
             case SensorSystemSonar: sr.Letter = "S"; break;                     // letter and detail follow the mode in ReadUnit

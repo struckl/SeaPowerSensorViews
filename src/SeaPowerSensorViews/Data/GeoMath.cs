@@ -15,7 +15,7 @@ internal static class GeoMath
     {
         (float heading, float meters) = a.HeadingRangeMeters(b);
         bearing = SensorPicture.Wrap360(heading);
-        nm = meters / 1852f;
+        nm = meters / Conv.MetersPerNm;
     }
 
     /// <summary>

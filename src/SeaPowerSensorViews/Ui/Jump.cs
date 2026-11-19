@@ -47,7 +47,7 @@ internal static class Jump
                 if (best != null) ToUnit(best.Unit);
                 return;
             }
-            GeoPosition at = cr.HasPlot ? cr.Plot : best.Unit.Unit.getGeoPosition().OffsetByDistanceOnHeadingUnity(best.RangeM / 1000f, best.Bearing);
+            GeoPosition at = cr.HasPlot ? cr.Plot : best.Unit.Unit.getGeoPosition().OffsetByDistanceOnHeadingUnity(best.RangeM * Conv.KmPerMeter, best.Bearing);
             RenderPosition cam = Singleton<RenderPosition>.Instance;
             cam.detachCameraFromTarget();
             cam.setGlobalPosition(at);

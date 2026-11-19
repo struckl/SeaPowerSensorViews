@@ -26,7 +26,6 @@ internal sealed class CoverageJob
 {
     private const int RaysPerFrame = 6;
     private const int SamplesPerRay = 14;
-    private const float UnitsPerNm = 27.5603f;
 
     public readonly CoverageSet Result = new CoverageSet();
 
@@ -103,7 +102,7 @@ internal sealed class CoverageJob
         sonarRange = new float[rays];
         float altFt = Settings.CoverageAltitude.Value;
         bool surfaceTarget = altFt <= 30f;
-        targetY = surfaceTarget ? 0f : altFt / SensorPicture.FeetPerUnit;
+        targetY = surfaceTarget ? 0f : altFt / Conv.FeetPerUnit;
         float rcs = Settings.TargetRcs.Value;
         haveRadar = haveEsm = haveVisual = haveSonar = false;
         float radarD = 0f, bestEmitter = 0f, emitterGain = 0f, emitterLambda = 0f;
@@ -135,7 +134,7 @@ internal sealed class CoverageJob
                                                    (Globals.RcsValues._minDetectableReturnPowerRadar * 1000.0 * Math.Pow(Math.PI * 4.0, 3.0)), 0.25);
                         if (surface && Singleton<SeaPower.Environment>.Instance.SeaState > 1)
                             eq *= 1f - 0.05f * Singleton<SeaPower.Environment>.Instance.SeaState;
-                        float range = Mathf.Min(eq * 0.0148809375f, rp._maxRange);
+                        float range = Mathf.Min(eq * Conv.UnitsPerMeter, rp._maxRange);
                         float y = r._mountObject != null ? r.SensorPosition.y : sensorY;
                         range = Mathf.Min(range, RadarCalculator.getRadarHorizon(y, targetY));
                         if (range > radarD) { radarD = range; radarTop = y; haveRadar = true; }
@@ -164,7 +163,7 @@ internal sealed class CoverageJob
         }
         if (esmGain > 0f && bestEmitter > 0f)
         {
-            float units = (float)Math.Sqrt(bestEmitter * esmGain * emitterLambda * emitterLambda / 157.9136792061263 / Globals.RcsValues._minDetectableReturnPowerESM) * 0.0148809375f;
+            float units = (float)Math.Sqrt(bestEmitter * esmGain * emitterLambda * emitterLambda / 157.9136792061263 / Globals.RcsValues._minDetectableReturnPowerESM) * Conv.UnitsPerMeter;
             esmUnits = Mathf.Min(units, esmOverHorizon * RadarCalculator.getRadarHorizon(esmY, sensorY));
             haveEsm = esmUnits > 1f;
         }
@@ -182,7 +181,7 @@ internal sealed class CoverageJob
                 float rel = SensorPicture.Wrap360(i * 360f / rays - unit.Heading);
                 if (rel > 180f) rel -= 360f;
                 bool dent = !towed && sp != null && sp._baffles != Vector2.zero && InBaffles(sp._baffles, rel);
-                sonarRange[i] = sonarNm * UnitsPerNm * (dent ? 0.08f : 1f);
+                sonarRange[i] = sonarNm * Conv.UnitsPerNm * (dent ? 0.08f : 1f);
             }
         }
         for (int i = 0; i < rays; i++)
@@ -246,7 +245,7 @@ internal sealed class CoverageJob
 
     private bool Visible(GeoPosition from, float bearing, float units)
     {
-        GeoPosition to = from.OffsetByDistanceOnHeadingUnity(units / UnitsPerNm * 1.852f, bearing);
+        GeoPosition to = from.OffsetByDistanceOnHeadingUnity(Conv.KmOfUnits(units), bearing);
         to._height = targetY;
         LineOfSightResult r = TerrainUtils.IsLineOfSightBetween(from, to);
         return !r._isValid || r._los;          // no terrain data there = nothing known to block it
@@ -276,7 +275,7 @@ internal sealed class CoverageJob
         var lon = new double[n];
         for (int i = 0; i < n; i++)
         {
-            GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(ranges[i] / UnitsPerNm * 1.852f, i * 360.0 / n);
+            GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(Conv.KmOfUnits(ranges[i]), i * 360.0 / n);
             lat[i] = p._latitude;
             lon[i] = p._longitude;
         }
@@ -299,7 +298,7 @@ internal sealed class CoverageJob
         var lon = new double[n + 1];
         for (int i = 0; i <= n; i++)
         {
-            GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(units / UnitsPerNm * 1.852f, (i % n) * 360.0 / n);
+            GeoPosition p = origin.OffsetByDistanceOnHeadingUnity(Conv.KmOfUnits(units), (i % n) * 360.0 / n);
             lat[i] = p._latitude;
             lon[i] = p._longitude;
         }

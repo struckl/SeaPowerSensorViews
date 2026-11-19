@@ -397,7 +397,7 @@ public sealed class PanelSurface : Surface
                   .Append("  brg ").Append(Fmt.Compass(hit.Bearing));
                 if (hit.BearingError > 0.05f) sb.Append(" +-").Append(hit.BearingError.ToString("0"));
                 if (!hit.BearingOnly && !float.IsNaN(hit.RangeM))
-                    sb.Append("  rng ").Append((hit.RangeM / 1852f).ToString("0.0")).Append(" nm");
+                    sb.Append("  rng ").Append((hit.RangeM / Conv.MetersPerNm).ToString("0.0")).Append(" nm");
                 else sb.Append("  bearing only");
                 sb.Append("  fix ").Append(Fmt.Age(pic.Time - hit.FixTime)).Append(hit.Live ? " ago" : " ago (lost)");
                 Draw(dc, sb.ToString(), 14, y, 11, hit.Live ? Normal : Fade(Normal, 0.6f));

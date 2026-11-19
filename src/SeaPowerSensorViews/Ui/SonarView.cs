@@ -107,7 +107,7 @@ internal static class SonarSampler
                 float unityDist = (t.transform.position - pos).magnitude;
                 bool shipToShip = home._type == ObjectBase.ObjectType.Vessel && t._type == ObjectBase.ObjectType.Vessel;
                 float y = t.transform.position.y;
-                float depth = y < 0f && t is Submarine ? -y * SensorPicture.FeetPerUnit : float.NaN;
+                float depth = y < 0f && t is Submarine ? -y * Conv.FeetPerUnit : float.NaN;
                 if (t._sensorData._baseNoise >= 0f)
                 {
                     float signal = shipToShip ? ShipPassive(t, sp, ambient, duct, unityDist)
@@ -119,7 +119,7 @@ internal static class SonarSampler
                     bool lf = sp._frequency == SonarParameters.SonarFrequency.LF, mf = sp._frequency == SonarParameters.SonarFrequency.MF;
                     float signal = shipToShip ? ShipActive(t, sp, ambient, duct, unityDist)
                                               : (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
-                    if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
+                    if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = other.Name, Rel = rel, RangeM = nm * Conv.MetersPerNm, DepthFt = depth, Signal = signal, Active = true });
                 }
             }
             CollectOwnTorpedoes(unit, home, pos, here, sp, active, st, ambient, xLayer, duct);
@@ -147,7 +147,7 @@ internal static class SonarSampler
             if (!float.IsNaN(st.BaffleFrom) && (st.BaffleFrom < st.BaffleTo ? (st.BaffleFrom < rel && rel < st.BaffleTo) : (st.BaffleTo >= rel || rel >= st.BaffleFrom))) continue;
             float dist = (t.transform.position - home.transform.position).magnitude;
             if (!Singleton<UnitSensorCache>.Instance.UnitsHaveDirectlLOS(home, t, dist)) continue;
-            float depth = -t.transform.position.y * SensorPicture.FeetPerUnit;
+            float depth = -t.transform.position.y * Conv.FeetPerUnit;
             string name = "own " + TorpedoName(t) + (ReferenceEquals(t._launchPlatform, home) ? "" : " (" + t._launchPlatform.getName() + ")");
             if (t._sensorData._baseNoise >= 0f)
             {
@@ -158,7 +158,7 @@ internal static class SonarSampler
             {
                 bool lf = sp._frequency == SonarParameters.SonarFrequency.LF, mf = sp._frequency == SonarParameters.SonarFrequency.MF;
                 float signal = (float)SonarCalculator.GetActiveSonarEcho(t, home, pos, sp._outputPower, sp._activeGain, ambient, xLayer, duct, false, false, false, lf, lf || mf)._signalValue;
-                if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = name, Rel = rel, RangeM = nm * 1852f, DepthFt = depth, Signal = signal, Active = true });
+                if (signal >= sp._detectionTreshold) ownHeard.Add(new Heard { Name = name, Rel = rel, RangeM = nm * Conv.MetersPerNm, DepthFt = depth, Signal = signal, Active = true });
             }
         }
     }
@@ -171,12 +171,10 @@ internal static class SonarSampler
 
     // The public per-contact sums return "not heard" for any surface ship listening to a surface ship, while the game's batch model, the one
     // enemy ships go through, does hear them. So for that pair the same sums without the block; two surface ships are both above the layer.
-    private const float NmPerUnityDistance = 0.036285132f;
-
     private static float TransmissionLoss(float unityDist)
     {
-        float nm = Math.Max(0.001f, unityDist * NmPerUnityDistance);
-        return 20f * (float)Math.Log10(nm * 2025f) + nm * Globals._sonarEnvironmentParameters._absorptionFactor;
+        float nm = Math.Max(0.001f, unityDist * Conv.NmPerUnit);
+        return 20f * (float)Math.Log10(nm * Conv.YardsPerNm) + nm * Globals._sonarEnvironmentParameters._absorptionFactor;
     }
 
     private static float ShipPassive(ObjectBase t, SonarParameters sp, float ambient, float duct, float unityDist)
@@ -240,13 +238,13 @@ internal static class SonarSampler
         try
         {
             float layer = Singleton<SeaPower.Environment>.Instance.getLayerHeight(geo);
-            st.LayerFt = layer < 0f ? -layer * SensorPicture.FeetPerUnit : float.NaN;
+            st.LayerFt = layer < 0f ? -layer * Conv.FeetPerUnit : float.NaN;
         }
         catch (Exception) { st.LayerFt = float.NaN; }
         float ay = sonar.SensorPosition.y;
-        st.ArrayFt = ay < 0f ? -ay * SensorPicture.FeetPerUnit : float.NaN;
+        st.ArrayFt = ay < 0f ? -ay * Conv.FeetPerUnit : float.NaN;
         float bed = Terrain.HeightAt(geo);
-        st.SeabedFt = bed < 0f ? -bed * SensorPicture.MetersPerUnit * 3.28084f : float.NaN;
+        st.SeabedFt = bed < 0f ? -bed * Conv.FeetPerUnit : float.NaN;
 
         st.Marks.Clear();
         ownHeard.Clear();
@@ -260,11 +258,11 @@ internal static class SonarSampler
             foreach (Hit h in cr.Hits)
             {
                 if (h.Unit != unit || !h.Live || (h.Kind != Kind.Passive && h.Kind != Kind.Active) || h.SensorName != name) continue;
-                float dep = float.IsNaN(h.AltitudeUnits) || h.AltitudeUnits > 0f ? float.NaN : -h.AltitudeUnits * SensorPicture.FeetPerUnit;
+                float dep = float.IsNaN(h.AltitudeUnits) || h.AltitudeUnits > 0f ? float.NaN : -h.AltitudeUnits * Conv.FeetPerUnit;
                 st.Marks.Add(new SonarState.Mark
                 {
                     Label = cr.Label, Rel = Ang.DeltaAngle(unit.Heading, h.Bearing), RangeM = h.RangeM, Age = (float)(pic.Time - h.FixTime),
-                    DepthFt = dep, DepthErrFt = h.AltitudeError * SensorPicture.FeetPerUnit, Active = h.Kind == Kind.Active,
+                    DepthFt = dep, DepthErrFt = h.AltitudeError * Conv.FeetPerUnit, Active = h.Kind == Kind.Active,
                 });
             }
         if (wf.LastVersion == pic.Version) return;
@@ -564,7 +562,7 @@ public sealed class SonarSurface : Surface
         {
             float y = y0 + hh - hh * r / maxM;
             dc.DrawLine(PenOf(Fade(Lines, 0.8f), 1f), new Point(x0, y), new Point(x0 + ww, y));
-            DrawRight(dc, (r / 1852f).ToString("0.#") + " nm", x0 + ww - 3, y + 1, 9, Normal);
+            DrawRight(dc, (r / Conv.MetersPerNm).ToString("0.#") + " nm", x0 + ww - 3, y + 1, 9, Normal);
         }
         int n = 0;
         foreach (SonarState.Mark m in st.Marks)
@@ -574,7 +572,7 @@ public sealed class SonarSurface : Surface
             float x = x0 + (m.Rel + 180f) / 360f * ww, y = y0 + hh - hh * m.RangeM / maxM;
             Brush c = Fade(Blue, Math.Max(0.35f, 1f - m.Age / 90f));
             dc.DrawEllipse(c, null, new Point(x, y), 4, 4);
-            Draw(dc, m.Label + " " + (m.RangeM / 1852f).ToString("0.0") + " nm  " + m.Age.ToString("0") + " s", x + 7, y - 6, 10, c);
+            Draw(dc, m.Label + " " + (m.RangeM / Conv.MetersPerNm).ToString("0.0") + " nm  " + m.Age.ToString("0") + " s", x + 7, y - 6, 10, c);
         }
         if (n == 0) DrawCentered(dc, "no active echo yet", x0 + ww / 2, y0 + hh / 2f, 12, Normal);
     }

@@ -13,8 +13,6 @@ namespace SeaPowerSensorViews.Map;
 /// </summary>
 internal static class LineBuilder
 {
-    private const float KmPerMeter = 0.001f;
-
     private static readonly List<LineSet.Line> Fresh = new List<LineSet.Line>();
     private static readonly List<LineSet.Line> Merged = new List<LineSet.Line>();
     private static readonly HashSet<int> Groups = new HashSet<int>();
@@ -148,7 +146,7 @@ internal static class LineBuilder
         bool onlySelected = Settings.LinesWho.Value == Settings.SelectedOnly && !Settings.LinesAllUnits.Value;
         if (onlySelected && selected == null) return;              // nothing selected: no lines
         bool lost = Settings.LostLines.Value;
-        float wedgeKm = Settings.WedgeNm.Value * 1.852f;
+        float wedgeKm = Settings.WedgeNm.Value * Conv.KmPerNm;
         foreach (ContactRow cr in pic.Contacts)
         {
             // an ESM bearing of a contact that a ranging sensor holds live adds nothing: the game already linked them
@@ -169,16 +167,16 @@ internal static class LineBuilder
                 LineStyle style = LineStyles.Of(h.Kind);
                 if (!h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f)
                 {
-                    float km = h.RangeM * KmPerMeter;
+                    float km = h.RangeM * Conv.KmPerMeter;
                     float bearing = h.Bearing;
                     if (cr.HasPlot)   // end on the map marker, not on this sensor's older estimate
                     {
                         GeoMath.BearingRange(origin, cr.Plot, out float pb, out float pnm);
-                        if (pnm > 0.01f) { km = pnm * 1.852f; bearing = pb; }
+                        if (pnm > 0.01f) { km = pnm * Conv.KmPerNm; bearing = pb; }
                     }
                     // The range is an estimate with an error. The line is solid up to the nearest range it could be, and a faint stretch
                     // runs on to the farthest: a line ending at one exact point would claim a precision the sensor does not have (sonar).
-                    float errKm = h.RangeErrorM * KmPerMeter;
+                    float errKm = h.RangeErrorM * Conv.KmPerMeter;
                     bool uncertain = errKm > 0.1f && errKm > 0.03f * km;
                     float solidKm = uncertain ? Math.Max(0.05f * km, km - errKm) : km;
                     string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
@@ -194,7 +192,7 @@ internal static class LineBuilder
                     if (cr.HasPlot)
                     {
                         GeoMath.BearingRange(origin, cr.Plot, out float _, out float pnm);
-                        lenKm = Math.Max(1.852f, Math.Min(300f * 1.852f, pnm * 1.852f * 1.1f));
+                        lenKm = Math.Max(Conv.KmPerNm, Math.Min(300f * Conv.KmPerNm, pnm * Conv.KmPerNm * 1.1f));
                     }
                     float bearingNow = GeoMath.BearingNow(cr, h, origin);
                     GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow - half);

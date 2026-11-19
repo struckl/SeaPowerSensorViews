@@ -256,7 +256,7 @@ public sealed class ScopeSurface : Surface
         p = default;
         Hit best = ScopeRadar.Best(cr, unit);
         if (best == null) return false;
-        float rNm = best.RangeM / 1852f, bNow = best.Bearing;
+        float rNm = best.RangeM / Conv.MetersPerNm, bNow = best.Bearing;
         if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
         if (rNm > g.RangeNm * 1.02f) return false;
         p = Polar(g.Cx, g.Cy, rNm * g.PxPerNm, bNow - g.Up);
@@ -375,8 +375,8 @@ public sealed class ScopeSurface : Surface
         float horizonNm = float.NaN;
         if (win.ShowHorizon)
         {
-            float targetY = win.TargetAltitudeFt / SensorPicture.FeetPerUnit;
-            horizonNm = RadarCalculator.getRadarHorizon(unit.SensorHeightUnits, targetY, false, 0f) * SensorPicture.NmPerUnit;
+            float targetY = win.TargetAltitudeFt / Conv.FeetPerUnit;
+            horizonNm = RadarCalculator.getRadarHorizon(unit.SensorHeightUnits, targetY, false, 0f) * Conv.NmPerUnit;
             if (horizonNm > 0.1f)
             {
                 string note = "horizon " + horizonNm.ToString("0") + " nm @ " + win.TargetAltitudeFt.ToString("0") + " ft";
@@ -429,7 +429,7 @@ public sealed class ScopeSurface : Surface
             bool lock_ = ScopeRadar.Locked(cr, unit);
             float ageS = (float)(pic.Time - best.FixTime);
             float alpha = Math.Max(0.55f, 1f - ageS / Math.Max(4f, best.MaxAge));
-            float rNm = best.RangeM / 1852f, bNow = best.Bearing;
+            float rNm = best.RangeM / Conv.MetersPerNm, bNow = best.Bearing;
             if (cr.HasPlot)   // the map marker's place, from the unit as it is now: lines and marks agree with the map
                 GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out bNow, out rNm);
             if (rNm > rangeNm * 1.02f) continue;
@@ -456,7 +456,7 @@ public sealed class ScopeSurface : Surface
             DrawCentered(dc, "no radar picture", cx, cy - radius * 0.45f + 18f, 10, Normal);
         }
         Draw(dc, win.HeadingUp ? "heading up" : "north up", 6, h - 16, 10, Normal);
-        DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * SensorPicture.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
+        DrawRight(dc, "sensor height " + (unit.SensorHeightUnits * Conv.FeetPerUnit).ToString("0") + " ft", w - 6, h - 16, 10, Normal);
     }
 
     internal static float SweepBearing(ObjectBase unit)
@@ -556,7 +556,7 @@ public sealed class ScopeBlips : Surface
         brg = rng = 0f;
         Hit best = ScopeRadar.Best(cr, unit);
         if (best == null) return false;
-        brg = best.Bearing; rng = best.RangeM / 1852f;
+        brg = best.Bearing; rng = best.RangeM / Conv.MetersPerNm;
         if (cr.HasPlot) GeoMath.BearingRange(unit.Unit.getGeoPosition(), cr.Plot, out brg, out rng);
         return true;
     }
