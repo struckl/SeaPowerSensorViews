@@ -32,7 +32,7 @@ internal static class OptionsRows
         b.Choice("Units shown", Settings.LinesWho, new[] { Settings.SelectedOnly, Settings.AllUnits },
             "Selected only: the lines of the unit you have selected (nothing while no unit is selected). All: every own unit's lines, the selected unit's bright. With many units, all lines are a lot to draw.");
         b.Check("Hide ESM of tracked contacts", Settings.HideTrackedEsm,
-            "Leave out the ESM bearing line and cone of a contact that a radar holds as a live track (the game linked the emission to it). Also in the Layers menu.");
+            "Leave out the ESM bearing line and cone of a contact that a radar holds as a live track (the game linked the emission to it). Also a switch on the board and in the bottom-bar flyout.");
         b.Check("Show lost contacts", Settings.LostLines,
             "A contact a sensor has just lost keeps a faint line for the lost contact memory time.");
         b.Check("Fill wedges when zoomed in", Settings.ZoomedWedges,

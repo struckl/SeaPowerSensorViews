@@ -31,6 +31,8 @@ internal static class Settings
     public static ConfigEntry<bool> ZoomAnimation;
     public static ConfigEntry<bool> CoverageVisible;
     public static ConfigEntry<string> CoverageKey;
+    /// <summary>The highest target altitude (ft): the scope's box and slider and the config range all use it.</summary>
+    public const float MaxTargetAltitudeFt = 80000f;
     public static ConfigEntry<float> CoverageAltitude;
     public static ConfigEntry<float> TargetRcs;
     public static ConfigEntry<bool> CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows;
@@ -130,7 +132,7 @@ internal static class Settings
             "would hold an imagined target - radar against the target altitude below with terrain shadows, ESM, visual, passive sonar.");
         CoverageKey = file.Bind("5. Map: coverage", "Toggle key", "Ctrl+Shift+PageDown", "Hot key for the coverage layer. Empty = none.");
         CoverageAltitude = file.Bind("5. Map: coverage", "Target altitude (ft)", 100f,
-            new ConfigDescription("Altitude of the imagined target for radar coverage; the radar scope's slider changes it too.", new AcceptableValueRange<float>(0f, 80000f)));
+            new ConfigDescription("Altitude of the imagined target for radar coverage; the radar scope's slider changes it too.", new AcceptableValueRange<float>(0f, MaxTargetAltitudeFt)));
         TargetRcs = file.Bind("5. Map: coverage", "Target radar cross section (m2)", 10f,
             new ConfigDescription("Imagined target for the radar equation; the coverage never exceeds the radar's own maximum range or the horizon.", new AcceptableValueRange<float>(0.01f, 10000f)));
         CoverRadar = file.Bind("5. Map: coverage", "Radar", true, "Search radar coverage (terrain-shadowed).");

@@ -20,14 +20,13 @@ public sealed class ScopeView : UserControl
     private readonly CheckBox friends = new CheckBox { Content = "Own ships", IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
     // The slider runs on a square-root scale: the useful altitudes (sea-skimmers, helicopters, strike aircraft) sit at the low end
     // and a linear 0..60000 ft slider 130 px wide moved by 460 ft per pixel. Exact values go into the box.
-    private const float MaxSliderAltitudeFt = 60000f, SliderSteps = 1000f;
-    private const float MaxTypedAltitudeFt = 100000f;
+    private const float SliderSteps = 1000f;
     private readonly Slider altitude = new Slider { Minimum = 0, Maximum = SliderSteps, Value = 0, Width = 130, VerticalAlignment = VerticalAlignment.Center, SmallChange = 5, LargeChange = 50 };
     private bool syncing;
     private ScopeWindow watched;
 
-    private static float AltitudeOf(double slider) { double t = slider / SliderSteps; return (float)(MaxSliderAltitudeFt * t * t); }
-    private static double SliderOf(float altitudeFt) => SliderSteps * Math.Sqrt(Math.Max(0f, Math.Min(MaxSliderAltitudeFt, altitudeFt)) / MaxSliderAltitudeFt);
+    private static float AltitudeOf(double slider) { double t = slider / SliderSteps; return (float)(Settings.MaxTargetAltitudeFt * t * t); }
+    private static double SliderOf(float altitudeFt) => SliderSteps * Math.Sqrt(Math.Max(0f, Math.Min(Settings.MaxTargetAltitudeFt, altitudeFt)) / Settings.MaxTargetAltitudeFt);
 
     private ScopeWindow Win => DataContext as ScopeWindow;
 
@@ -37,7 +36,7 @@ public sealed class ScopeView : UserControl
         ScopeWindow w = Win;
         if (w == null || syncing) return;
         if (float.TryParse(altBox.Text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ft) && !float.IsNaN(ft))
-            w.TargetAltitudeFt = Math.Max(0f, Math.Min(MaxTypedAltitudeFt, ft));
+            w.TargetAltitudeFt = Math.Max(0f, Math.Min(Settings.MaxTargetAltitudeFt, ft));
         Sync();
     }
 
