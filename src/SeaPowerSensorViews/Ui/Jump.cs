@@ -32,19 +32,11 @@ internal static class Jump
         try
         {
             if (cr == null || !Singleton<RenderPosition>.InstanceExists()) return;
-            Hit best = null;
-            foreach (Hit h in cr.Hits)
-            {
-                if (h.BearingOnly || float.IsNaN(h.RangeM) || h.Unit?.Unit == null) continue;
-                bool better = best == null
-                    || ((h.Unit == prefer) != (best.Unit == prefer) ? h.Unit == prefer : h.FixTime > best.FixTime);
-                if (better) best = h;
-            }
+            Hit best = BestFix(cr, prefer);
             if (best == null && !cr.HasPlot)      // only bearings and no place plotted: go to the unit that holds it
             {
-                foreach (Hit h in cr.Hits)
-                    if (h.Unit?.Unit != null && (best == null || h.FixTime > best.FixTime)) best = h;
-                if (best != null) ToUnit(best.Unit);
+                Hit newest = Newest(cr);
+                if (newest != null) ToUnit(newest.Unit);
                 return;
             }
             GeoPosition at = cr.HasPlot ? cr.Plot : best.Unit.Unit.getGeoPosition().OffsetByDistanceOnHeadingUnity(best.RangeM * Conv.KmPerMeter, best.Bearing);
@@ -54,5 +46,27 @@ internal static class Jump
             ModLog.Debug("Jump to contact " + cr.Label + ".");
         }
         catch (Exception ex) { ModLog.Warn("Jump to contact failed: " + ex.Message); }
+    }
+
+    /// <summary>The preferred unit's ranged fix if it has one, else the freshest ranged fix of any unit; null when no sensor ranges it.</summary>
+    private static Hit BestFix(ContactRow cr, UnitRow prefer)
+    {
+        Hit best = null;
+        foreach (Hit h in cr.Hits)
+        {
+            if (!h.Ranged || h.Unit?.Unit == null) continue;
+            bool better = best == null
+                || ((h.Unit == prefer) != (best.Unit == prefer) ? h.Unit == prefer : h.FixTime > best.FixTime);
+            if (better) best = h;
+        }
+        return best;
+    }
+
+    private static Hit Newest(ContactRow cr)
+    {
+        Hit newest = null;
+        foreach (Hit h in cr.Hits)
+            if (h.Unit?.Unit != null && (newest == null || h.FixTime > newest.FixTime)) newest = h;
+        return newest;
     }
 }

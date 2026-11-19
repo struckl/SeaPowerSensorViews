@@ -15,7 +15,18 @@ internal static class GeoMath
     {
         (float heading, float meters) = a.HeadingRangeMeters(b);
         bearing = SensorPicture.Wrap360(heading);
-        nm = meters / Conv.MetersPerNm;
+        nm = Conv.Nm(meters);
+    }
+
+    /// <summary>
+    /// Moves a sensor's own fix (bearing and range from <paramref name="origin"/>) onto the contact's plotted position, the map marker,
+    /// when the game plots it: lines and scope marks then end on the marker instead of on an older estimate of one sensor.
+    /// </summary>
+    public static void ToPlot(ContactRow cr, GeoPosition origin, ref float bearing, ref float nm)
+    {
+        if (!cr.HasPlot) return;
+        BearingRange(origin, cr.Plot, out float pb, out float pnm);
+        if (pnm > 0.01f) { bearing = pb; nm = pnm; }
     }
 
     /// <summary>
@@ -24,8 +35,31 @@ internal static class GeoMath
     /// </summary>
     public static float BearingNow(ContactRow cr, Hit hit, GeoPosition origin)
     {
-        if (!cr.HasRangedFix) return hit.Bearing;
-        BearingRange(origin, cr.Plot, out float bearing, out float nm);
-        return nm > 0.01f ? bearing : hit.Bearing;
+        float bearing = hit.Bearing, nm = 0f;
+        if (cr.HasRangedFix) ToPlot(cr, origin, ref bearing, ref nm);
+        return bearing;
+    }
+
+    /// <summary>
+    /// The game's Sonar.IsInBaffles: <paramref name="rel"/> is the bearing from the bow (starboard positive, -180..180), the sector
+    /// runs from <paramref name="from"/> to <paramref name="to"/> and may wrap through the stern. NaN = no baffles.
+    /// </summary>
+    public static bool InBaffles(float from, float to, float rel)
+    {
+        if (float.IsNaN(from)) return false;
+        return from < to ? (from < rel && rel < to) : (to >= rel || rel >= from);
+    }
+
+    /// <summary>Relative bearing from <paramref name="heading"/> to <paramref name="bearing"/>, -180..180, starboard positive.</summary>
+    public static float Relative(float heading, float bearing) => UnityEngine.Mathf.DeltaAngle(heading, bearing);
+}
+
+/// <summary>The object selected in the game.</summary>
+internal static class GameSelection
+{
+    public static ObjectBase Current()
+    {
+        try { return Singleton<RenderPosition>.InstanceExists() ? Singleton<RenderPosition>.Instance.getSelectedObject() : null; }
+        catch (Exception) { return null; }   // between missions the camera has no selection to ask about
     }
 }

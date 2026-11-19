@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Noesis;
-using SeaPower;
 using SeapowerUI;
-using SeaPowerSensorViews.Data;
 
 #if FLATMAP
 namespace SeaPowerSensorViews.Ui;
@@ -13,46 +11,65 @@ namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full n
 
 /// <summary>
 /// Puts the three windows into the game's own window system.
-/// <para>A game window is a content object (a view model) in the main view's <c>WindowHost.Windows</c>; the host shows
-/// it through the <c>DataTemplate</c> registered for the object's type, and that template is a <c>SeapowerUI.Window</c>
-/// with the game's chrome (header, close button, resize thumbs, <c>WindowLayoutNoScroll</c>). The mod parses one
-/// resource dictionary with such a template per window type and merges it into the main view's resources, then opens a
-/// window with the game's <c>WindowHostCommands.OpenWindowCommand</c>, exactly as the game opens its own. Pop-Out Windows
-/// keys on the content's type name, so it gives the new windows its pop-out button without knowing about this mod.</para>
-/// <para>Opened from three toggle buttons added to the bottom bar (styled like the game's own, lit while the window is open)
-/// or from hot keys.</para>
+/// A game window is a content object (a view model) in the main view's <c>WindowHost.Windows</c>; the host shows it through the
+/// <c>DataTemplate</c> registered for the object's type, and that template is a <c>SeapowerUI.Window</c> with the game's chrome
+/// (header, close button, resize thumbs, <c>WindowLayoutNoScroll</c>). The mod parses one resource dictionary with such a template
+/// per window type and merges it into the main view's resources, then opens a window with the game's
+/// <c>WindowHostCommands.OpenWindowCommand</c>, exactly as the game opens its own. Pop-Out Windows keys on the content's type name,
+/// so it gives the new windows its pop-out button without knowing about this mod.
+/// Opened from the flyout of a button added to the bottom bar (styled like the game's own) or from hot keys.
 /// </summary>
 internal static class Kit
 {
     private sealed class Entry
     {
         public SvWindow Window;
+        public string Text;
+        public Chip Chip;
+        public bool Open;           // as of the last Sync / Open / Close; asking the game's command costs a tree walk
+    }
+
+    /// <summary>A toggle in the flyout: peach while on, beige while off.</summary>
+    private sealed class Chip
+    {
         public ToggleButton Button;
         public TextBlock Label;
         public Border Face;
-        public string Text;
-        public bool Open;           // as of the last Sync / Open / Close; asking the game's command costs a tree walk
+        public Func<bool> Read;     // map switches only: read on each Sync while the flyout is shown
         public bool Lit;
+
+        public void Light(bool on)
+        {
+            if (Lit == on) return;
+            Face.Background = on ? ChipOn : ChipOff;
+            Label.Foreground = ChipInk;
+            Lit = on;
+        }
     }
 
     private static readonly List<Entry> Entries = new List<Entry>();
+    private static readonly List<Chip> MapChips = new List<Chip>();
     private static MainGameView view;
     private static bool syncing;
+    private static Border flyout;
+    private static Border iconFace;
+    private static ToggleButton barButton;
 
-    public static bool Active => view != null;
+    // The game's own bar icons: beige, peach while lit, dark ink. Set directly (a popup may not see the game's resources).
+    private const uint IdleColour = 0xFF898377, LitColour = 0xFFF1C693, InkColour = 0xFF2A2627;
+    private static readonly Brush ChipOff = GameColours.Of(IdleColour), ChipOn = GameColours.Of(LitColour), ChipInk = GameColours.Of(InkColour);
 
-#if FLATMAP
-    private const string XamlNamespace = "SeaPowerSensorViews.Ui";
-#else
-    private const string XamlNamespace = "SeaPowerSensorViews.Globe.Ui";
-#endif
+    private static string Hex(uint argb) => "#" + argb.ToString("X8");
 
-    private const string Header =
-        "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
-        "xmlns:local='clr-namespace:SeapowerUI' xmlns:sv='clr-namespace:" + XamlNamespace + "'";
+    private const string Ns = "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'";
+
+    // The window types' own namespace, which differs between the two builds (see the namespace line above).
+    private static readonly string Header =
+        Ns + " xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml' " +
+        "xmlns:local='clr-namespace:SeapowerUI' xmlns:sv='clr-namespace:" + typeof(SvWindow).Namespace + "'";
 
     // The game's resize command clamps a dragged edge to "size minus MinWidth/MinHeight": with no minimum (0) the window could
-    // grow but never shrink. Found with the size probe below.
+    // grow but never shrink.
     private static string Template(string type, string content, int width, int height, int x, int y, bool dynamicTemplate, int minWidth, int minHeight) =>
         "<DataTemplate DataType='{x:Type sv:" + type + "}'>" +
         "<local:Window " + (dynamicTemplate ? "Template='{DynamicResource WindowLayoutNoScroll}' " : "") +
@@ -68,6 +85,10 @@ internal static class Kit
             Template("SonarWindow", "SonarView", 860, 560, 200, 130, dynamicTemplate, 420, 240) +
             "</ResourceDictionary>");
 
+    public static BoardWindow Board => Entries.Count > 0 ? (BoardWindow)Entries[0].Window : null;
+    public static ScopeWindow Scope => Entries.Count > 1 ? (ScopeWindow)Entries[1].Window : null;
+    public static SonarWindow Sonar => Entries.Count > 2 ? (SonarWindow)Entries[2].Window : null;
+
     /// <summary>Called when the mission UI exists; true when everything is in place.</summary>
     public static bool Setup()
     {
@@ -80,13 +101,12 @@ internal static class Kit
         try { dict = Dictionary(dynamicTemplate: true); }
         catch (Exception ex)
         {
+            // A game build without the no-scroll window layout: the plain one still works, only with scroll bars.
             ModLog.Warn("Window template with the game's no-scroll layout failed (" + ex.Message + "); using the default window layout.");
             dict = Dictionary(dynamicTemplate: false);
         }
         main.Resources.MergedDictionaries.Add(dict);
 
-        Entries.Clear();
-        MapSwitches.Clear();
         Entries.Add(new Entry { Window = new BoardWindow(), Text = "Board" });
         Entries.Add(new Entry { Window = new ScopeWindow(), Text = "Radar scope" });
         Entries.Add(new Entry { Window = new SonarWindow(), Text = "Sonar" });
@@ -106,12 +126,13 @@ internal static class Kit
     {
         foreach (Entry e in Entries) e.Window.Pinned = null;
         Entries.Clear();
-        MapSwitches.Clear();
+        MapChips.Clear();
         flyout = null;
         iconFace = null; barButton = null;
         view = null;
     }
 
+    /// <summary>One icon button at the right end of the bottom bar; a click opens a flyout above it with the window and map toggles.</summary>
     private static void AddBarButtons(MainGameView main)
     {
         var grid = main.FindName("DisplayAreaGrid") as Grid;
@@ -121,82 +142,9 @@ internal static class Kit
             if (Grid.GetColumnSpan(child) == newColumn) Grid.SetColumnSpan(child, newColumn + 1);   // keep the full-width layers full width
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
 
-        // One icon button; a click opens a flyout above it with the three window toggles and the map switches.
-        const string Ns = "xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'";
-        const string Ink = "#FF2A2627";
-        var icon = (Border)GUI.ParseXaml(
-            "<Border " + Ns + " Width='30' Height='28' Background='" + IconIdle + "'>" +
-            "<Viewbox Margin='3'><Canvas Width='24' Height='24'>" +
-            "<Ellipse Canvas.Left='2' Canvas.Top='2' Width='20' Height='20' Stroke='" + Ink + "' StrokeThickness='2'/>" +
-            "<Path Data='M12,2 L12,22 M2,12 L22,12' Stroke='" + Ink + "' StrokeThickness='1'/>" +
-            "<Path Data='M12,12 L12,2 A10,10 0 0 1 20.2,6.3 Z' Fill='" + Ink + "'/>" +
-            "<Ellipse Canvas.Left='14.5' Canvas.Top='14.5' Width='3.5' Height='3.5' Fill='" + Ink + "'/>" +
-            "</Canvas></Viewbox></Border>");
-        iconFace = icon;
-        var barBtn = (ToggleButton)GUI.ParseXaml(
-            "<ToggleButton " + Ns + " Focusable='False' Height='32' Margin='4,0,0,0' Style='{DynamicResource SimpleToggleButton}'/>");
-        barBtn.Content = icon;
-        barBtn.ToolTip = "R.A.T.S. sensor views: windows and map layers";
-        barButton = barBtn;
-
-        // the flyout
-        var panel = new StackPanel { Orientation = Orientation.Vertical };
-        FlyoutHeader(panel, "Windows");
-        var windowsRow = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (Entry entry in Entries)
-        {
-            ToggleButton button = Chip(entry.Text, out TextBlock label, out Border face);
-            entry.Button = button;
-            entry.Label = label;
-            entry.Face = face;
-            entry.Lit = false;
-            button.ToolTip = entry.Window.Title + " (" + HotKeyText(entry.Window) + ")";
-            Entry captured = entry;
-            // The click decides, from the window's real state; the check mark is only ever set by Sync (events from it are ignored).
-            button.Click += (s, e) => { ModLog.Debug("Chip clicked: " + captured.Text); Toggle(captured.Window); };
-            windowsRow.Children.Add(button);
-        }
-        panel.Children.Add(windowsRow);
-
-        FlyoutHeader(panel, "Map layers");
-        var layers = new WrapPanel { Orientation = Orientation.Horizontal };
-        MapChip(layers, "Sensor lines", () => SeaPowerSensorViews.Map.MapSet.LinesOn,
-            v => { if (v != SeaPowerSensorViews.Map.MapSet.LinesOn) SeaPowerSensorViews.Map.MapSet.ToggleLines(); }, "Lines from each own unit to the contacts it holds");
-        MapChip(layers, "Coverage", () => SeaPowerSensorViews.Map.MapSet.CoverageOn,
-            v => { if (v != SeaPowerSensorViews.Map.MapSet.CoverageOn) SeaPowerSensorViews.Map.MapSet.ToggleCoverage(); }, "Where the selected unit's sensors would hold an imagined target");
-        panel.Children.Add(layers);
-
-        FlyoutHeader(panel, "Lines for");
-        var who = new WrapPanel { Orientation = Orientation.Horizontal };
-        MapChip(who, "Selected unit", () => !LinesForAll(), v => { if (v) SetLinesForAll(false); }, "Only the selected unit's lines");
-        MapChip(who, "All units", LinesForAll, v => { if (v) SetLinesForAll(true); }, "Every own unit's lines, the selected one bright (coverage stays selected-unit only)");
-        panel.Children.Add(who);
-
-        FlyoutHeader(panel, "Lines of");
-        var kinds = new WrapPanel { Orientation = Orientation.Horizontal };
-        MapChip(kinds, "Radar", () => Settings.LinesRadar.Value, v => Settings.LinesRadar.Value = v, "Search and fire-control radar");
-        MapChip(kinds, "ESM", () => Settings.LinesEsm.Value, v => Settings.LinesEsm.Value = v, "ESM bearing lines and cones");
-        MapChip(kinds, "Visual", () => Settings.LinesVisual.Value, v => Settings.LinesVisual.Value = v, "Visual and infrared");
-        MapChip(kinds, "Sonar", () => Settings.LinesSonar.Value, v => Settings.LinesSonar.Value = v, "Passive and active sonar");
-        MapChip(kinds, "Hide tracked ESM", () => Settings.HideTrackedEsm.Value, v => Settings.HideTrackedEsm.Value = v,
-            "Leave out an ESM line for a contact a radar holds as a live track");
-        panel.Children.Add(kinds);
-
-        FlyoutHeader(panel, "Coverage of (selected unit)");
-        var cover = new WrapPanel { Orientation = Orientation.Horizontal };
-        MapChip(cover, "Radar", () => Settings.CoverRadar.Value, v => Settings.CoverRadar.Value = v, "Search radar coverage, shadowed by terrain");
-        MapChip(cover, "ESM", () => Settings.CoverEsm.Value, v => Settings.CoverEsm.Value = v, "ESM listening range");
-        MapChip(cover, "Visual", () => Settings.CoverVisual.Value, v => Settings.CoverVisual.Value = v, "Visual range, limited by the horizon");
-        MapChip(cover, "Sonar", () => Settings.CoverSonar.Value, v => Settings.CoverSonar.Value = v, "Passive sonar range");
-        MapChip(cover, "Terrain shadows", () => Settings.TerrainShadows.Value, v => Settings.TerrainShadows.Value = v, "Cut the radar coverage where terrain blocks the line of sight");
-        panel.Children.Add(cover);
-
-        var frame = (Border)GUI.ParseXaml(
-            "<Border " + Ns + " Background='#F02C2D31' BorderBrush='#FF464850' BorderThickness='1' Padding='10,6,10,8' MaxWidth='440' " +
-            "HorizontalAlignment='Right' VerticalAlignment='Bottom' Margin='0,0,8,2' Visibility='Collapsed'/>");
-        frame.Child = panel;
-        flyout = frame;
-        barBtn.Click += (s, e) =>
+        barButton = BarButton();
+        Border frame = Flyout();
+        barButton.Click += (s, e) =>
         {
             try
             {
@@ -208,7 +156,7 @@ internal static class Kit
         };
 
         var strip = (StackPanel)GUI.ParseXaml("<StackPanel " + Ns + " Orientation='Horizontal'/>");
-        strip.Children.Add(barBtn);
+        strip.Children.Add(barButton);
         Grid.SetRow(strip, 2);
         Grid.SetColumn(strip, newColumn);
         grid.Children.Add(strip);
@@ -222,20 +170,61 @@ internal static class Kit
         ModLog.Debug("Flyout panel added: grid rows " + grid.RowDefinitions.Count + ", columns " + (newColumn + 1) + ".");
     }
 
-    private static Border flyout;
-    private static bool FlyoutOpen => flyout != null && flyout.Visibility == Visibility.Visible;
-
-    private const string IconIdle = "#FF898377";    // the game's own bar icons: beige, peach while lit
-    private static Border iconFace;
-    private static ToggleButton barButton;
-
-    private static bool LinesForAll() => Settings.LinesAllUnits.Value || Settings.LinesWho.Value == Settings.AllUnits;
-
-    private static void SetLinesForAll(bool all)
+    private static ToggleButton BarButton()
     {
-        Settings.LinesAllUnits.Value = false;
-        Settings.LinesWho.Value = all ? Settings.AllUnits : Settings.SelectedOnly;
+        string ink = Hex(InkColour);
+        var icon = (Border)GUI.ParseXaml(
+            "<Border " + Ns + " Width='30' Height='28' Background='" + Hex(IdleColour) + "'>" +
+            "<Viewbox Margin='3'><Canvas Width='24' Height='24'>" +
+            "<Ellipse Canvas.Left='2' Canvas.Top='2' Width='20' Height='20' Stroke='" + ink + "' StrokeThickness='2'/>" +
+            "<Path Data='M12,2 L12,22 M2,12 L22,12' Stroke='" + ink + "' StrokeThickness='1'/>" +
+            "<Path Data='M12,12 L12,2 A10,10 0 0 1 20.2,6.3 Z' Fill='" + ink + "'/>" +
+            "<Ellipse Canvas.Left='14.5' Canvas.Top='14.5' Width='3.5' Height='3.5' Fill='" + ink + "'/>" +
+            "</Canvas></Viewbox></Border>");
+        iconFace = icon;
+        var button = (ToggleButton)GUI.ParseXaml(
+            "<ToggleButton " + Ns + " Focusable='False' Height='32' Margin='4,0,0,0' Style='{DynamicResource SimpleToggleButton}'/>");
+        button.Content = icon;
+        button.ToolTip = "R.A.T.S. sensor views: windows and map layers";
+        return button;
     }
+
+    /// <summary>The flyout: the three window toggles, then the map switches by group.</summary>
+    private static Border Flyout()
+    {
+        var panel = new StackPanel { Orientation = Orientation.Vertical };
+        FlyoutHeader(panel, "Windows");
+        var windowsRow = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (Entry entry in Entries)
+        {
+            entry.Chip = MakeChip(entry.Text, entry.Window.Title + " (" + HotKeyText(entry.Window) + ")");
+            Entry captured = entry;
+            // The click decides, from the window's real state; the check mark is only ever set by Sync (events from it are ignored).
+            entry.Chip.Button.Click += (s, e) => { ModLog.Debug("Chip clicked: " + captured.Text); Toggle(captured.Window); };
+            windowsRow.Children.Add(entry.Chip.Button);
+        }
+        panel.Children.Add(windowsRow);
+        WrapPanel row = null;
+        SwitchGroup? group = null;
+        foreach (MapSwitch sw in MapSwitch.All)
+        {
+            if (sw.Group != group)
+            {
+                group = sw.Group;
+                FlyoutHeader(panel, MapSwitch.Heading(sw.Group));
+                panel.Children.Add(row = new WrapPanel { Orientation = Orientation.Horizontal });
+            }
+            row.Children.Add(MapChip(sw));
+        }
+        var frame = (Border)GUI.ParseXaml(
+            "<Border " + Ns + " Background='#F02C2D31' BorderBrush='#FF464850' BorderThickness='1' Padding='10,6,10,8' MaxWidth='440' " +
+            "HorizontalAlignment='Right' VerticalAlignment='Bottom' Margin='0,0,8,2' Visibility='Collapsed'/>");
+        frame.Child = panel;
+        flyout = frame;
+        return frame;
+    }
+
+    private static bool FlyoutOpen => flyout != null && flyout.Visibility == Visibility.Visible;
 
     private static void FlyoutHeader(Panel into, string text)
     {
@@ -245,71 +234,41 @@ internal static class Kit
     }
 
     private const string ChipXaml =
-        "<ToggleButton xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Focusable='False' Height='28' Margin='0,0,4,4' " +
+        "<ToggleButton " + Ns + " Focusable='False' Height='28' Margin='0,0,4,4' " +
         "Style='{DynamicResource SimpleToggleButton}'>" +
         "<Border Height='28' MinWidth='40' Padding='8,3'><TextBlock HorizontalAlignment='Center' VerticalAlignment='Center'/></Border></ToggleButton>";
 
-    private static readonly Brush ChipOff = new SolidColorBrush(Noesis.Color.FromRgb(0x89, 0x83, 0x77));    // the game's own bar icons: beige,
-    private static readonly Brush ChipOn = new SolidColorBrush(Noesis.Color.FromRgb(0xF1, 0xC6, 0x93));     // peach when on
-    private static readonly Brush ChipInk = new SolidColorBrush(Noesis.Color.FromRgb(0x2A, 0x26, 0x27));
-
-    /// <summary>Peach when on, beige when off; colours are set directly (a popup may not see the game's resources).</summary>
-    private static void Light(Border face, TextBlock label, bool on)
-    {
-        face.Background = on ? ChipOn : ChipOff;
-        label.Foreground = ChipInk;
-    }
-
-    private static ToggleButton Chip(string text, out TextBlock label, out Border face)
+    private static Chip MakeChip(string text, string tip)
     {
         var button = (ToggleButton)GUI.ParseXaml(ChipXaml);
-        face = (Border)button.Content;
-        label = (TextBlock)face.Child;
-        label.Text = text;
-        Light(face, label, false);
-        return button;
+        var face = (Border)button.Content;
+        var chip = new Chip { Button = button, Face = face, Label = (TextBlock)face.Child, Lit = true };
+        chip.Label.Text = text;
+        button.ToolTip = tip;
+        chip.Light(false);
+        return chip;
     }
 
-    /// <summary>A map switch in the flyout: lit while on, follows changes made elsewhere (Layers menu, hot keys) on each Sync.</summary>
-    private static void MapChip(Panel into, string text, Func<bool> read, Action<bool> write, string tip)
+    /// <summary>A map switch in the flyout: lit while on, follows changes made elsewhere (board, Options, hot keys) on each Sync.</summary>
+    private static ToggleButton MapChip(MapSwitch sw)
     {
-        ToggleButton button = Chip(text, out TextBlock label, out Border face);
-        button.ToolTip = tip;
-        var chip = new MapSwitch { Button = button, Label = label, Face = face, Read = read, Lit = false };
-        button.Click += (s, e) =>
+        Chip chip = MakeChip(sw.Label, sw.Tip);
+        chip.Read = sw.Read;
+        chip.Button.Click += (s, e) =>
         {
             if (syncing) return;
-            write(button.IsChecked == true);
+            sw.Write(chip.Button.IsChecked == true);
             Sync();
         };
-        MapSwitches.Add(chip);
-        into.Children.Add(button);
+        MapChips.Add(chip);
+        return chip.Button;
     }
 
-    private sealed class MapSwitch
-    {
-        public ToggleButton Button;
-        public TextBlock Label;
-        public Border Face;
-        public Func<bool> Read;
-        public bool Lit;
-    }
-
-    private static readonly List<MapSwitch> MapSwitches = new List<MapSwitch>();
-
-    private static void Ink(Border face, TextBlock label, ref bool lit, bool on)
-    {
-        if (lit == on) return;
-        Light(face, label, on);
-        lit = on;
-    }
-
-    /// <summary>The bar icon is peach while the flyout is open.</summary>
-    private static void SyncMain()
+    /// <summary>The bar icon is peach while the flyout is open; the chips inside show which windows are open.</summary>
+    private static void SyncIcon()
     {
         if (iconFace == null) return;
-        bool on = FlyoutOpen;          // peach only while the flyout is open; the chips inside show which windows are open
-        iconFace.Background = new SolidColorBrush(Noesis.Color.FromRgb(on ? (byte)0xF1 : (byte)0x89, on ? (byte)0xC6 : (byte)0x83, on ? (byte)0x93 : (byte)0x77));
+        iconFace.Background = FlyoutOpen ? ChipOn : ChipOff;
         if (barButton != null && barButton.IsChecked == true) { syncing = true; barButton.IsChecked = false; syncing = false; }
     }
 
@@ -353,8 +312,6 @@ internal static class Kit
         }
     }
 
-    public static SvWindow Window(int index) => index >= 0 && index < Entries.Count ? Entries[index].Window : null;
-
     /// <summary>The bar buttons follow whether their window is open (also when it was closed with its X or moved by Pop-Out).</summary>
     public static void Sync()
     {
@@ -367,21 +324,45 @@ internal static class Kit
                 bool wasOpen = e.Open;
                 bool open = e.Open = IsOpen(e);
                 if (wasOpen != open) ModLog.Debug("Window " + e.Text + " is now " + (open ? "open" : "closed") + " (seen by sync).");
-                if (e.Button == null) continue;
-                if (e.Button.IsChecked != open) e.Button.IsChecked = open;
-                Ink(e.Face, e.Label, ref e.Lit, open);
+                if (e.Chip == null) continue;
+                if (e.Chip.Button.IsChecked != open) e.Chip.Button.IsChecked = open;
+                e.Chip.Light(open);
             }
             if (FlyoutOpen)         // the map switches only matter while the flyout is shown
-                foreach (MapSwitch m in MapSwitches)
+                foreach (Chip m in MapChips)
                 {
-                    bool on = false;
-                    try { on = m.Read(); } catch (Exception) { }
+                    bool on = m.Read();
                     if (m.Button.IsChecked != on) m.Button.IsChecked = on;
-                    Ink(m.Face, m.Label, ref m.Lit, on);
+                    m.Light(on);
                 }
         }
         finally { syncing = false; }
-        SyncMain();
+        SyncIcon();
+    }
+
+    /// <summary>
+    /// A new snapshot. The sonar waterfall takes one row per slow snapshot (150 rows = 150 s), the board and the sonar redraw once a
+    /// second (<paramref name="slow"/>); only the scope's picture follows the fast snapshots.
+    /// </summary>
+    public static void Snapshot(bool slow)
+    {
+        if (!slow)
+        {
+            foreach (Surface s in Registry.Surfaces)
+                if (s is ScopeSurface) s.InvalidateVisual();
+            return;
+        }
+        if (IsOpen(Sonar)) SonarSampler.Update(Sonar);
+        if (IsOpen(Scope)) Scope.PushAltitude();
+        SonarSurface.RaiseChanged();            // the sonar chooser's name line
+        Registry.RefreshAll();
+    }
+
+    /// <summary>About 25 times a second while a window is open: the scope's sweep and blips, the range glide.</summary>
+    public static void Animate()
+    {
+        for (int i = 0; i < Registry.Surfaces.Count; i++)
+            if (Registry.Surfaces[i].Animated) Registry.Surfaces[i].Animate();
     }
 
     public static bool AnyOpen()
@@ -397,41 +378,5 @@ internal static class Kit
         foreach (Entry e in Entries)
             if (ReferenceEquals(e.Window, w)) return e.Open;
         return false;
-    }
-}
-
-/// <summary>Diagnostic for "the window grows but will not shrink": logs, on each resize of a scope or sonar window, the size
-/// numbers of the view and of every parent up to the game's Window (verbose log only, at most 80 lines).</summary>
-internal static class SizeProbe
-{
-    private static int lines;
-
-    public static void Watch(FrameworkElement view, string name)
-    {
-        view.SizeChanged += (s, e) => Log(view, name);
-    }
-
-    private static void Log(FrameworkElement view, string name)
-    {
-        if (lines >= 80) return;
-        try
-        {
-            var sb = new System.Text.StringBuilder("[size] " + name + ": ");
-            DependencyObject d = view;
-            int depth = 0;
-            while (d != null && depth++ < 12)
-            {
-                if (d is FrameworkElement fe)
-                    sb.Append(fe.GetType().Name + " act=" + fe.ActualWidth.ToString("0") + "x" + fe.ActualHeight.ToString("0") +
-                              " set=" + fe.Width.ToString("0") + "x" + fe.Height.ToString("0") +
-                              " min=" + fe.MinWidth.ToString("0") + "x" + fe.MinHeight.ToString("0") +
-                              " want=" + fe.DesiredSize.Width.ToString("0") + "x" + fe.DesiredSize.Height.ToString("0") + " | ");
-                if (d is SeapowerUI.Window) break;
-                d = VisualTreeHelper.GetParent(d);
-            }
-            lines++;
-            ModLog.Debug(sb.ToString());
-        }
-        catch (Exception) { }
     }
 }

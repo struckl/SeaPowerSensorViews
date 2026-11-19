@@ -15,15 +15,25 @@ namespace SeaPowerSensorViews.Map;
 /// </summary>
 internal sealed class MapView
 {
-    private const float BaseWeight = 1f;      // the game's own map line weight: TacticalMap_Geometry *Thickness defaults, 1 pixel
+    /// <summary>
+    /// Tag prefix of the Borders mod's map panels (its Map/MapSlots.cs): ours go behind them, so cities and borders stay on top of
+    /// the cones. The two mods do not reference each other; the prefix is the agreement.
+    /// </summary>
+    private const string BordersPanelTag = "sewerlabs.";
+    /// <summary>A rebuild for a moving view at most once per frame (s).</summary>
+    private const double ViewBuildInterval = 0.016;
+    /// <summary>A zoomed panel is rebuilt this long (s) after the zoom stopped, so strokes and labels get their size back.</summary>
+    private const double SettleDelay = 0.3;
+    /// <summary>The projection probes stay below this latitude (the flat map's projection runs away towards the pole).</summary>
+    private const double MaxProbeLatitude = 80.0;
 
     public readonly MapBase Map;
     private readonly MapPanel linesPanel, coveragePanel;
     private readonly Canvas labels;
-    private readonly Dictionary<string, Path> linePaths = new Dictionary<string, Path>();
-    private readonly Dictionary<string, Path> coveragePaths = new Dictionary<string, Path>();
-    private readonly Dictionary<string, (StreamGeometry geometry, StreamGeometryContext context)> open =
-        new Dictionary<string, (StreamGeometry, StreamGeometryContext)>();
+    private readonly Dictionary<PathKey, Path> linePaths = new Dictionary<PathKey, Path>();
+    private readonly Dictionary<PathKey, Path> coveragePaths = new Dictionary<PathKey, Path>();
+    private readonly Dictionary<PathKey, (StreamGeometry geometry, StreamGeometryContext context)> open =
+        new Dictionary<PathKey, (StreamGeometry, StreamGeometryContext)>();
     private readonly List<TextBlock> labelPool = new List<TextBlock>();
     private readonly EventHandler<ViewportChangedEventArgs> onViewport;
     private readonly Theme theme;
@@ -41,6 +51,7 @@ internal sealed class MapView
     private float clipX0, clipY0, clipX1, clipY1;
     private readonly List<Point> run = new List<Point>();
     private readonly List<Point> polyA = new List<Point>(), polyB = new List<Point>();
+    private readonly List<PathKey> emptied = new List<PathKey>();
 
     /// <summary>
     /// Where a panel's paths were projected: three anchor places and their screen points at that time. When the view only moved or
@@ -55,7 +66,7 @@ internal sealed class MapView
         public readonly TranslateTransform Shift = new TranslateTransform();
         public readonly TransformGroup Group = new TransformGroup();
         public double Lat, Lon;             // anchor 0; anchors 1 and 2 are a degree east and north of it
-        public float X0, Y0, X1, Y1, X2, Y2;
+        public Triple At;
         public bool Valid;
         public float ClipX0, ClipY0, ClipX1, ClipY1;   // the cut area of the last build, in its view pixels
         public double SettleAt;             // when > 0: rebuild at this time (the view was zoomed)
@@ -69,6 +80,9 @@ internal sealed class MapView
         }
     }
 
+    /// <summary>A place and the places <c>step</c> degrees east and north of it, projected.</summary>
+    private struct Triple { public float X0, Y0, X1, Y1, X2, Y2; }
+
     public MapView(MapBase map)
     {
         Map = map;
@@ -78,45 +92,55 @@ internal sealed class MapView
         coveragePanel = new MapPanel { IsHitTestVisible = false };
         MapPanel.SetParentMap(coveragePanel, map);
         labels = new Canvas { IsHitTestVisible = false };
-        // Under the unit icons and labels, above the tiles and graticule: right after the graticule, as the Borders panels.
-        int at = Math.Min(1, map.Children.Count);
-        for (int i = 0; i < map.Children.Count; i++)
-        {
-            if (map.Children[i] is MapGraticule) { at = i + 1; break; }
-        }
-        while (at < map.Children.Count && map.Children[at] is FrameworkElement e && e.Tag is string tag && tag.StartsWith("sewerlabs."))
-            at++;                                                       // behind the Borders / Cities panels
+        int at = SlotIn(map);
         map.Children.Insert(at, coveragePanel);
         map.Children.Insert(at + 1, linesPanel);
         linesPanel.Children.Add(labels);
         coveragePanel.Visibility = Visibility.Collapsed;
         linesPanel.Visibility = Visibility.Collapsed;
-        onViewport = (s, e) =>
-        {
-            viewDirty = true;
-            // Move the panels with the map at once, in the same frame the map moved. The next Update comes a frame later, so the lines
-            // and cones trailed the map by one frame while it was dragged or zoomed. (Update still rebuilds what a transform cannot follow.)
-            try
-            {
-                bool linesOk = !linesShown || Follow(linesFit), coverOk = !coverageShown || Follow(coverageFit);
-                double now = UnityEngine.Time.unscaledTimeAsDouble;
-                // What the transform cannot follow (a turning globe, a pan beyond the cut area) is rebuilt right here, in the frame the map
-                // moved, not by the next Update; at most about once per frame.
-                if ((!linesOk || !coverOk) && lastLines != null && lastCoverage != null && now >= nextViewBuild)
-                {
-                    nextViewBuild = now + 0.016;
-                    BuildView(!linesOk, !coverOk);
-                    viewDirty = false;
-                }
-            }
-            catch (Exception) { /* Update will deal with it */ }
-            FollowUnit();
-        };
+        onViewport = (s, e) => OnViewport();
         map.ViewportChanged += onViewport;
         linesFit = new Fit();
         coverageFit = new Fit();
         linesPanel.RenderTransform = linesFit.Group;
         coveragePanel.RenderTransform = coverageFit.Group;
+    }
+
+    /// <summary>Under the unit icons and labels, above the tiles and graticule: right after the graticule and the Borders panels.</summary>
+    private static int SlotIn(MapBase map)
+    {
+        int at = Math.Min(1, map.Children.Count);
+        for (int i = 0; i < map.Children.Count; i++)
+        {
+            if (map.Children[i] is MapGraticule) { at = i + 1; break; }
+        }
+        while (at < map.Children.Count && map.Children[at] is FrameworkElement e && e.Tag is string tag && tag.StartsWith(BordersPanelTag))
+            at++;
+        return at;
+    }
+
+    /// <summary>
+    /// Moves the panels with the map at once, in the same frame the map moved (the next Update comes a frame later, so the lines and
+    /// cones trailed the map by one frame while it was dragged or zoomed). What the transform cannot follow (a turning globe, a pan
+    /// beyond the cut area) is rebuilt right here, at most about once per frame.
+    /// </summary>
+    private void OnViewport()
+    {
+        viewDirty = true;
+        try
+        {
+            bool linesOk = !linesShown || Follow(linesFit), coverOk = !coverageShown || Follow(coverageFit);
+            double now = UnityEngine.Time.unscaledTimeAsDouble;
+            if ((!linesOk || !coverOk) && lastLines != null && lastCoverage != null && now >= nextViewBuild)
+            {
+                nextViewBuild = now + ViewBuildInterval;
+                SetClip();
+                Rebuild(!linesOk, !coverOk);
+                viewDirty = false;
+            }
+        }
+        catch (Exception ex) { ModLog.Debug("map view follow: " + ex.Message); }   // the next Update rebuilds what this missed
+        FollowUnit();
     }
 
     public bool Alive => VisualTreeHelper.GetParent(Map) != null;
@@ -137,8 +161,6 @@ internal sealed class MapView
         }
     }
 
-    // ---- projection ------------------------------------------------------------------------------------------------
-
     private bool Project(double lat, double lon, out float x, out float y)
     {
         var g = new GeoPosition(lat, lon);
@@ -153,34 +175,44 @@ internal sealed class MapView
 #endif
     }
 
+    private bool ProjectTriple(double lat, double lon, double step, out Triple t)
+    {
+        t = default;
+        return Project(lat, lon, out t.X0, out t.Y0) && Project(lat, lon + step, out t.X1, out t.Y1)
+            && Project(lat + step, lon, out t.X2, out t.Y2);
+    }
+
+    /// <summary>The map's centre as a probe place: latitude kept low enough that the north probe <paramref name="step"/> away stays valid.</summary>
+    private void ProbeCentre(double step, out double lat, out double lon)
+    {
+        Location c = Map.Center;
+        lat = Math.Max(-MaxProbeLatitude, Math.Min(MaxProbeLatitude - step, c.Latitude));
+        lon = c.Longitude;
+    }
+
     /// <summary>Degrees of latitude or longitude per screen pixel at the map's centre (the finer of the two); MaxValue if unknown.</summary>
     public double DegreesPerPixel()
     {
         if (Map.ActualWidth < 2 || Map.ActualHeight < 2) return double.MaxValue;
+        const double step = 0.01;
         try
         {
-            Location c = Map.Center;
-            double lat = Math.Max(-80.0, Math.Min(80.0, c.Latitude)), lon = c.Longitude;
-            if (!Project(lat, lon, out float x0, out float y0) || !Project(lat, lon + 0.01, out float x1, out float y1)
-                || !Project(lat + 0.01, lon, out float x2, out float y2))
-                return double.MaxValue;
-            double px = Math.Max(Math.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0)),
-                                 Math.Sqrt((x2 - x0) * (x2 - x0) + (y2 - y0) * (y2 - y0)));
-            return px < 1e-6 ? double.MaxValue : 0.01 / px;
+            ProbeCentre(step, out double lat, out double lon);
+            if (!ProjectTriple(lat, lon, step, out Triple t)) return double.MaxValue;
+            double px = Math.Max(Math.Sqrt((t.X1 - t.X0) * (t.X1 - t.X0) + (t.Y1 - t.Y0) * (t.Y1 - t.Y0)),
+                                 Math.Sqrt((t.X2 - t.X0) * (t.X2 - t.X0) + (t.Y2 - t.Y0) * (t.Y2 - t.Y0)));
+            return px < 1e-6 ? double.MaxValue : step / px;
         }
-        catch (Exception) { return double.MaxValue; }
+        catch (Exception) { return double.MaxValue; }   // the map is between layouts (no centre yet): the caller's fallback
     }
 
-    // ---- update ------------------------------------------------------------------------------------------------------
-
-    /// <summary>Projects and builds the panels again for the current view (the data is the last one Update was given).</summary>
-    private void BuildView(bool lines, bool coverage)
+    /// <summary>Projects and builds the panels again for the current view; the data is the last one Update was given.</summary>
+    private void Rebuild(bool lines, bool coverage, HashSet<int> onlyGroups = null)
     {
-        SetClip();
         if (lines && linesShown)
         {
             long t = Perf.Start();
-            BuildLines(lastLines);
+            BuildLines(lastLines, onlyGroups);
             Anchor(linesFit);
             Perf.Stop(Perf.Part.MapBuild, t);
         }
@@ -198,6 +230,63 @@ internal sealed class MapView
         lastLines = lines;
         lastCoverage = coverage;
         FollowUnit();
+        Show(showLines, showCoverage);
+        if (Map.ActualWidth < 2 || Map.ActualHeight < 2)
+            return;
+        bool restyled = settingsVersion != Settings.MapLook.Version;
+        if (restyled) DropPaths();
+        settingsVersion = Settings.MapLook.Version;
+        double now = UnityEngine.Time.unscaledTimeAsDouble;
+        bool view = viewDirty;
+        viewDirty = false;
+        bool linesView = linesShown && ViewNeedsBuild(linesFit, view, now);
+        bool coverageView = coverageShown && ViewNeedsBuild(coverageFit, view, now);
+        NewData(lines, coverage, out bool linesData, out bool coverageData);
+        if (Throttled(linesView || coverageView, restyled || linesData || coverageData, now)) return;
+        Build(lines, coverage, restyled || linesData || linesView, restyled || coverageData || coverageView, restyled || linesView);
+    }
+
+    private void NewData(LineSet lines, CoverageSet coverage, out bool linesData, out bool coverageData)
+    {
+        linesData = linesShown && lines.Version != linesVersion;
+        coverageData = coverageShown && coverage.Version != coverageVersion;
+    }
+
+    /// <summary>A view change first tries the transform; what it cannot follow, or a zoom that has settled, needs a rebuild.</summary>
+    private bool ViewNeedsBuild(Fit fit, bool view, double now) => (view && !Follow(fit)) || Settled(fit, now);
+
+    /// <summary>
+    /// While the map turns (globe) the view changes every frame: rebuilds for the view alone run at most once per frame; the view is
+    /// looked at again next frame. A data or style change is drawn at once.
+    /// </summary>
+    private bool Throttled(bool forView, bool forData, double now)
+    {
+        if (!forView) return false;
+        if (!forData && now < nextViewBuild)
+        {
+            viewDirty = true;
+            return true;
+        }
+        nextViewBuild = now + ViewBuildInterval;
+        return false;
+    }
+
+    /// <summary>Builds what is shown and asked for; <paramref name="whole"/> = every line group (style or view change).</summary>
+    private void Build(LineSet lines, CoverageSet coverage, bool buildLines, bool buildCoverage, bool whole)
+    {
+        buildLines &= linesShown;
+        buildCoverage &= coverageShown;
+        if (!buildLines && !buildCoverage) return;
+        SetClip();
+        // Only the data moved on by one version and the panel sits untransformed where it was built: draw only the changed groups.
+        bool partial = !whole && lines.Version == linesVersion + 1 && linesFit.Valid && Untransformed(linesFit);
+        if (buildLines) linesVersion = lines.Version;
+        if (buildCoverage) coverageVersion = coverage.Version;
+        Rebuild(buildLines, buildCoverage, partial ? lines.ChangedGroups : null);
+    }
+
+    private void Show(bool showLines, bool showCoverage)
+    {
         if (showLines != linesShown)
         {
             linesShown = showLines;
@@ -210,55 +299,17 @@ internal sealed class MapView
             coveragePanel.Visibility = showCoverage ? Visibility.Visible : Visibility.Collapsed;
             viewDirty = true;
         }
-        if (Map.ActualWidth < 2 || Map.ActualHeight < 2)
-            return;
-        bool settingsChanged = settingsVersion != Settings.MapLook.Version;
-        if (settingsChanged)
-        {
-            linesFit.Valid = coverageFit.Valid = false;
-            // styles (weight, opacity of the dimmed lines) are fixed when a path is made: make them again
-            foreach (Path p in linePaths.Values) linesPanel.Children.Remove(p);
-            foreach (Path p in coveragePaths.Values) coveragePanel.Children.Remove(p);
-            linePaths.Clear();
-            coveragePaths.Clear();
-            linesVersion = coverageVersion = -1;
-        }
-        double now = UnityEngine.Time.unscaledTimeAsDouble;
-        settingsVersion = Settings.MapLook.Version;
-        bool view = viewDirty;
-        viewDirty = false;
-        bool linesData = showLines && lines.Version != linesVersion;
-        bool coverageData = showCoverage && coverage.Version != coverageVersion;
-        // A view change first tries the transform; what it cannot follow needs a rebuild.
-        bool linesView = showLines && (view && !Follow(linesFit) || Settled(linesFit, now));
-        bool coverageView = showCoverage && (view && !Follow(coverageFit) || Settled(coverageFit, now));
-        // While the map turns (globe) the view changes every frame: such rebuilds run at most once per frame.
-        if ((linesView || coverageView) && !settingsChanged && !linesData && !coverageData && now < nextViewBuild)
-        {
-            viewDirty = true;
-            return;
-        }
-        if (linesView || coverageView) nextViewBuild = now + 0.016;
-        if ((showLines && (settingsChanged || linesData || linesView)) || (showCoverage && (settingsChanged || coverageData || coverageView)))
-            SetClip();
-        if (showLines && (settingsChanged || linesData || linesView))
-        {
-            // Only the data moved on by one version and the panel sits untransformed where it was built: draw only the changed groups.
-            bool partial = !settingsChanged && !linesView && lines.Version == linesVersion + 1 && linesFit.Valid && Untransformed(linesFit);
-            linesVersion = lines.Version;
-            long t = Perf.Start();
-            BuildLines(lines, partial ? lines.ChangedGroups : null);
-            Anchor(linesFit);
-            Perf.Stop(Perf.Part.MapBuild, t);
-        }
-        if (showCoverage && (settingsChanged || coverageData || coverageView))
-        {
-            coverageVersion = coverage.Version;
-            long t = Perf.Start();
-            BuildCoverage(coverage);
-            Anchor(coverageFit);
-            Perf.Stop(Perf.Part.MapBuild, t);
-        }
+    }
+
+    /// <summary>Styles (weight, opacity of the dimmed lines) are fixed when a path is made: a look setting makes them again.</summary>
+    private void DropPaths()
+    {
+        linesFit.Valid = coverageFit.Valid = false;
+        foreach (Path p in linePaths.Values) linesPanel.Children.Remove(p);
+        foreach (Path p in coveragePaths.Values) coveragePanel.Children.Remove(p);
+        linePaths.Clear();
+        coveragePaths.Clear();
+        linesVersion = coverageVersion = -1;
     }
 
     /// <summary>
@@ -282,7 +333,7 @@ internal sealed class MapView
                 }
             }
         }
-        catch (Exception) { dx = dy = 0f; }
+        catch (Exception) { dx = dy = 0f; }   // the unit is being removed: the rings stay where they were built
         if (coverageFit.Drift.X != dx) coverageFit.Drift.X = dx;
         if (coverageFit.Drift.Y != dy) coverageFit.Drift.Y = dy;
     }
@@ -298,47 +349,39 @@ internal sealed class MapView
         fit.Shift.X = fit.Shift.Y = 0f;
         fit.SettleAt = 0;
         fit.ClipX0 = clipX0; fit.ClipY0 = clipY0; fit.ClipX1 = clipX1; fit.ClipY1 = clipY1;
-        Location c = Map.Center;
-        fit.Lat = Math.Max(-80.0, Math.Min(79.0, c.Latitude));
-        fit.Lon = c.Longitude;
-        fit.Valid = Project(fit.Lat, fit.Lon, out fit.X0, out fit.Y0)
-                    && Project(fit.Lat, fit.Lon + 1.0, out fit.X1, out fit.Y1)
-                    && Project(fit.Lat + 1.0, fit.Lon, out fit.X2, out fit.Y2);
+        ProbeCentre(1.0, out fit.Lat, out fit.Lon);
+        fit.Valid = ProjectTriple(fit.Lat, fit.Lon, 1.0, out fit.At);
     }
 
     /// <summary>True when the panel could follow the new view with its transform (scale + shift, no turn).</summary>
     private bool Follow(Fit fit)
     {
-        if (!fit.Valid) return false;
-        if (!Project(fit.Lat, fit.Lon, out float x0, out float y0) || !Project(fit.Lat, fit.Lon + 1.0, out float x1, out float y1)
-            || !Project(fit.Lat + 1.0, fit.Lon, out float x2, out float y2))
-            return false;
-        double ox = fit.X1 - fit.X0, oy = fit.Y1 - fit.Y0, nx = x1 - x0, ny = y1 - y0;
+        if (!fit.Valid || !ProjectTriple(fit.Lat, fit.Lon, 1.0, out Triple t)) return false;
+        Triple o = fit.At;
+        double ox = o.X1 - o.X0, oy = o.Y1 - o.Y0, nx = t.X1 - t.X0, ny = t.Y1 - t.Y0;
         double len = Math.Sqrt(ox * ox + oy * oy);
         if (len < 1e-3) return false;
         double scale = Math.Sqrt(nx * nx + ny * ny) / len;
         if (Math.Abs(ox * ny - oy * nx) / (len * len * scale) > 1e-4) return false;           // turned
         // the third anchor must land where scale + shift put it (a quarter pixel)
-        double px = x0 + scale * (fit.X2 - fit.X0), py = y0 + scale * (fit.Y2 - fit.Y0);
-        if (Math.Abs(px - x2) > 0.25 || Math.Abs(py - y2) > 0.25) return false;
+        double px = t.X0 + scale * (o.X2 - o.X0), py = t.Y0 + scale * (o.Y2 - o.Y0);
+        if (Math.Abs(px - t.X2) > 0.25 || Math.Abs(py - t.Y2) > 0.25) return false;
         // the view, taken back into the build's pixels, must still lie inside the area that was cut out; else rebuild
-        double sx = x0 - scale * fit.X0, sy = y0 - scale * fit.Y0;
+        double sx = t.X0 - scale * o.X0, sy = t.Y0 - scale * o.Y0;
         double vx0 = (0 - sx) / scale, vy0 = (0 - sy) / scale;
         double vx1 = (Map.ActualWidth - sx) / scale, vy1 = (Map.ActualHeight - sy) / scale;
         // Move with the map in any case (a panel that stops while the map still moves is the lag), then say whether it still covers the view.
         fit.Scale.ScaleX = fit.Scale.ScaleY = (float)scale;
-        fit.Shift.X = (float)(x0 - scale * fit.X0);
-        fit.Shift.Y = (float)(y0 - scale * fit.Y0);
+        fit.Shift.X = (float)sx;
+        fit.Shift.Y = (float)sy;
         bool zoomed = Math.Abs(scale - 1.0) > 1e-3;
-        fit.SettleAt = zoomed ? UnityEngine.Time.unscaledTimeAsDouble + 0.3 : fit.SettleAt;
+        fit.SettleAt = zoomed ? UnityEngine.Time.unscaledTimeAsDouble + SettleDelay : fit.SettleAt;
         return !(vx0 < fit.ClipX0 || vy0 < fit.ClipY0 || vx1 > fit.ClipX1 || vy1 > fit.ClipY1);
     }
 
-    // ---- cutting to the view ---------------------------------------------------------------------------------------------
-
     private void SetClip()
     {
-        float w = Map.ActualWidth, h = Map.ActualHeight, m = 1.0f * Math.Max(w, h);     // a whole view size each side: fast pans stay inside it longer
+        float w = Map.ActualWidth, h = Map.ActualHeight, m = Math.Max(w, h);     // a whole view size each side: fast pans stay inside it longer
         clipX0 = -m; clipY0 = -m; clipX1 = w + m; clipY1 = h + m;
     }
 
@@ -435,9 +478,7 @@ internal sealed class MapView
         return new Point((float)(a.X + u * (b.X - a.X)), v);
     }
 
-    // ---- paths -------------------------------------------------------------------------------------------------------
-
-    private StreamGeometryContext Context(string key)
+    private StreamGeometryContext Context(PathKey key)
     {
         if (!open.TryGetValue(key, out var pair))
         {
@@ -450,13 +491,11 @@ internal sealed class MapView
         return pair.context;
     }
 
-    private readonly List<string> emptied = new List<string>();
-
     /// <summary>
     /// Puts the geometries just built into their paths. With <paramref name="only"/> the build covered only those groups: paths of
     /// other groups keep what they show. A path left without geometry is taken out of the panel.
     /// </summary>
-    private void Commit(Dictionary<string, Path> paths, MapPanel panel, Func<string, Path> make, HashSet<int> only = null)
+    private void Commit(Dictionary<PathKey, Path> paths, MapPanel panel, Func<PathKey, Path> make, HashSet<int> only = null)
     {
         foreach (var kv in open)
         {
@@ -471,8 +510,8 @@ internal sealed class MapView
         }
         emptied.Clear();
         foreach (var kv in paths)
-            if (!open.ContainsKey(kv.Key) && (only == null || only.Contains(GroupOfKey(kv.Key)))) emptied.Add(kv.Key);
-        foreach (string key in emptied)
+            if (!open.ContainsKey(kv.Key) && (only == null || only.Contains(kv.Key.Group))) emptied.Add(kv.Key);
+        foreach (PathKey key in emptied)
         {
             panel.Children.Remove(paths[key]);
             paths.Remove(key);
@@ -480,14 +519,7 @@ internal sealed class MapView
         open.Clear();
     }
 
-    /// <summary>The line group a path key ends in ("l|..|3"); -1 for keys without one (coverage).</summary>
-    private static int GroupOfKey(string key)
-    {
-        int bar = key.LastIndexOf('|');
-        return bar > 1 && int.TryParse(key.Substring(bar + 1), out int g) ? g : -1;
-    }
-
-    private TextBlock Label(string text, float x, float y, Brush brush, float opacity)
+    private void Label(string text, float x, float y, Brush brush)
     {
         if (labelsUsed == labelPool.Count)
         {
@@ -499,10 +531,9 @@ internal sealed class MapView
         t.Visibility = Visibility.Visible;
         t.Text = text;
         t.Foreground = brush;
-        t.Opacity = opacity;
+        t.Opacity = 1f;
         Canvas.SetLeft(t, x);
         Canvas.SetTop(t, y);
-        return t;
     }
 
     private void EndLabels()
@@ -512,88 +543,91 @@ internal sealed class MapView
         labelsUsed = 0;
     }
 
-    // ---- sensor lines ----------------------------------------------------------------------------------------------------
-
     private void BuildLines(LineSet set, HashSet<int> only = null)
     {
         open.Clear();
         labelsUsed = 0;
         foreach (LineSet.Line line in set.Lines)
         {
-            bool started = false;
-            float lastX = 0, lastY = 0, firstX = 0, firstY = 0;
-            if (only != null && !only.Contains(line.Group))
-            {
-                // Its paths stay as they are; only its label is placed again (labels are laid out for all lines in one go).
-                if (string.IsNullOrEmpty(line.Label) || !line.Bright) continue;
-                int n = line.Lat.Length - 1;
-                if (!Project(line.Lat[0], line.Lon[0], out firstX, out firstY) || !Project(line.Lat[n], line.Lon[n], out lastX, out lastY)) continue;
-                started = true;
-            }
-            else
-            {
-                string key = LineStyles.Key(line.Style, line.Bright, line.Live, line.Fill) + "|" + line.Group;
-                StreamGeometryContext c = Context(key);
-                run.Clear();
-                for (int i = 0; i < line.Lat.Length; i++)
-                {
-                    if (!Project(line.Lat[i], line.Lon[i], out float x, out float y))
-                    {
-                        Emit(c, line.Fill);
-                        continue;
-                    }
-                    run.Add(new Point(x, y));
-                    if (!started) { firstX = x; firstY = y; }
-                    lastX = x; lastY = y;
-                    started = true;
-                }
-                // zoomed in so far that a wedge (origin, edge, middle, edge) is longer than the screen: its bearing line alone
-                if (line.Fill && !Settings.ZoomedWedges.Value && run.Count >= 3)
-                {
-                    float dx = run[2].X - run[0].X, dy = run[2].Y - run[0].Y, limit = Math.Max(Map.ActualWidth, Map.ActualHeight);
-                    if (dx * dx + dy * dy > limit * limit) run.Clear();
-                }
-                Emit(c, line.Fill);
-            }
+            bool drawn = only == null || only.Contains(line.Group);
+            // A line of a group that is not drawn again keeps its paths; only its label is placed again (labels are laid out for
+            // all lines in one go).
+            if (!drawn && (string.IsNullOrEmpty(line.Label) || !line.Bright)) continue;
+            bool started = drawn ? ProjectLine(line, out float firstX, out float firstY, out float lastX, out float lastY)
+                                 : ProjectEnds(line, out firstX, out firstY, out lastX, out lastY);
             if (!string.IsNullOrEmpty(line.Label) && started && line.Bright
                 && lastX >= 0 && lastY >= 0 && lastX <= Map.ActualWidth && lastY <= Map.ActualHeight)
             {
-                Brush b = theme.Line(line.Style);
                 // Not at the end: the end is now the contact's marker, whose own text (track number, class, range) would sit under
                 // this one. A quarter of the way back along the line it stands clear of it.
                 float fx = lastX + (firstX - lastX) * 0.25f, fy = lastY + (firstY - lastY) * 0.25f;
-                Label(line.Label, fx + 4, fy - 8, b, 1f);
+                Label(line.Label, fx + 4, fy - 8, theme.Of(LineStyles.ColourKey(line.Kind)));
             }
         }
-        Commit(linePaths, linesPanel, key => MakeLinePath(key), only);
+        Commit(linePaths, linesPanel, MakeLinePath, only);
         EndLabels();
     }
 
-    private Path MakeLinePath(string key)
+    private bool ProjectEnds(LineSet.Line line, out float firstX, out float firstY, out float lastX, out float lastY)
     {
-        LineStyles.Parse(key, out LineStyle style, out bool bright, out bool live, out bool fill);
-        float alpha = (bright ? 1f : Settings.DimOpacity.Value) * (live ? 1f : 0.45f);
+        int n = line.Lat.Length - 1;
+        lastX = lastY = 0f;
+        return Project(line.Lat[0], line.Lon[0], out firstX, out firstY) && Project(line.Lat[n], line.Lon[n], out lastX, out lastY);
+    }
+
+    /// <summary>Projects the line into its path; true when any point of it was on the map (first and last give the label's place).</summary>
+    private bool ProjectLine(LineSet.Line line, out float firstX, out float firstY, out float lastX, out float lastY)
+    {
+        firstX = firstY = lastX = lastY = 0f;
+        bool started = false;
+        StreamGeometryContext c = Context(PathKey.Of(line));
+        run.Clear();
+        for (int i = 0; i < line.Lat.Length; i++)
+        {
+            if (!Project(line.Lat[i], line.Lon[i], out float x, out float y))
+            {
+                Emit(c, line.Fill);
+                continue;
+            }
+            run.Add(new Point(x, y));
+            if (!started) { firstX = x; firstY = y; }
+            lastX = x; lastY = y;
+            started = true;
+        }
+        // zoomed in so far that a wedge (origin, edge, middle, edge) is longer than the screen: its bearing line alone
+        if (line.Fill && !Settings.ZoomedWedges.Value && run.Count >= 3)
+        {
+            float dx = run[2].X - run[0].X, dy = run[2].Y - run[0].Y, limit = Math.Max(Map.ActualWidth, Map.ActualHeight);
+            if (dx * dx + dy * dy > limit * limit) run.Clear();
+        }
+        Emit(c, line.Fill);
+        return started;
+    }
+
+    private Path MakeLinePath(PathKey key)
+    {
+        var kind = (Data.Kind)key.Style;
+        Brush brush = theme.Of(LineStyles.ColourKey(kind));
+        float alpha = (key.Bright ? 1f : Settings.DimOpacity.Value) * (key.Live ? 1f : 0.45f);
         // The opacity goes into the brush: an element opacity below 1 makes Noesis draw the element into an offscreen picture first.
         var path = new Path { IsHitTestVisible = false, StrokeLineJoin = PenLineJoin.Round };
-        if (fill)
+        if (key.Fill)
         {
             // A faint fill with a firm outline: the cones stay readable on bright terrain and where they overlap, and their fill no
             // longer drowns the map under it.
-            path.Fill = theme.Alpha(theme.Line(style), alpha * 0.07f);
-            path.Stroke = theme.Alpha(theme.Line(style), alpha * 0.85f);
-            path.StrokeThickness = BaseWeight * Settings.LineWidth.Value * 0.9f;
+            path.Fill = GameColours.Faded(brush, alpha * 0.07f);
+            path.Stroke = GameColours.Faded(brush, alpha * 0.85f);
+            path.StrokeThickness = Settings.LineWidth.Value * 0.9f;
         }
         else
         {
-            path.Stroke = theme.Alpha(theme.Line(style), alpha);
-            path.StrokeThickness = BaseWeight * Settings.LineWidth.Value * LineStyles.Weight(style);
-            string dashes = LineStyles.Dashes(style);
+            path.Stroke = GameColours.Faded(brush, alpha);
+            path.StrokeThickness = Settings.LineWidth.Value * LineStyles.Weight(kind);
+            string dashes = LineStyles.Dashes(kind);
             if (dashes != null) path.StrokeDashArray = dashes;
         }
         return path;
     }
-
-    // ---- coverage -------------------------------------------------------------------------------------------------------------
 
     private void BuildCoverage(CoverageSet set)
     {
@@ -601,8 +635,7 @@ internal sealed class MapView
         foreach (CoverageSet.Ring ring in set.Rings)
         {
             if (ring.Lat.Length < 3) continue;
-            string key = "c|" + (int)ring.Kind + (ring.Fill ? "f" : "s");
-            StreamGeometryContext c = Context(key);
+            StreamGeometryContext c = Context(PathKey.Of(ring));
             run.Clear();
             for (int i = 0; i < ring.Lat.Length; i++)
             {
@@ -611,23 +644,22 @@ internal sealed class MapView
             }
             Emit(c, ring.Fill);
         }
-        Commit(coveragePaths, coveragePanel, key => MakeCoveragePath(key));
+        Commit(coveragePaths, coveragePanel, MakeCoveragePath);
     }
 
-    private Path MakeCoveragePath(string key)
+    private Path MakeCoveragePath(PathKey key)
     {
-        bool fill = key.EndsWith("f");
-        var kind = (CoverageKind)int.Parse(key.Substring(2, key.Length - 3));
-        Brush brush = theme.Coverage(kind);
+        var kind = (CoverageKind)key.Style;
+        Brush brush = theme.Of(LineStyles.ColourKey(kind));
         var path = new Path { IsHitTestVisible = false, StrokeLineJoin = PenLineJoin.Round };
-        if (fill)
-            path.Fill = theme.Alpha(brush, 0.14f);
+        if (key.Fill)
+            path.Fill = GameColours.Faded(brush, 0.14f);
         else
         {
-            path.Stroke = theme.Alpha(brush, 0.9f);
-            path.StrokeThickness = BaseWeight * Settings.LineWidth.Value * 1.2f;
-            if (kind == CoverageKind.Esm) path.StrokeDashArray = "6 3";
-            if (kind == CoverageKind.Visual) path.StrokeDashArray = "2 3";
+            path.Stroke = GameColours.Faded(brush, 0.9f);
+            path.StrokeThickness = Settings.LineWidth.Value * 1.2f;
+            string dashes = LineStyles.Dashes(kind);
+            if (dashes != null) path.StrokeDashArray = dashes;
         }
         return path;
     }

@@ -7,15 +7,21 @@ using UnityEngine;
 namespace SeaPowerSensorViews.Data;
 
 /// <summary>
-/// Read-only snapshot of what each own unit's sensors currently hold, refreshed about once a second while a view is
-/// open. Source: the player side's plotting table; every vehicle (contact) keeps its tracks, and a track names the unit
-/// that made it (Source), the sensor and its estimates. Only estimates are read: TrueTargetPosition and the contact's
-/// real object position are never touched. Map overlays added later read the same snapshot.
+/// Read-only snapshot of what each own unit's sensors currently hold, refreshed while a window or a map layer needs it; only the
+/// host refreshes it (Host.RefreshPicture), everything else reads <see cref="Current"/>. Source: the player side's plotting table;
+/// every vehicle (contact) keeps its tracks, and a track names the unit that made it (Source), the sensor and its estimates. Only
+/// estimates are read: TrueTargetPosition and the contact's real object position are never touched.
 /// </summary>
 internal sealed class SensorPicture
 {
     public static readonly SensorPicture Current = new SensorPicture();
 
+    /// <summary>How long tracks are kept: <see cref="MemorySeconds"/> after they are lost, a visual track at most
+    /// <see cref="VisualSeconds"/> after its last sighting (0 = as long as the game keeps it).</summary>
+    public struct Limits
+    {
+        public float MemorySeconds, VisualSeconds;
+    }
 
     public readonly List<UnitRow> Units = new List<UnitRow>();
     public readonly List<ContactRow> Contacts = new List<ContactRow>();
@@ -40,24 +46,23 @@ internal sealed class SensorPicture
         InMission = false; nextRefresh = 0;
     }
 
-    /// <summary>Refreshes when due (about once a second of real time). True when a new snapshot was made.</summary>
-    public bool Tick(double realNow, double interval = 1.0, bool followGameTime = false)
+    /// <summary>Refreshes when due (every <paramref name="interval"/> s of real time). True when a new snapshot was made.</summary>
+    public bool Tick(double realNow, Limits limits, double interval, bool followGameTime)
     {
         if (realNow < nextRefresh)
             return false;
         // Following the game: a new snapshot only when the game's clock moved (a paused game shows nothing new, so it falls back to
-        // the slow rate that still catches selection changes). The snapshot is then at most one short step behind the world, not a
-        // whole second: before, the scope sat up to a second behind a running game and exactly on it when paused.
+        // the slow rate that still catches selection changes). The snapshot is then at most one short step behind the world.
         if (followGameTime && InMission && GameTime.missionSessionTime == Time && realNow < lastRefreshReal + 1.0)
             return false;
         lastRefreshReal = realNow;
         nextRefresh = realNow + interval;
-        try { Refresh(); }
+        try { Refresh(limits); }
         catch (Exception ex) { ModLog.Error("sensor picture: " + ex); return false; }
         return true;
     }
 
-    public void Refresh()
+    private void Refresh(Limits limits)
     {
         Taskforce player = Globals._playerTaskforce;
         PlottingTable table = player?.PlottingTable;
@@ -70,9 +75,21 @@ internal sealed class SensorPicture
         stamp++;
         Time = GameTime.missionSessionTime;
         Version++;
-        float memory = Settings.MemorySeconds.Value;
+        ReadOwnUnits(player);
+        EntityManager em = Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager;
+        var vehicles = table.Vehicles;
+        for (int i = 0; i < vehicles.Count; i++)
+        {
+            Vehicle v = vehicles[i];
+            if (v != null && v.BaseObject != null && v.BaseObject._taskforce != player)
+                ReadTracks(em, v, limits.VisualSeconds);
+        }
+        GroupByContact(limits.MemorySeconds);
+        ListContacts(vehicles);
+    }
 
-        // ---- own units -----------------------------------------------------------------------------------------
+    private void ReadOwnUnits(Taskforce player)
+    {
         Units.Clear();
         foreach (ObjectBase unit in player._taskforceUnits)
         {
@@ -99,65 +116,78 @@ internal sealed class SensorPicture
             byEntity.Remove(rows[g].Entity);
             rows.Remove(g);
         }
+    }
 
-        // ---- tracks --------------------------------------------------------------------------------------------
-        EntityManager em = Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager;
-        var vehicles = table.Vehicles;
-        for (int i = 0; i < vehicles.Count; i++)
+    private void ReadTracks(EntityManager em, Vehicle v, float visualCap)
+    {
+        foreach (Entity e in v.CurrentTracks())
         {
-            Vehicle v = vehicles[i];
-            if (v == null || v.BaseObject == null || v.BaseObject._taskforce == player)
-                continue;
-            foreach (Entity e in v.CurrentTracks())
-            {
-                if (!em.HasComponent<TrackComponent>(e)) continue;
-                TrackComponent tc = em.GetComponentData<TrackComponent>(e);
-                if (!KindInfo.TryMap(tc.SensorType, out Kind kind)) continue;
-                if (!byEntity.TryGetValue(tc.Source, out UnitRow unitRow)) continue;
-                if (!em.HasComponent<TrackBearing>(e)) continue;
-
-                long key = ((long)unitRow.Uid << 32) ^ ((long)v.Id << 4) ^ (long)kind;
-                double fix = tc.Epoch.ToLive();
-                // A visual track lives as long as the game keeps it (its MaxAge); a contact out of sight is not held that long.
-                float visualCap = Settings.VisualLifetime.Value;
-                if (kind == Kind.Visual && visualCap > 0f && Time - fix > visualCap) continue;
-                if (!hits.TryGetValue(key, out Hit hit))
-                {
-                    hit = new Hit { Unit = unitRow, ContactId = v.Id, Kind = kind };
-                    hits[key] = hit;
-                }
-                else if (hit.Stamp == stamp && hit.FixTime >= fix)
-                    continue;                                   // another track of the same sensor kind, older
-                hit.Unit = unitRow;
-                hit.Stamp = stamp;
-                hit.Live = true;
-                hit.FixTime = fix;
-                hit.MaxAge = tc.MaxAge;
-                if (hit.SensorName == null || !hit.SensorNameRaw.Equals(tc.SensorDisplayName))
-                {
-                    hit.SensorNameRaw = tc.SensorDisplayName;
-                    hit.SensorName = tc.SensorDisplayName.ToString();
-                }
-                PointEstimate b = em.GetComponentData<TrackBearing>(e).Estimate;
-                hit.Bearing = Wrap360(b.Estimate);
-                if (hit.History.Count == 0 || hit.History[hit.History.Count - 1].Key < (float)fix)
-                {
-                    hit.History.Add(new KeyValuePair<float, float>((float)fix, hit.Bearing));
-                    while (hit.History.Count > 1 && (float)fix - hit.History[0].Key > 600f) hit.History.RemoveAt(0);
-                }
-                hit.BearingError = kind == Kind.Esm ? b.Error : Mathf.Sqrt(Mathf.Max(0f, b.Error));
-                // Passive sonar is bearing-only here. Its track does carry a range component, but that holds the true distance
-                // (with a large error, for the game's own analysis) or nothing at all: it is not something the sonar measured.
-                hit.BearingOnly = kind == Kind.Passive || !em.HasComponent<TrackRangeInMeters>(e);
-                hit.RangeM = hit.BearingOnly ? float.NaN : em.GetComponentData<TrackRangeInMeters>(e).Estimate.Estimate;
-                hit.RangeErrorM = hit.BearingOnly ? 0f : Mathf.Sqrt(Mathf.Max(0f, em.GetComponentData<TrackRangeInMeters>(e).Estimate.Error));
-                hit.AltitudeUnits = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Estimate : float.NaN;
-                hit.AltitudeError = em.HasComponent<TrackAltitude>(e) ? em.GetComponentData<TrackAltitude>(e).Estimate.Error : 0f;
-                hit.Signal = em.HasComponent<IncomingSignalData>(e) ? (float)em.GetComponentData<IncomingSignalData>(e)._incomingSignalValue : float.NaN;
-            }
+            if (!em.HasComponent<TrackComponent>(e)) continue;
+            TrackComponent tc = em.GetComponentData<TrackComponent>(e);
+            if (!KindInfo.TryMap(tc.SensorType, out Kind kind)) continue;
+            if (!byEntity.TryGetValue(tc.Source, out UnitRow unitRow)) continue;
+            if (!em.HasComponent<TrackBearing>(e)) continue;
+            double fix = tc.Epoch.ToLive();
+            // A visual track lives as long as the game keeps it (its MaxAge); a contact out of sight is not held that long.
+            if (kind == Kind.Visual && visualCap > 0f && Time - fix > visualCap) continue;
+            Hit hit = HitFor(unitRow, v.Id, kind, fix);
+            if (hit != null)
+                ReadTrack(em, e, tc, hit, fix);
         }
+    }
 
-        // ---- remembered / expired, then group by contact -------------------------------------------------------
+    /// <summary>The hit this track goes into; null when the unit's sensor of this kind already gave a newer track this refresh.</summary>
+    private Hit HitFor(UnitRow unitRow, int contactId, Kind kind, double fix)
+    {
+        long key = ((long)unitRow.Uid << 32) ^ ((long)contactId << 4) ^ (long)kind;
+        if (!hits.TryGetValue(key, out Hit hit))
+            hits[key] = hit = new Hit { ContactId = contactId, Kind = kind };
+        else if (hit.Stamp == stamp && hit.FixTime >= fix)
+            return null;
+        hit.Unit = unitRow;
+        return hit;
+    }
+
+    private void ReadTrack(EntityManager em, Entity e, TrackComponent tc, Hit hit, double fix)
+    {
+        hit.Stamp = stamp;
+        hit.Live = true;
+        hit.FixTime = fix;
+        hit.MaxAge = tc.MaxAge;
+        if (hit.SensorName == null || !hit.SensorNameRaw.Equals(tc.SensorDisplayName))
+        {
+            hit.SensorNameRaw = tc.SensorDisplayName;
+            hit.SensorName = tc.SensorDisplayName.ToString();
+        }
+        PointEstimate b = em.GetComponentData<TrackBearing>(e).Estimate;
+        hit.Bearing = Wrap360(b.Estimate);
+        if (hit.History.Count == 0 || hit.History[hit.History.Count - 1].Key < (float)fix)
+        {
+            hit.History.Add(new KeyValuePair<float, float>((float)fix, hit.Bearing));
+            while (hit.History.Count > 1 && (float)fix - hit.History[0].Key > 600f) hit.History.RemoveAt(0);
+        }
+        hit.BearingError = hit.Kind == Kind.Esm ? b.Error : Mathf.Sqrt(Mathf.Max(0f, b.Error));
+        ReadRangeAndHeight(em, e, hit);
+        hit.Signal = em.HasComponent<IncomingSignalData>(e) ? (float)em.GetComponentData<IncomingSignalData>(e)._incomingSignalValue : float.NaN;
+    }
+
+    private static void ReadRangeAndHeight(EntityManager em, Entity e, Hit hit)
+    {
+        // Passive sonar is bearing-only here. Its track does carry a range component, but that holds the true distance
+        // (with a large error, for the game's own analysis) or nothing at all: it is not something the sonar measured.
+        hit.BearingOnly = hit.Kind == Kind.Passive || !em.HasComponent<TrackRangeInMeters>(e);
+        PointEstimate range = hit.BearingOnly ? default : em.GetComponentData<TrackRangeInMeters>(e).Estimate;
+        hit.RangeM = hit.BearingOnly ? float.NaN : range.Estimate;
+        hit.RangeErrorM = hit.BearingOnly ? 0f : Mathf.Sqrt(Mathf.Max(0f, range.Error));
+        bool hasAltitude = em.HasComponent<TrackAltitude>(e);
+        PointEstimate altitude = hasAltitude ? em.GetComponentData<TrackAltitude>(e).Estimate : default;
+        hit.AltitudeUnits = hasAltitude ? altitude.Estimate : float.NaN;
+        hit.AltitudeError = hasAltitude ? altitude.Error : 0f;
+    }
+
+    /// <summary>Lost tracks stay as remembered hits for the memory time (and while their unit is there); the rest go.</summary>
+    private void GroupByContact(float memory)
+    {
         foreach (ContactRow c in contactRows.Values) c.Hits.Clear();
         stale.Clear();
         foreach (var kv in hits)
@@ -175,7 +205,10 @@ internal sealed class SensorPicture
             cr.Stamp = stamp;
         }
         foreach (long k in stale) hits.Remove(k);
+    }
 
+    private void ListContacts(IList<Vehicle> vehicles)
+    {
         Contacts.Clear();
         for (int i = 0; i < vehicles.Count; i++)
         {
@@ -200,38 +233,37 @@ internal sealed class SensorPicture
             if (v.Identified.Value && v.BaseObject != null)
                 cls = v.BaseObject.ClassNameShort;
         }
-        catch (Exception) { /* keep the plain label */ }
+        catch (Exception) { /* a contact whose object is being removed has no class to read: the plain label stays */ }
         if (cr.Label == null || !string.Equals(cls, cr.LabelClass))
         {
             cr.LabelClass = cls;
             cr.Label = string.IsNullOrEmpty(cls) ? "T" + v.Id : "T" + v.Id + " " + cls;
         }
-        // The plotted position: what the map's marker shows (the track's estimate, extrapolated between fixes). Lines and scope
-        // marks that end here sit on the marker; one built from a sensor's own bearing and range lagged behind it.
+        ReadPlot(cr, v);
+        cr.LiveRanged = false;
+        foreach (Hit h in cr.Hits)
+            if (h.Live && h.Ranged) { cr.LiveRanged = true; break; }
+        cr.Relation = KindInfo.Of(v.CurrentRelationship());
+    }
+
+    /// <summary>
+    /// The plotted position: what the map's marker shows (the track's estimate, extrapolated between fixes). Lines and scope marks
+    /// that end here sit on the marker; one built from a sensor's own bearing and range lagged behind it.
+    /// </summary>
+    private static void ReadPlot(ContactRow cr, Vehicle v)
+    {
         try
         {
             var est = v.PositionEstimate;
             cr.HasPlot = est.HasValue;
-            if (est.HasValue)
-            {
-                // Position is the property the map's marker follows (set when the vehicle is refreshed); the estimate above is the
-                // live extrapolation, which runs ahead of the marker between refreshes. Same value when both are current.
-                GeoPosition shown = v.Position.Value;
-                cr.Plot = shown._latitude == 0.0 && shown._longitude == 0.0 ? est.Value.Item1 : shown;
-            }
+            if (!est.HasValue) return;
+            // Position is the property the map's marker follows (set when the vehicle is refreshed); the estimate above is the
+            // live extrapolation, which runs ahead of the marker between refreshes. A Position not set yet reads (0, 0): then the
+            // estimate is all there is.
+            GeoPosition shown = v.Position.Value;
+            cr.Plot = shown._latitude == 0.0 && shown._longitude == 0.0 ? est.Value.Item1 : shown;
         }
-        catch (Exception) { cr.HasPlot = false; }
-        cr.HasRangedFix = false;
-        if (cr.HasPlot)
-            foreach (Hit h in cr.Hits)
-                if (h.Live && !h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f) { cr.HasRangedFix = true; break; }
-        switch (v.CurrentRelationship())
-        {
-            case RelationsState.Friendly: cr.Relation = 1; break;
-            case RelationsState.Neutral: cr.Relation = 2; break;
-            case RelationsState.Hostile: cr.Relation = 3; break;
-            default: cr.Relation = 0; break;
-        }
+        catch (Exception) { cr.HasPlot = false; }   // the estimate throws for a vehicle without a track yet: nothing plotted
     }
 
     private static void ReadUnit(UnitRow row)
@@ -245,53 +277,57 @@ internal sealed class SensorPicture
         row.DepthFt = u._type == ObjectBase.ObjectType.Submarine && y < 0f ? -y * Conv.FeetPerUnit : float.NaN;
         row.AltitudeFt = u.IsAirUnit ? y * Conv.FeetPerUnit : float.NaN;
         row.Kind ??= u._type.ToString();
-        float height = y;
         var systems = u._obp?._sensorSystems;
         if (systems == null) { row.Sensors.Clear(); row.SensorHeightUnits = y; return; }
         // The rows are made once per sensor (names, arcs, details are fixed); a refresh only reads the switches. Made again when the
-        // unit's sensor list changes. This used to build every row with its strings again each second - garbage for every own unit.
-        int n = 0;
-        foreach (SensorSystem s in systems)
-            if (s != null) n++;
-        bool same = row.Sensors.Count == n;
-        if (same)
-        {
-            int k = 0;
-            foreach (SensorSystem s in systems)
-                if (s != null && !ReferenceEquals(row.Sensors[k++].System, s)) { same = false; break; }
-        }
-        if (!same)
+        // unit's sensor list changes.
+        if (!SameSensors(row, systems))
         {
             row.Sensors.Clear();
             foreach (SensorSystem s in systems)
                 if (s != null) row.Sensors.Add(MakeRow(s));
         }
-        for (int i = 0; i < row.Sensors.Count; i++)
-        {
-            SensorRow sr = row.Sensors[i];
-            SensorSystem s = sr.System;
-            sr.On = s.IsOn.Value;
-            sr.Inoperable = s.Inoperable.Value;
-            sr.State = s.DisplayState;
-            switch (s)
-            {
-                case SensorSystemRadar r:
-                    sr.Active = sr.On;
-                    height = Mathf.Max(height, r.SensorPosition.y);
-                    break;
-                case SensorSystemSonar so:
-                    bool active = so._sonar != null && so._sonar.IsActive.Value;
-                    if (active != sr.Active || sr.Detail == null)
-                    {
-                        sr.Active = active;
-                        sr.Letter = active ? "A" : "S";
-                        sr.Detail = (so.IsTowedSensor ? "towed " : so.IsVDS ? "VDS " : "") + (active ? "active" : "passive");
-                    }
-                    break;
-                case SensorSystemECM: sr.Active = sr.On; break;
-            }
-        }
+        float height = y;
+        foreach (SensorRow sr in row.Sensors)
+            height = Mathf.Max(height, ReadSwitches(sr));
         row.SensorHeightUnits = height;
+    }
+
+    private static bool SameSensors(UnitRow row, IEnumerable<SensorSystem> systems)
+    {
+        int k = 0;
+        foreach (SensorSystem s in systems)
+        {
+            if (s == null) continue;
+            if (k >= row.Sensors.Count || !ReferenceEquals(row.Sensors[k].System, s)) return false;
+            k++;
+        }
+        return k == row.Sensors.Count;
+    }
+
+    /// <summary>Reads the sensor's switches; returns the height of a radar's antenna (else minus infinity).</summary>
+    private static float ReadSwitches(SensorRow sr)
+    {
+        SensorSystem s = sr.System;
+        sr.On = s.IsOn.Value;
+        sr.Inoperable = s.Inoperable.Value;
+        switch (s)
+        {
+            case SensorSystemRadar r:
+                sr.Active = sr.On;
+                return r.SensorPosition.y;
+            case SensorSystemSonar so:
+                bool active = so._sonar != null && so._sonar.IsActive.Value;
+                if (active != sr.Active || sr.Detail == null)
+                {
+                    sr.Active = active;
+                    sr.Letter = active ? "A" : "S";
+                    sr.Detail = (so.IsTowedSensor ? "towed " : so.IsVDS ? "VDS " : "") + (active ? "active" : "passive");
+                }
+                break;
+            case SensorSystemECM: sr.Active = sr.On; break;
+        }
+        return float.NegativeInfinity;
     }
 
     private static SensorRow MakeRow(SensorSystem s)
@@ -303,11 +339,12 @@ internal sealed class SensorPicture
         switch (s)
         {
             case SensorSystemRadar r:
-                sr.Letter = r._type == SensorSystemRadar.RadarType.Targeting ? "F" : "R";
+                sr.SearchRadar = r._type != SensorSystemRadar.RadarType.Targeting;
+                sr.Letter = sr.SearchRadar ? "R" : "F";
                 sr.Detail = r._type + (r._radar?._rp != null ? ", max " + (r._radar._rp._maxRange * Conv.NmPerUnit).ToString("0") + " nm" : "");
                 break;
             case SensorSystemESM: sr.Letter = "E"; sr.Detail = "passive"; break;
-            case SensorSystemSonar: sr.Letter = "S"; break;                     // letter and detail follow the mode in ReadUnit
+            case SensorSystemSonar: sr.Letter = "S"; break;                     // letter and detail follow the mode in ReadSwitches
             case SensorSystemVisual: sr.Letter = "V"; sr.Detail = "visual / infrared"; break;
             case SensorSystemMAD: sr.Letter = "M"; sr.Detail = "MAD"; break;
             case SensorSystemECM: sr.Letter = "J"; sr.Detail = "jammer"; break;
@@ -327,7 +364,7 @@ internal sealed class SensorPicture
             ObjectBase u = row.Unit;
             bool changed = Collect(row, u._rwrBearings, false, now) | Collect(row, u._jamBearings, true, now);
             for (int i = row.Strobes.Count - 1; i >= 0; i--)
-                if (now - row.Strobes[i].Time > 8.0) { row.Strobes.RemoveAt(i); changed = true; }
+                if (now - row.Strobes[i].Time > Strobe.Lifetime) { row.Strobes.RemoveAt(i); changed = true; }
             if (changed) row.StrobeVersion++;
         }
     }

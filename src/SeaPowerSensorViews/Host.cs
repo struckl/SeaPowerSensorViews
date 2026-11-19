@@ -13,6 +13,16 @@ namespace SeaPowerSensorViews;
 /// <summary>Lives on a hidden object: sets the windows up when a mission's UI is ready, refreshes the snapshot while a window is open, hot keys.</summary>
 internal sealed class Host : ModHost
 {
+    /// <summary>The main view comes a moment after the mission start: looked for every SetupRetry s, SetupTries times.</summary>
+    private const float SetupRetry = 0.5f;
+    private const int SetupTries = 40;
+    /// <summary>The bar buttons follow windows closed with their own X about twice a second.</summary>
+    private const float SyncInterval = 0.5f;
+    /// <summary>The slow snapshot (board, sonar, waterfall row): about once a second, a little early so a 1 s tick is not missed.</summary>
+    private const float SlowInterval = 0.95f;
+    /// <summary>The scope's sweep: 25 redraws a second.</summary>
+    private const float AnimateInterval = 0.04f;
+
     private bool setupPending;
     private bool active;
     private float nextTry;
@@ -49,7 +59,7 @@ internal sealed class Host : ModHost
         if (!active) return;
         if (Time.unscaledTime >= nextSync)
         {
-            nextSync = Time.unscaledTime + 0.5f;
+            nextSync = Time.unscaledTime + SyncInterval;
             Kit.Sync();
         }
         bool windows = Kit.AnyOpen();
@@ -59,19 +69,18 @@ internal sealed class Host : ModHost
         Perf.Frame();
         if (windows && Time.unscaledTime >= nextAnimate)
         {
-            nextAnimate = Time.unscaledTime + 0.04f;     // the scope's sweep: 25 redraws a second
-            for (int i = 0; i < Registry.Surfaces.Count; i++)
-                if (Registry.Surfaces[i].Animated) Registry.Surfaces[i].Animate();
+            nextAnimate = Time.unscaledTime + AnimateInterval;
+            Kit.Animate();
         }
     }
 
     private void TrySetup()
     {
-        nextTry = Time.unscaledTime + 0.5f;
+        nextTry = Time.unscaledTime + SetupRetry;
         try
         {
             if (Kit.Setup()) { setupPending = false; active = true; }
-            else if (++tries > 40) { setupPending = false; ModLog.Warn("The main game view never appeared - sensor windows are off for this mission."); }
+            else if (++tries > SetupTries) { setupPending = false; ModLog.Warn("The main game view never appeared - sensor windows are off for this mission."); }
         }
         catch (Exception ex)
         {
@@ -86,29 +95,15 @@ internal sealed class Host : ModHost
         long t = Perf.Start();
         if (windows) pic.PollStrobes();
         // With the scope open the snapshot follows the game's clock (10 a second at most) so its lines and contacts are from the
-        // same moment as the world; the board and sonar are fine with one a second.
-        bool scopeOpen = windows && Kit.Window(1) is ScopeWindow sc && Kit.IsOpen(sc);
-        bool fast = scopeOpen || Map.MapSet.NeedsPicture;       // the map's sensor lines follow the game's clock too
-        bool fresh = fast ? pic.Tick(Time.unscaledTime, 0.1, true) : pic.Tick(Time.unscaledTime);
+        // same moment as the world; the board and sonar are fine with one a second. The map's sensor lines follow the game's clock too.
+        bool fast = (windows && Kit.IsOpen(Kit.Scope)) || Map.MapSet.NeedsPicture;
+        var limits = new SensorPicture.Limits { MemorySeconds = Settings.MemorySeconds.Value, VisualSeconds = Settings.VisualLifetime.Value };
+        bool fresh = pic.Tick(Time.unscaledTime, limits, fast ? 0.1 : 1.0, fast);
         Perf.Stop(Perf.Part.Picture, t);
         if (!fresh || !windows) return;
-        // The sonar waterfall takes one row per slow snapshot (150 rows = 150 s), the board and the sonar redraw once a
-        // second; only the scope's surfaces follow the fast snapshots.
-        if (Time.unscaledTime >= nextSlow) { nextSlow = Time.unscaledTime + 0.95f; OnSnapshot(); }
-        else
-            for (int i = 0; i < Registry.Surfaces.Count; i++)
-                if (Registry.Surfaces[i] is ScopeSurface) Registry.Surfaces[i].InvalidateVisual();
-    }
-
-    private static void OnSnapshot()
-    {
-        for (int i = 0; i < 3; i++)
-            if (Kit.Window(i) is SonarWindow sw && Kit.IsOpen(sw))
-                SonarSampler.Update(sw);
-        if (Kit.Window(1) is ScopeWindow scope && Kit.IsOpen(scope))
-            scope.PushAltitude();
-        SonarSurface.RaiseChanged();            // the sonar chooser's name line
-        Registry.RefreshAll();
+        bool slow = Time.unscaledTime >= nextSlow;
+        if (slow) nextSlow = Time.unscaledTime + SlowInterval;
+        Kit.Snapshot(slow);
     }
 
     private void OnGUI()
@@ -119,9 +114,9 @@ internal sealed class Host : ModHost
         try
         {
             if (Singleton<InputHandler>.InstanceExists() && Singleton<InputHandler>.Instance.typingActive) return;
-            if (Match(Settings.BoardKey.Value, ev)) { Kit.Toggle(Kit.Window(0)); ev.Use(); }
-            else if (Match(Settings.ScopeKey.Value, ev)) { Kit.Toggle(Kit.Window(1)); ev.Use(); }
-            else if (Match(Settings.SonarKey.Value, ev)) { Kit.Toggle(Kit.Window(2)); ev.Use(); }
+            if (Match(Settings.BoardKey.Value, ev)) { Kit.Toggle(Kit.Board); ev.Use(); }
+            else if (Match(Settings.ScopeKey.Value, ev)) { Kit.Toggle(Kit.Scope); ev.Use(); }
+            else if (Match(Settings.SonarKey.Value, ev)) { Kit.Toggle(Kit.Sonar); ev.Use(); }
             else if (Match(Settings.LinesKey.Value, ev)) { Map.MapSet.ToggleLines(); ev.Use(); }
             else if (Match(Settings.CoverageKey.Value, ev)) { Map.MapSet.ToggleCoverage(); ev.Use(); }
         }

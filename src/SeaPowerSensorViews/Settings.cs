@@ -25,7 +25,7 @@ internal static class Settings
     public static ConfigEntry<bool> ZoomedWedges;
     public static ConfigEntry<string> LinesKey;
     // quick switches (in the bar-button flyout and on the sensor board)
-    public static ConfigEntry<bool> LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
+    public static ConfigEntry<bool> LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm;
     public static ConfigEntry<bool> RealisticSweep, RetroLook, SonarOwnTorpedoes;
     public static ConfigEntry<float> VisualLifetime;
     public static ConfigEntry<bool> ZoomAnimation;
@@ -47,7 +47,8 @@ internal static class Settings
     public static ChangeCounter LineData, MapLook, CoverageInputs;
 
     public const string AllUnits = "All, selected bright", SelectedOnly = "Selected only";
-    private const int Layout = 2;          // 2 = 0.3.0: "Units shown" defaults to the selected unit only
+    // 2 = 0.3.0: "Units shown" defaults to the selected unit only; 3: the old quick switch "Quick: all units" is folded into it
+    private const int Layout = 3;
 
     /// <summary>From ModSettings.Open: binds the entries, runs the one-time changes, sets up the change counters.</summary>
     public static void Bind(ConfigFile file)
@@ -56,7 +57,7 @@ internal static class Settings
         BindLines(file);
         BindCoverage(file);
         Migrate(file);
-        LineData = ChangeCounter.Of(LinesVisible, LinesWho, LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm,
+        LineData = ChangeCounter.Of(LinesVisible, LinesWho, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm,
             LostLines, WedgeNm, MemorySeconds, VisualLifetime);
         MapLook = ChangeCounter.Of(DimOpacity, LineWidth, ZoomedWedges, LinesVisible, CoverageVisible);
         CoverageInputs = ChangeCounter.Of(CoverageVisible, CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows, TargetRcs, VisualSize, Rays);
@@ -113,8 +114,6 @@ internal static class Settings
             "Off: zoomed in so far that a bearing wedge is longer than the screen, it is drawn as its bearing line only (the filled wedges " +
             "covered the whole map there and cost frame rate). On: always filled.");
         LinesKey = file.Bind("4. Map: sensor lines", "Toggle key", "Ctrl+Shift+PageUp", "Hot key for the sensor lines layer. Empty = none.");
-        LinesAllUnits = file.Bind("4. Map: sensor lines", "Quick: all units", false,
-            "Switch in the bar-button flyout and on the sensor board. On = every own unit's lines whatever 'Units shown' says (the selected unit's bright).");
         LinesRadar = file.Bind("4. Map: sensor lines", "Quick: radar lines", true, "Flyout / board switch for radar lines (search and fire-control radar).");
         LinesEsm = file.Bind("4. Map: sensor lines", "Quick: ESM lines", true, "Flyout / board switch for ESM lines (bearing lines and cones).");
         LinesVisual = file.Bind("4. Map: sensor lines", "Quick: visual lines", true, "Flyout / board switch for visual lines.");
@@ -145,17 +144,29 @@ internal static class Settings
             new ConfigDescription("Bearings the coverage polygons are sampled at.", new AcceptableValueRange<int>(24, 180)));
     }
 
-    // One-time change for configs from before 0.3.0: they hold the old default "All", which made the map very busy (and slow)
-    // with many units. A player who wants all lines sets it back once.
     private static void Migrate(ConfigFile file)
     {
         ConfigEntry<int> layoutVersion = file.Bind("9. Internal", "Settings layout", ModSettings.Existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
-        ModSettings.Migrate(layoutVersion, (Layout, () =>
-        {
-            if (LinesWho.Value != AllUnits) return;
-            LinesWho.Value = SelectedOnly;
-            ModLog.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
-        }));
+        ModSettings.Migrate(layoutVersion, (2, () => SelectedOnlyDefault()), (3, () => FoldQuickAllUnits(file)));
+    }
+
+    // Configs from before 0.3.0 hold the old default "All", which made the map very busy (and slow) with many units. A player who
+    // wants all lines sets it back once.
+    private static void SelectedOnlyDefault()
+    {
+        if (LinesWho.Value != AllUnits) return;
+        LinesWho.Value = SelectedOnly;
+        ModLog.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
+    }
+
+    // No switch sets "Quick: all units" any more, but a config could still hold it switched on, which
+    // showed every unit's lines whatever "Units shown" said. It becomes that setting, so the map looks as before.
+    private static void FoldQuickAllUnits(ConfigFile file)
+    {
+        var old = new ConfigDefinition("4. Map: sensor lines", "Quick: all units");
+        ConfigEntry<bool> quick = file.Bind(old, false);
+        if (quick.Value) LinesWho.Value = AllUnits;
+        file.Remove(old);
     }
 
     /// <summary>Parses "Ctrl+Shift+F6"; false when empty or unreadable.</summary>

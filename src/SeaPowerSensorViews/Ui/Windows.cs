@@ -27,28 +27,21 @@ public abstract class SvWindow : INotifyPropertyChanged, IDisposeOnClose
         set { title = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title))); }
     }
 
-    // state shared by the views
     internal UnitRow Pinned;               // unit clicked on the board (used when "follow selection" is off)
-
     internal ObjectBase PinnedSel;         // the game's selection when the unit was pinned
-
-    private static ObjectBase GameSelection()
-    {
-        try { return Singleton<RenderPosition>.InstanceExists() ? Singleton<RenderPosition>.Instance.getSelectedObject() : null; }
-        catch (Exception) { return null; }   // no selection API in this state
-    }
+    private UnitRow last;
 
     internal void Pin(UnitRow row)
     {
         Pinned = row;
-        PinnedSel = GameSelection();
+        PinnedSel = GameSelection.Current();
     }
 
     /// <summary>The unit a view shows: a unit clicked on the board (until the game's selection changes), else the selected one.</summary>
     internal UnitRow Subject()
     {
         SensorPicture pic = SensorPicture.Current;
-        ObjectBase sel = GameSelection();
+        ObjectBase sel = GameSelection.Current();
         if (Pinned != null && pic.Units.Contains(Pinned) && (!Settings.FollowSelection.Value || sel == PinnedSel))
             return Pinned;
         if (Settings.FollowSelection.Value)
@@ -63,8 +56,6 @@ public abstract class SvWindow : INotifyPropertyChanged, IDisposeOnClose
         if (last != null && pic.Units.Contains(last)) return last;
         return last = pic.Units.Count > 0 ? pic.Units[0] : null;
     }
-
-    private UnitRow last;
 
     public void Dispose() { }
 }
@@ -130,8 +121,26 @@ public sealed class SonarWindow : SvWindow
     internal const int Bins = 180;           // 2 degree bins across the relative bearing -180..180
     internal int SonarIndex;
     internal bool ShowEchoes;               // range / bearing echo plot instead of the waterfall
-    internal readonly Dictionary<string, Waterfall> Falls = new Dictionary<string, Waterfall>();
-    internal SonarState State = new SonarState();
+    internal readonly SonarState State = new SonarState();
+    private readonly Dictionary<string, Waterfall> falls = new Dictionary<string, Waterfall>();
+
+    private static string FallKey(UnitRow unit, string sonarName) => unit.Uid + ":" + sonarName;
+
+    /// <summary>The waterfall of this unit's sonar (each sonar keeps its own history while the window is open).</summary>
+    internal Waterfall FallOf(UnitRow unit, string sonarName)
+    {
+        string key = FallKey(unit, sonarName);
+        if (!falls.TryGetValue(key, out Waterfall wf))
+            falls[key] = wf = new Waterfall();
+        return wf;
+    }
+
+    /// <summary>The waterfall of the sonar the window shows now; null before its first sample.</summary>
+    internal Waterfall FallShown()
+    {
+        UnitRow unit = Subject();
+        return unit != null && falls.TryGetValue(FallKey(unit, State.SonarName), out Waterfall wf) ? wf : null;
+    }
 }
 
 /// <summary>Bearing over time: one row per snapshot, sparse (only bins with a detection).</summary>

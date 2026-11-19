@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Noesis;
 using SeaPowerSensorViews.Data;
@@ -13,14 +14,21 @@ namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full n
 public sealed class BoardView : UserControl
 {
     private bool syncing;
-    private readonly System.Collections.Generic.List<System.Action> syncers = new System.Collections.Generic.List<System.Action>();
+    private readonly List<Action> syncers = new List<Action>();
+    private static readonly Brush White = GameColours.Of(0xFFFFFFFF);
 
-    /// <summary>A check box bound to a bool getter/setter; <paramref name="read"/> re-reads it on Sync.</summary>
-    private CheckBox Check(Panel into, string text, System.Func<bool> read, System.Action<bool> write, string tip)
+    /// <summary>The board's control for one map switch: a check box, or a radio button of a choice; re-read on Sync.</summary>
+    private ToggleButton Switch(Panel into, MapSwitch sw, Thickness margin)
     {
-        var box = new CheckBox { Content = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0), ToolTip = tip };
-        box.Click += (s, e) => { if (!syncing) write(box.IsChecked == true); };
-        syncers.Add(() => { bool v = read(); if (box.IsChecked != v) box.IsChecked = v; });
+        ToggleButton box = sw.Choice
+            ? new RadioButton { GroupName = "who" + GetHashCode() }
+            : new CheckBox();
+        box.Content = sw.BoardLabel;
+        box.VerticalAlignment = VerticalAlignment.Center;
+        box.Margin = margin;
+        box.ToolTip = sw.TipOnBoard;
+        box.Click += (s, e) => { if (!syncing) sw.Write(box.IsChecked == true); };
+        syncers.Add(() => { bool v = sw.Read(); if (box.IsChecked != v) box.IsChecked = v; });
         into.Children.Add(box);
         return box;
     }
@@ -28,8 +36,34 @@ public sealed class BoardView : UserControl
     private void Sync()
     {
         syncing = true;
-        try { foreach (var s in syncers) s(); }
+        try { foreach (Action s in syncers) s(); }
         finally { syncing = false; }
+    }
+
+    /// <summary>The board's switches from the shared map switch list, laid out by group.</summary>
+    private StackPanel MapList()
+    {
+        var list = new StackPanel { Orientation = Orientation.Vertical };
+        list.Children.Add(new TextBlock { Text = "Map layers", FontWeight = FontWeight.Bold, Foreground = White, Margin = new Thickness(0, 0, 0, 4) });
+        var who = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        who.Children.Add(new TextBlock { Text = "Lines for", Foreground = White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        var kinds = new StackPanel { Orientation = Orientation.Horizontal };
+        ToggleButton lastChoice = null;
+        foreach (MapSwitch sw in MapSwitch.All)
+        {
+            if (sw.BoardLabel == null) continue;
+            if (sw.Group == SwitchGroup.Layers) Switch(list, sw, new Thickness(0, 2, 10, 2));
+            else if (sw.Group == SwitchGroup.LinesFor) lastChoice = Switch(who, sw, new Thickness(0, 0, 8, 0));
+            else if (sw.BoardOwnRow) continue;
+            else Switch(kinds, sw, new Thickness(0, 0, 10, 0));
+        }
+        if (lastChoice != null) lastChoice.Margin = new Thickness(0);
+        list.Children.Add(who);
+        list.Children.Add(new TextBlock { Text = "Lines of", Foreground = White, Margin = new Thickness(0, 6, 0, 2) });
+        list.Children.Add(kinds);
+        foreach (MapSwitch sw in MapSwitch.All)
+            if (sw.BoardLabel != null && sw.BoardOwnRow) Switch(list, sw, new Thickness(0, 4, 10, 0));
+        return list;
     }
 
     /// <summary>
@@ -38,38 +72,6 @@ public sealed class BoardView : UserControl
     /// </summary>
     private Grid BuildMapBar()
     {
-        var list = new StackPanel { Orientation = Orientation.Vertical };
-        var white = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
-        list.Children.Add(new TextBlock { Text = "Map layers", FontWeight = FontWeight.Bold, Foreground = white, Margin = new Thickness(0, 0, 0, 4) });
-        Check(list, "Sensor lines", () => Map.MapSet.LinesOn, v => { if (v != Map.MapSet.LinesOn) Map.MapSet.ToggleLines(); }, "Lines from each own unit to the contacts it holds").Margin = new Thickness(0, 2, 10, 2);
-        Check(list, "Coverage", () => Map.MapSet.CoverageOn, v => { if (v != Map.MapSet.CoverageOn) Map.MapSet.ToggleCoverage(); }, "Where the selected unit's sensors would hold an imagined target").Margin = new Thickness(0, 2, 10, 2);
-
-        var who = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-        who.Children.Add(new TextBlock { Text = "Lines for", Foreground = white, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
-        var sel = new RadioButton { Content = "selected unit", GroupName = "who" + GetHashCode(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-        var all = new RadioButton { Content = "all units", GroupName = "who" + GetHashCode(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 0), ToolTip = "Lines of every own unit, the selected one bright (coverage stays selected-unit only)" };
-        sel.Click += (s, e) => { if (syncing) return; Settings.LinesAllUnits.Value = false; Settings.LinesWho.Value = Settings.SelectedOnly; };
-        all.Click += (s, e) => { if (syncing) return; Settings.LinesAllUnits.Value = false; Settings.LinesWho.Value = Settings.AllUnits; };
-        syncers.Add(() =>
-        {
-            bool everyone = Settings.LinesAllUnits.Value || Settings.LinesWho.Value == Settings.AllUnits;
-            if (all.IsChecked != everyone) all.IsChecked = everyone;
-            if (sel.IsChecked != !everyone) sel.IsChecked = !everyone;
-        });
-        who.Children.Add(sel);
-        who.Children.Add(all);
-        list.Children.Add(who);
-
-        list.Children.Add(new TextBlock { Text = "Lines of", Foreground = white, Margin = new Thickness(0, 6, 0, 2) });
-        var kinds = new StackPanel { Orientation = Orientation.Horizontal };
-        Check(kinds, "radar", () => Settings.LinesRadar.Value, v => Settings.LinesRadar.Value = v, "Search and fire-control radar");
-        Check(kinds, "ESM", () => Settings.LinesEsm.Value, v => Settings.LinesEsm.Value = v, "ESM bearing lines and cones");
-        Check(kinds, "visual", () => Settings.LinesVisual.Value, v => Settings.LinesVisual.Value = v, "Visual and infrared");
-        Check(kinds, "sonar", () => Settings.LinesSonar.Value, v => Settings.LinesSonar.Value = v, "Passive and active sonar");
-        list.Children.Add(kinds);
-        Check(list, "hide ESM of tracked", () => Settings.HideTrackedEsm.Value, v => Settings.HideTrackedEsm.Value = v,
-            "Leave out an ESM line for a contact a radar holds as a live track").Margin = new Thickness(0, 4, 10, 0);
-
         var host = new Grid { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 4) };
         var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         if (Noesis.GUI.ParseXaml("<Path xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Width=\"12\" Height=\"12\" " +
@@ -83,24 +85,26 @@ public sealed class BoardView : UserControl
         {
             Child = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(240, 32, 32, 32)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 128, 128, 128)),
+                Background = GameColours.Of(0xF0202020),
+                BorderBrush = GameColours.Of(0xFF808080),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(10),
-                Child = list,
+                Child = MapList(),
             },
             PlacementTarget = button,
             Placement = PlacementMode.Bottom,
             StaysOpen = false,
         };
-        // A click on the button while the list is open: the popup's light dismiss closes it first, so that click must not reopen it.
+        // A click on the button while the list is open: the popup's light dismiss closes it first (and the click then arrives a few
+        // frames later), so a click this soon after the close must not reopen it.
+        const double reopenGuardMs = 250;
         DateTime closedAt = DateTime.MinValue;
         popup.Closed += (s, e) => closedAt = DateTime.UtcNow;
         button.Click += (s, e) =>
         {
             e.Handled = true;
             if (popup.IsOpen) { popup.IsOpen = false; return; }
-            if ((DateTime.UtcNow - closedAt).TotalMilliseconds < 250)
+            if ((DateTime.UtcNow - closedAt).TotalMilliseconds < reopenGuardMs)
                 return;
             Sync();
             popup.IsOpen = true;
@@ -146,6 +150,7 @@ public sealed class BoardView : UserControl
     }
 }
 
+/// <summary>How the windows write ages and bearings.</summary>
 internal static class Fmt
 {
     public static string Age(double seconds)
@@ -160,7 +165,6 @@ internal static class Fmt
 public sealed class BoardSurface : Surface
 {
     private const float LabelW = 170f, HeaderH = 40f, RowH = 20f;
-    private float colW = 80f;
     private int firstRow;
 
     public BoardSurface()
@@ -171,30 +175,19 @@ public sealed class BoardSurface : Surface
 
     private BoardWindow Win => DataContext as BoardWindow;
 
-    private static Brush KindBrush(Surface s, Kind k)
-    {
-        switch (k)
-        {
-            case Kind.Radar: return s.Emphasis;
-            case Kind.FireControl: return s.Red;
-            case Kind.Esm: return s.Blue;
-            case Kind.Passive: return s.Green;
-            case Kind.Active: return s.Highlight;
-            case Kind.Visual: return s.Normal;
-            default: return s.Neutral;
-        }
-    }
+    /// <summary>The width of a unit's column in a board this wide.</summary>
+    private static float ColumnWidth(float w, int units) => Math.Max(46f, Math.Min(120f, (w - LabelW) / Math.Max(1, units)));
 
-    private Brush RelationBrush(int relation)
+    private static Brush KindBrush(Surface s, Kind k) => k switch
     {
-        switch (relation)
-        {
-            case 1: return Friendly;
-            case 2: return Neutral;
-            case 3: return Hostile;
-            default: return Unknown;
-        }
-    }
+        Kind.Radar => s.Emphasis,
+        Kind.FireControl => s.Red,
+        Kind.Esm => s.Blue,
+        Kind.Passive => s.Green,
+        Kind.Active => s.Highlight,
+        Kind.Visual => s.Normal,
+        _ => s.Neutral,
+    };
 
     protected override void Paint(DrawingContext dc, float w, float h)
     {
@@ -211,15 +204,27 @@ public sealed class BoardSurface : Surface
             Draw(dc, pic.Units.Count == 0 ? "No own units." : "No contact is held by any of your sensors.", 8, 8, 12, Normal);
             return;
         }
-        int cols = pic.Units.Count;
-        colW = Math.Max(46f, Math.Min(120f, (w - LabelW) / cols));
+        float colW = ColumnWidth(w, pic.Units.Count);
         int visibleRows = Math.Max(1, (int)((h - HeaderH) / RowH));
         firstRow = Math.Max(0, Math.Min(firstRow, pic.Contacts.Count - visibleRows));
-        UnitRow subject = win?.Subject();
+        DrawUnitHeader(dc, pic, win?.Subject(), colW, w, h);
+        for (int r = 0; r < visibleRows; r++)
+        {
+            int index = firstRow + r;
+            if (index >= pic.Contacts.Count) break;
+            DrawContactRow(dc, pic, win, index, HeaderH + r * RowH, colW, w);
+        }
+        dc.DrawLine(PenOf(Lines, 1f), new Point(LabelW, 0), new Point(LabelW, h));
+        dc.DrawLine(PenOf(Lines, 1f), new Point(0, HeaderH), new Point(w, HeaderH));
+        if (pic.Contacts.Count > visibleRows)
+            DrawRight(dc, (firstRow + 1) + "-" + Math.Min(pic.Contacts.Count, firstRow + visibleRows) + " of " + pic.Contacts.Count + " (wheel scrolls)", w - 4, h - 14, 10, Normal);
+    }
 
-        // header: unit names
+    /// <summary>The unit names over their columns, the shown unit's column marked.</summary>
+    private void DrawUnitHeader(DrawingContext dc, SensorPicture pic, UnitRow subject, float colW, float w, float h)
+    {
         dc.DrawRectangle(Header, null, new Rect(0, 0, w, HeaderH));
-        for (int c = 0; c < cols; c++)
+        for (int c = 0; c < pic.Units.Count; c++)
         {
             UnitRow u = pic.Units[c];
             float x = LabelW + c * colW;
@@ -237,56 +242,43 @@ public sealed class BoardSurface : Surface
             DrawCentered(dc, l2, x + colW / 2, 18, 11, Normal);
             if (u.Emcon) DrawCentered(dc, "EMCON", x + colW / 2, 29, 9, Emphasis);
         }
-
-        // rows: contacts
-        for (int r = 0; r < visibleRows; r++)
-        {
-            int index = firstRow + r;
-            if (index >= pic.Contacts.Count) break;
-            ContactRow cr = pic.Contacts[index];
-            float y = HeaderH + r * RowH;
-            bool selRow = win != null && ReferenceEquals(win.SelContact, cr);
-            if (selRow) dc.DrawRectangle(Fade(Red, 0.35f), null, new Rect(0, y, w, RowH));
-            else if ((index & 1) == 1) dc.DrawRectangle(Fade(Header, 0.5f), null, new Rect(0, y, w, RowH));
-            dc.DrawEllipse(RelationBrush(cr.Relation), null, new Point(9, y + RowH / 2), 4, 4);
-            Draw(dc, cr.Label, 20, y + 3, 12, selRow ? Highlight : Normal);
-            for (int c = 0; c < cols; c++)
-            {
-                float x = LabelW + c * colW;
-                if (x + colW > w + 1f) break;
-                DrawCell(dc, pic, cr, pic.Units[c], x, y);
-            }
-        }
-        // grid lines
-        dc.DrawLine(PenOf(Lines, 1f), new Point(LabelW, 0), new Point(LabelW, h));
-        dc.DrawLine(PenOf(Lines, 1f), new Point(0, HeaderH), new Point(w, HeaderH));
-        if (pic.Contacts.Count > visibleRows)
-            DrawRight(dc, (firstRow + 1) + "-" + Math.Min(pic.Contacts.Count, firstRow + visibleRows) + " of " + pic.Contacts.Count + " (wheel scrolls)", w - 4, h - 14, 10, Normal);
     }
 
-    private void DrawCell(DrawingContext dc, SensorPicture pic, ContactRow cr, UnitRow unit, float x, float y)
+    private void DrawContactRow(DrawingContext dc, SensorPicture pic, BoardWindow win, int index, float y, float colW, float w)
+    {
+        ContactRow cr = pic.Contacts[index];
+        bool selRow = win != null && ReferenceEquals(win.SelContact, cr);
+        if (selRow) dc.DrawRectangle(Fade(Red, 0.35f), null, new Rect(0, y, w, RowH));
+        else if ((index & 1) == 1) dc.DrawRectangle(Fade(Header, 0.5f), null, new Rect(0, y, w, RowH));
+        dc.DrawEllipse(RelationBrush(cr.Relation), null, new Point(9, y + RowH / 2), 4, 4);
+        Draw(dc, cr.Label, 20, y + 3, 12, selRow ? Highlight : Normal);
+        for (int c = 0; c < pic.Units.Count; c++)
+        {
+            float x = LabelW + c * colW;
+            if (x + colW > w + 1f) break;
+            DrawCell(dc, pic, win, cr, pic.Units[c], x, y, colW);
+        }
+    }
+
+    private void DrawCell(DrawingContext dc, SensorPicture pic, BoardWindow win, ContactRow cr, UnitRow unit, float x, float y, float colW)
     {
         double freshest = double.MaxValue;
         float cx = x + 6;
-        bool any = false;
-        for (int k = 0; k < KindInfo.Letters.Length; k++)
+        foreach (Kind kind in KindInfo.BoardOrder)
         {
             Hit hit = null;
             for (int i = 0; i < cr.Hits.Count; i++)
-                if (cr.Hits[i].Unit == unit && (int)cr.Hits[i].Kind == k) { hit = cr.Hits[i]; break; }
+                if (cr.Hits[i].Unit == unit && cr.Hits[i].Kind == kind) { hit = cr.Hits[i]; break; }
             if (hit == null) continue;
-            any = true;
-            char letter = KindInfo.Letters[k];
+            char letter = KindInfo.Letter(kind);
             string s = (hit.BearingOnly ? char.ToLowerInvariant(letter) : letter).ToString();
-            Brush b = KindBrush(this, hit.Kind);
+            Brush b = KindBrush(this, kind);
             Draw(dc, s, cx, y + 3, 12, hit.Live ? b : Fade(b, 0.4f));
             cx += 9f;
-            double age = pic.Time - hit.FixTime;
-            if (age < freshest) freshest = age;
+            freshest = Math.Min(freshest, pic.Time - hit.FixTime);
         }
-        if (any)
+        if (freshest != double.MaxValue)
             DrawRight(dc, Fmt.Age(freshest), x + colW - 3, y + 5, 10, Normal);
-        BoardWindow win = Win;
         if (win != null && ReferenceEquals(win.SelContact, cr) && ReferenceEquals(win.SelUnit, unit))
             dc.DrawRectangle(null, PenOf(Highlight, 1f), new Rect(x + 1, y + 1, colW - 2, RowH - 2));
     }
@@ -297,12 +289,12 @@ public sealed class BoardSurface : Surface
         SensorPicture pic = SensorPicture.Current;
         if (win == null) return;
         Point p = e.GetPosition(this);
-        int col = (int)Math.Floor((p.X - LabelW) / colW);
-        bool dbl = e.ClickCount >= 2;
-        if (col >= 0 && col < pic.Units.Count)
+        int col = (int)Math.Floor((p.X - LabelW) / ColumnWidth(ActualWidth, pic.Units.Count));
+        UnitRow unit = col >= 0 && col < pic.Units.Count ? pic.Units[col] : null;
+        if (unit != null)
         {
-            win.SelUnit = pic.Units[col];
-            win.Pin(pic.Units[col]);
+            win.SelUnit = unit;
+            win.Pin(unit);
         }
         ContactRow clicked = null;
         if (p.Y >= HeaderH)
@@ -311,10 +303,10 @@ public sealed class BoardSurface : Surface
             if (row >= 0 && row < pic.Contacts.Count) { clicked = pic.Contacts[row]; win.SelContact = clicked; }
         }
         // double click: a contact (its row) -> to where it is estimated; a unit's header -> to that unit
-        if (dbl)
+        if (e.ClickCount >= 2)
         {
-            if (clicked != null) Jump.ToContact(clicked, col >= 0 && col < pic.Units.Count ? pic.Units[col] : null);
-            else if (p.Y < HeaderH && col >= 0 && col < pic.Units.Count) Jump.ToUnit(pic.Units[col]);
+            if (clicked != null) Jump.ToContact(clicked, unit);
+            else if (p.Y < HeaderH && unit != null) Jump.ToUnit(unit);
         }
         e.Handled = true;
         Registry.RefreshAll();
@@ -343,7 +335,7 @@ public sealed class PanelSurface : Surface
         for (int i = 0; i < hist.Count; i++)
         {
             if (hist[i].Key < t0) continue;
-            float d = Ang.DeltaAngle(last, hist[i].Value);
+            float d = GeoMath.Relative(last, hist[i].Value);
             if (d < lo) lo = d;
             if (d > hi) hi = d;
         }
@@ -355,19 +347,19 @@ public sealed class PanelSurface : Surface
         {
             if (hist[i].Key < t0) continue;
             float xx = x + (w - 46f) * (hist[i].Key - t0) / Math.Max(1f, t1 - t0);
-            float yy = y + h - 2f - (h - 4f) * (Ang.DeltaAngle(last, hist[i].Value) - lo) / span;
+            float yy = y + h - 2f - (h - 4f) * (GeoMath.Relative(last, hist[i].Value) - lo) / span;
             if (!first) dc.DrawLine(PenOf(hit.Live ? Highlight : Fade(Highlight, 0.4f), 1f), new Point(px, py), new Point(xx, yy));
             px = xx; py = yy; first = false;
         }
         float dt = t1 - t0;
         if (dt >= 20f)
         {
-            float drift = Ang.DeltaAngle(hist[0].Key < t0 ? Interp(hist, t0) : hist[0].Value, last) / dt * 60f;
+            float drift = GeoMath.Relative(hist[0].Key < t0 ? Interp(hist, t0) : hist[0].Value, last) / dt * 60f;
             DrawRight(dc, (drift >= 0 ? "+" : "") + drift.ToString("0.0") + "/min", x + w, y + 1f, 10, Normal);
         }
     }
 
-    private static float Interp(System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, float>> h, float t)
+    private static float Interp(List<KeyValuePair<float, float>> h, float t)
     {
         for (int i = 1; i < h.Count; i++)
             if (h[i].Key >= t) return h[i].Value;
@@ -380,34 +372,42 @@ public sealed class PanelSurface : Surface
         SensorPicture pic = SensorPicture.Current;
         BoardWindow win = Win;
         if (win == null || !pic.InMission) return;
-        UnitRow unit = win.Subject();
         float y = 4;
         if (win.SelContact != null && win.SelUnit != null && pic.Contacts.Contains(win.SelContact) && pic.Units.Contains(win.SelUnit))
+            y = DrawCellText(dc, pic, win, w, y);
+        UnitRow unit = win.Subject();
+        if (unit != null) DrawSensors(dc, unit, w, h, y);
+    }
+
+    /// <summary>The clicked cell in words: each sensor of the unit that holds the contact; returns where the next block starts.</summary>
+    private float DrawCellText(DrawingContext dc, SensorPicture pic, BoardWindow win, float w, float y)
+    {
+        var sb = new StringBuilder();
+        Draw(dc, win.SelUnit.Name + " holds " + win.SelContact.Label + ":", 6, y, 12, Highlight);
+        y += 16;
+        bool any = false;
+        foreach (Hit hit in win.SelContact.Hits)
         {
-            var sb = new StringBuilder();
-            Draw(dc, win.SelUnit.Name + " holds " + win.SelContact.Label + ":", 6, y, 12, Highlight);
-            y += 16;
-            bool any = false;
-            foreach (Hit hit in win.SelContact.Hits)
-            {
-                if (hit.Unit != win.SelUnit) continue;
-                any = true;
-                sb.Clear();
-                sb.Append(KindInfo.Names[(int)hit.Kind]).Append("  ").Append(hit.SensorName)
-                  .Append("  brg ").Append(Fmt.Compass(hit.Bearing));
-                if (hit.BearingError > 0.05f) sb.Append(" +-").Append(hit.BearingError.ToString("0"));
-                if (!hit.BearingOnly && !float.IsNaN(hit.RangeM))
-                    sb.Append("  rng ").Append((hit.RangeM / Conv.MetersPerNm).ToString("0.0")).Append(" nm");
-                else sb.Append("  bearing only");
-                sb.Append("  fix ").Append(Fmt.Age(pic.Time - hit.FixTime)).Append(hit.Live ? " ago" : " ago (lost)");
-                Draw(dc, sb.ToString(), 14, y, 11, hit.Live ? Normal : Fade(Normal, 0.6f));
-                if (hit.BearingOnly) DrawHistory(dc, hit, w - 150f, y - 1f, 140f, 13f);
-                y += 14;
-            }
-            if (!any) { Draw(dc, "no sensor of this unit holds it", 14, y, 11, Normal); y += 14; }
-            y += 4;
+            if (hit.Unit != win.SelUnit) continue;
+            any = true;
+            sb.Clear();
+            sb.Append(KindInfo.Name(hit.Kind)).Append("  ").Append(hit.SensorName)
+              .Append("  brg ").Append(Fmt.Compass(hit.Bearing));
+            if (hit.BearingError > 0.05f) sb.Append(" +-").Append(hit.BearingError.ToString("0"));
+            if (!hit.BearingOnly && !float.IsNaN(hit.RangeM))
+                sb.Append("  rng ").Append(Conv.Nm(hit.RangeM).ToString("0.0")).Append(" nm");
+            else sb.Append("  bearing only");
+            sb.Append("  fix ").Append(Fmt.Age(pic.Time - hit.FixTime)).Append(hit.Live ? " ago" : " ago (lost)");
+            Draw(dc, sb.ToString(), 14, y, 11, hit.Live ? Normal : Fade(Normal, 0.6f));
+            if (hit.BearingOnly) DrawHistory(dc, hit, w - 150f, y - 1f, 140f, 13f);
+            y += 14;
         }
-        if (unit == null) return;
+        if (!any) { Draw(dc, "no sensor of this unit holds it", 14, y, 11, Normal); y += 14; }
+        return y + 4;
+    }
+
+    private void DrawSensors(DrawingContext dc, UnitRow unit, float w, float h, float y)
+    {
         dc.DrawLine(PenOf(Lines, 1f), new Point(0, y), new Point(w, y));
         y += 3;
         Draw(dc, "Sensors of " + unit.Name + (unit.Emcon ? "   EMCON: search radars, active sonar and jamming are off" : ""), 6, y, 12, Highlight);

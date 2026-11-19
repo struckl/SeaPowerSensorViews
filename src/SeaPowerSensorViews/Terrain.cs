@@ -21,23 +21,7 @@ internal static class Terrain
         if (!looked)
         {
             looked = true;
-            foreach (MethodInfo m in typeof(TerrainUtils).GetMethods(BindingFlags.Public | BindingFlags.Static))
-            {
-                if (m.Name != "GetHeightAt" || m.ReturnType != typeof(float)) continue;
-                ParameterInfo[] ps = m.GetParameters();
-                if (ps.Length == 0 || ps[0].ParameterType != typeof(GeoPosition)) continue;
-                bool ok = true;
-                var a = new object[ps.Length];
-                for (int i = 1; i < ps.Length; i++)
-                {
-                    if (ps[i].HasDefaultValue) a[i] = ps[i].DefaultValue;
-                    else if (ps[i].ParameterType == typeof(bool)) a[i] = false;
-                    else { ok = false; break; }
-                }
-                if (!ok) continue;
-                if (method == null || ps.Length < method.GetParameters().Length) { method = m; args = a; }
-            }
-            if (method == null) ModLog.Warn("TerrainUtils.GetHeightAt not found (game update?) - the sonar display shows no seabed depth.");
+            Find();
         }
         if (method == null) return float.NaN;
         try
@@ -51,5 +35,32 @@ internal static class Terrain
             reported = true;
             return float.NaN;
         }
+    }
+
+    /// <summary>The overload with the fewest parameters whose extra ones all have defaults (or are bools, passed as false).</summary>
+    private static void Find()
+    {
+        foreach (MethodInfo m in typeof(TerrainUtils).GetMethods(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (m.Name != "GetHeightAt" || m.ReturnType != typeof(float)) continue;
+            ParameterInfo[] ps = m.GetParameters();
+            if (ps.Length == 0 || ps[0].ParameterType != typeof(GeoPosition)) continue;
+            object[] a = Defaults(ps);
+            if (a != null && (method == null || ps.Length < method.GetParameters().Length)) { method = m; args = a; }
+        }
+        if (method == null) ModLog.Warn("TerrainUtils.GetHeightAt not found (game update?) - the sonar display shows no seabed depth.");
+    }
+
+    /// <summary>Arguments for everything after the place; null when a parameter has no default and is not a bool.</summary>
+    private static object[] Defaults(ParameterInfo[] ps)
+    {
+        var a = new object[ps.Length];
+        for (int i = 1; i < ps.Length; i++)
+        {
+            if (ps[i].HasDefaultValue) a[i] = ps[i].DefaultValue;
+            else if (ps[i].ParameterType == typeof(bool)) a[i] = false;
+            else return null;
+        }
+        return a;
     }
 }

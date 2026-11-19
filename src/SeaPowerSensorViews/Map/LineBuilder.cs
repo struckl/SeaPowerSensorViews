@@ -13,6 +13,14 @@ namespace SeaPowerSensorViews.Map;
 /// </summary>
 internal static class LineBuilder
 {
+    /// <summary>What goes into the lines (from the settings, made by MapSet).</summary>
+    public struct Options
+    {
+        public bool OnlySelected, Lost, HideTrackedEsm;
+        public bool Radar, Esm, Visual, Sonar;
+        public float WedgeKm;           // bearing line length while the contact has no plotted position
+    }
+
     private static readonly List<LineSet.Line> Fresh = new List<LineSet.Line>();
     private static readonly List<LineSet.Line> Merged = new List<LineSet.Line>();
     private static readonly HashSet<int> Groups = new HashSet<int>();
@@ -20,9 +28,6 @@ internal static class LineBuilder
 
     /// <summary>Groups of other units' lines; the selected unit's lines have a group of their own.</summary>
     public const int SharedGroups = 6, SelectedGroup = SharedGroups;
-
-    /// <summary>The tolerance the current lines were last compared with (degrees); see <see cref="Build"/>.</summary>
-    public static double LastTolerance = double.MaxValue;
 
     /// <summary>
     /// The map paths a line goes into. Noesis draws a changed path again whole (every dash of it), so with one path per style every
@@ -41,22 +46,18 @@ internal static class LineBuilder
     /// once (a VM test 2026-11-19 saw 4 of 4 groups in 40 % of the builds when they all came due together). The selected unit's
     /// lines follow every snapshot. <paramref name="all"/> (settings, selection, zoom) takes every change at once.
     /// </summary>
-    public static void Build(SensorPicture pic, UnitRow selected, LineSet set, double tolerance, bool all, int dueGroup)
+    public static void Build(SensorPicture pic, UnitRow selected, in Options options, LineSet set, double tolerance, bool all, int dueGroup)
     {
         Fresh.Clear();
-        Fill(pic, selected, Fresh);
+        Fill(pic, selected, options, Fresh);
         Fresh.Sort(ByKey);
-        LastTolerance = tolerance;
+        set.Tolerance = tolerance;
         Merged.Clear();
         Groups.Clear();
         int changed = Merge(set.Lines, Fresh, tolerance, all, dueGroup, out string first);
         if (changed == 0 && set.Version > 0) return;
         ModLog.Debug($"lines rebuilt: {Merged.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved in {Groups.Count} group(s); first: {first ?? "-"}");
-        set.Lines.Clear();
-        set.Lines.AddRange(Merged);
-        set.ChangedGroups.Clear();
-        set.ChangedGroups.UnionWith(Groups);
-        set.Version++;
+        set.Replace(Merged, Groups);
     }
 
     /// <summary>Merges the new lines into <see cref="Merged"/> (both lists sorted by key); returns how many differ, 0 = nothing to draw.</summary>
@@ -69,14 +70,7 @@ internal static class LineBuilder
             LineSet.Line a = i < old.Count ? old[i] : null, b = j < now.Count ? now[j] : null;
             if (a != null && b != null && a.Key == b.Key)
             {
-                if (Same(a, b, tol)) Merged.Add(a);
-                else if (!all && a.Group != SelectedGroup && a.Group != dueGroup && b.Group == a.Group && SameShape(a, b)) Merged.Add(a);   // only moved: on its turn
-                else
-                {
-                    Merged.Add(b);
-                    changed++; first ??= Describe(b);
-                    Groups.Add(a.Group); Groups.Add(b.Group);
-                }
+                if (!KeepOld(a, b, tol, all, dueGroup)) { changed++; first ??= Describe(b); }
                 i++; j++;
             }
             else if (b == null || (a != null && a.Key < b.Key)) { changed++; first ??= "gone " + Describe(a); Groups.Add(a.Group); i++; }
@@ -85,8 +79,23 @@ internal static class LineBuilder
         return changed;
     }
 
+    /// <summary>The same line in both builds: keeps the old one when it did not move, or only moved and waits for its group's turn.</summary>
+    private static bool KeepOld(LineSet.Line a, LineSet.Line b, double tol, bool all, int dueGroup)
+    {
+        bool waits = !all && a.Group != SelectedGroup && a.Group != dueGroup && b.Group == a.Group && SameShape(a, b);
+        if (waits || Same(a, b, tol))
+        {
+            Merged.Add(a);
+            return true;
+        }
+        Merged.Add(b);
+        Groups.Add(a.Group);
+        Groups.Add(b.Group);
+        return false;
+    }
+
     private static bool SameShape(LineSet.Line a, LineSet.Line b) =>
-        a.Style == b.Style && a.Bright == b.Bright && a.Live == b.Live && a.Fill == b.Fill && a.Label == b.Label && a.Lat.Length == b.Lat.Length;
+        a.Kind == b.Kind && a.Bright == b.Bright && a.Live == b.Live && a.Fill == b.Fill && a.Label == b.Label && a.Lat.Length == b.Lat.Length;
 
     private static bool Same(LineSet.Line a, LineSet.Line b, double tol)
     {
@@ -99,13 +108,13 @@ internal static class LineBuilder
     }
 
     private static string Describe(LineSet.Line l) =>
-        $"{l.Style} live={l.Live} fill={l.Fill} '{l.Label}' end {l.Lat[l.Lat.Length - 1]:F4},{l.Lon[l.Lon.Length - 1]:F4}";
+        $"{l.Kind} live={l.Live} fill={l.Fill} '{l.Label}' end {l.Lat[l.Lat.Length - 1]:F4},{l.Lon[l.Lon.Length - 1]:F4}";
 
-    private static ulong KeyOf(UnitRow unit, ContactRow cr, Hit h, int part)
+    private static ulong KeyOf(Hit h, ContactRow cr, int part)
     {
         ulong k = 14695981039346656037UL;
         void Mix(long v) { k = (k ^ (ulong)v) * 1099511628211UL; }
-        Mix(unit.Uid);
+        Mix(h.Unit.Uid);
         Mix(cr.Id);
         Mix((int)h.Kind);
         Mix(h.SensorName?.GetHashCode() ?? 0);
@@ -113,8 +122,104 @@ internal static class LineBuilder
         return k;
     }
 
+    private static bool KindShown(Kind k, in Options o) => k switch
+    {
+        Kind.Radar or Kind.FireControl => o.Radar,
+        Kind.Esm => o.Esm,
+        Kind.Visual => o.Visual,
+        Kind.Passive or Kind.Active => o.Sonar,
+        _ => true,
+    };
+
+    /// <summary>The look all lines of one hit share.</summary>
+    private struct Look
+    {
+        public GeoPosition Origin;
+        public bool Bright, Live;
+        public int Group;
+    }
+
+    /// <summary>Whether the hit gets lines; <paramref name="bright"/> for the selected unit's (all of them while none is selected).</summary>
+    private static bool Drawn(Hit h, in Options o, bool hideEsm, UnitRow selected, out bool bright)
+    {
+        bright = selected == null || ReferenceEquals(h.Unit, selected);
+        if (h.Unit?.Unit == null || h.Unit.Unit.IsDestroyed || !KindShown(h.Kind, o) || (hideEsm && h.Kind == Kind.Esm)) return false;
+        return (bright || !o.OnlySelected) && (h.Live || o.Lost);
+    }
+
+    private static void Fill(SensorPicture pic, UnitRow selected, in Options o, List<LineSet.Line> lines)
+    {
+        if (o.OnlySelected && selected == null) return;              // nothing selected: no lines
+        foreach (ContactRow cr in pic.Contacts)
+        {
+            // an ESM bearing of a contact that a ranging sensor holds live adds nothing: the game already linked them
+            bool hideEsm = o.HideTrackedEsm && cr.LiveRanged;
+            foreach (Hit h in cr.Hits)
+            {
+                if (!Drawn(h, o, hideEsm, selected, out bool bright)) continue;
+                var look = new Look
+                {
+                    Origin = h.Unit.Unit.getGeoPosition(), Bright = bright, Live = h.Live,
+                    Group = GroupOf(h.Unit, selected != null && ReferenceEquals(h.Unit, selected)),
+                };
+                if (h.Ranged) AddRanged(cr, h, look, lines);
+                else AddBearing(cr, h, look, o.WedgeKm, lines);
+            }
+        }
+    }
+
+    /// <summary>A line to where the sensor (or the map marker) puts the contact.</summary>
+    private static void AddRanged(ContactRow cr, Hit h, in Look look, List<LineSet.Line> lines)
+    {
+        float bearing = h.Bearing, nm = Conv.Nm(h.RangeM);
+        GeoMath.ToPlot(cr, look.Origin, ref bearing, ref nm);
+        float km = nm * Conv.KmPerNm;
+        // The range is an estimate with an error. The line is solid up to the nearest range it could be, and a faint stretch
+        // runs on to the farthest: a line ending at one exact point would claim a precision the sensor does not have (sonar).
+        float errKm = h.RangeErrorM * Conv.KmPerMeter;
+        bool uncertain = errKm > 0.1f && errKm > 0.03f * km;
+        float solidKm = uncertain ? Math.Max(0.05f * km, km - errKm) : km;
+        string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
+        lines.Add(MakeLine(look, bearing, 0f, solidKm, KeyOf(h, cr, 0), h.Kind, look.Bright, label));
+        if (uncertain)
+            lines.Add(MakeLine(look, bearing, solidKm, km + errKm, KeyOf(h, cr, 3), h.Kind, false, null));
+    }
+
+    /// <summary>A bearing line with its wedge (the bearing error) for a sensor that has no range.</summary>
+    private static void AddBearing(ContactRow cr, Hit h, in Look look, float wedgeKm, List<LineSet.Line> lines)
+    {
+        GeoPosition origin = look.Origin;
+        float half = Math.Max(1f, Math.Min(15f, h.BearingError));
+        // With a plotted position (the map marker) the line and cone run to the marker's distance and a little past it, so
+        // the marker sits inside the cone when this bearing agrees with it; without one they have the configured length.
+        float lenKm = wedgeKm;
+        if (cr.HasPlot)
+        {
+            GeoMath.BearingRange(origin, cr.Plot, out float _, out float pnm);
+            lenKm = Math.Max(Conv.KmPerNm, Math.Min(300f * Conv.KmPerNm, pnm * Conv.KmPerNm * 1.1f));
+        }
+        float bearingNow = GeoMath.BearingNow(cr, h, origin);
+        GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow - half);
+        GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow);
+        GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow + half);
+        lines.Add(new LineSet.Line
+        {
+            Key = KeyOf(h, cr, 1), Kind = h.Kind, Bright = look.Bright, Live = look.Live, Fill = true, Group = look.Group,
+            Lat = new[] { origin._latitude, a._latitude, m._latitude, b._latitude },
+            Lon = new[] { origin._longitude, a._longitude, m._longitude, b._longitude },
+        });
+        // the bearing line down the wedge's middle, labelled at the far end
+        lines.Add(new LineSet.Line
+        {
+            Key = KeyOf(h, cr, 2), Kind = h.Kind, Bright = look.Bright, Live = look.Live, Group = look.Group,
+            Lat = new[] { origin._latitude, m._latitude },
+            Lon = new[] { origin._longitude, m._longitude },
+            Label = (h.Kind == Kind.Esm ? "ESM " : "S ") + cr.Label,
+        });
+    }
+
     /// <summary>A line along a bearing from <paramref name="fromKm"/> to <paramref name="toKm"/> out of the origin, a chord every ~25 nm.</summary>
-    private static LineSet.Line MakeLine(GeoPosition origin, float bearing, float fromKm, float toKm, ulong key, LineStyle style, bool bright, bool live, string label, int group)
+    private static LineSet.Line MakeLine(in Look look, float bearing, float fromKm, float toKm, ulong key, Kind kind, bool bright, string label)
     {
         int steps = Math.Max(1, Math.Min(10, (int)Math.Ceiling((toKm - fromKm) / 46f)));
         var lat = new double[steps + 1];
@@ -122,99 +227,9 @@ internal static class LineBuilder
         for (int i = 0; i <= steps; i++)
         {
             float d = fromKm + (toKm - fromKm) * i / steps;
-            GeoPosition p = d <= 0f ? origin : origin.OffsetByDistanceOnHeadingUnity(d, bearing);
+            GeoPosition p = d <= 0f ? look.Origin : look.Origin.OffsetByDistanceOnHeadingUnity(d, bearing);
             lat[i] = p._latitude; lon[i] = p._longitude;
         }
-        return new LineSet.Line { Key = key, Style = style, Bright = bright, Live = live, Lat = lat, Lon = lon, Label = label, Group = group };
-    }
-    private static bool KindShown(Kind k)
-    {
-        switch (k)
-        {
-            case Kind.Radar:
-            case Kind.FireControl: return Settings.LinesRadar.Value;
-            case Kind.Esm: return Settings.LinesEsm.Value;
-            case Kind.Visual: return Settings.LinesVisual.Value;
-            case Kind.Passive:
-            case Kind.Active: return Settings.LinesSonar.Value;
-            default: return true;
-        }
-    }
-
-    private static void Fill(SensorPicture pic, UnitRow selected, List<LineSet.Line> lines)
-    {
-        bool onlySelected = Settings.LinesWho.Value == Settings.SelectedOnly && !Settings.LinesAllUnits.Value;
-        if (onlySelected && selected == null) return;              // nothing selected: no lines
-        bool lost = Settings.LostLines.Value;
-        float wedgeKm = Settings.WedgeNm.Value * Conv.KmPerNm;
-        foreach (ContactRow cr in pic.Contacts)
-        {
-            // an ESM bearing of a contact that a ranging sensor holds live adds nothing: the game already linked them
-            bool ranged = false;
-            if (Settings.HideTrackedEsm.Value)
-                foreach (Hit r in cr.Hits)
-                    if (r.Live && !r.BearingOnly && !float.IsNaN(r.RangeM)) { ranged = true; break; }
-            foreach (Hit h in cr.Hits)
-            {
-                if (h.Unit?.Unit == null || h.Unit.Unit.IsDestroyed) continue;
-                if (!KindShown(h.Kind)) continue;
-                if (ranged && h.Kind == Kind.Esm) continue;
-                bool bright = selected == null || ReferenceEquals(h.Unit, selected);
-                if (onlySelected && !bright) continue;
-                if (!h.Live && !lost) continue;
-                GeoPosition origin = h.Unit.Unit.getGeoPosition();
-                int group = GroupOf(h.Unit, selected != null && ReferenceEquals(h.Unit, selected));
-                LineStyle style = LineStyles.Of(h.Kind);
-                if (!h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f)
-                {
-                    float km = h.RangeM * Conv.KmPerMeter;
-                    float bearing = h.Bearing;
-                    if (cr.HasPlot)   // end on the map marker, not on this sensor's older estimate
-                    {
-                        GeoMath.BearingRange(origin, cr.Plot, out float pb, out float pnm);
-                        if (pnm > 0.01f) { km = pnm * Conv.KmPerNm; bearing = pb; }
-                    }
-                    // The range is an estimate with an error. The line is solid up to the nearest range it could be, and a faint stretch
-                    // runs on to the farthest: a line ending at one exact point would claim a precision the sensor does not have (sonar).
-                    float errKm = h.RangeErrorM * Conv.KmPerMeter;
-                    bool uncertain = errKm > 0.1f && errKm > 0.03f * km;
-                    float solidKm = uncertain ? Math.Max(0.05f * km, km - errKm) : km;
-                    string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
-                    lines.Add(MakeLine(origin, bearing, 0f, solidKm, KeyOf(h.Unit, cr, h, 0), style, bright, h.Live, label, group));
-                    if (uncertain)
-                        lines.Add(MakeLine(origin, bearing, solidKm, km + errKm, KeyOf(h.Unit, cr, h, 3), style, false, h.Live, null, group));                }
-                else
-                {
-                    float half = Math.Max(1f, Math.Min(15f, h.BearingError));
-                    // With a plotted position (the map marker) the line and cone run to the marker's distance and a little past it, so
-                    // the marker sits inside the cone when this bearing agrees with it; without one they have the configured length.
-                    float lenKm = wedgeKm;
-                    if (cr.HasPlot)
-                    {
-                        GeoMath.BearingRange(origin, cr.Plot, out float _, out float pnm);
-                        lenKm = Math.Max(Conv.KmPerNm, Math.Min(300f * Conv.KmPerNm, pnm * Conv.KmPerNm * 1.1f));
-                    }
-                    float bearingNow = GeoMath.BearingNow(cr, h, origin);
-                    GeoPosition a = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow - half);
-                    GeoPosition m = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow);
-                    GeoPosition b = origin.OffsetByDistanceOnHeadingUnity(lenKm, bearingNow + half);
-                    // the wedge, filled
-                    lines.Add(new LineSet.Line
-                    {
-                        Key = KeyOf(h.Unit, cr, h, 1), Style = style, Bright = bright, Live = h.Live, Fill = true, Group = group,
-                        Lat = new[] { origin._latitude, a._latitude, m._latitude, b._latitude },
-                        Lon = new[] { origin._longitude, a._longitude, m._longitude, b._longitude },
-                    });
-                    // the bearing line down its middle, labelled at the far end
-                    lines.Add(new LineSet.Line
-                    {
-                        Key = KeyOf(h.Unit, cr, h, 2), Style = style, Bright = bright, Live = h.Live, Group = group,
-                        Lat = new[] { origin._latitude, m._latitude },
-                        Lon = new[] { origin._longitude, m._longitude },
-                        Label = (h.Kind == Kind.Esm ? "ESM " : "S ") + cr.Label,
-                    });
-                }
-            }
-        }
+        return new LineSet.Line { Key = key, Kind = kind, Bright = bright, Live = look.Live, Lat = lat, Lon = lon, Label = label, Group = look.Group };
     }
 }

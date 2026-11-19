@@ -5,117 +5,97 @@ using SeaPowerSensorViews.Data;
 
 namespace SeaPowerSensorViews.Map;
 
-internal enum LineStyle { Radar, FireControl, Esm, Passive, Active, Visual, Mad }
-
 internal enum CoverageKind { Radar, Esm, Visual, Sonar }
 
+/// <summary>How the map draws a line of each sensor kind and each coverage ring.</summary>
 internal static class LineStyles
 {
-    public static LineStyle Of(Kind k)
-    {
-        switch (k)
-        {
-            case Kind.Radar: return LineStyle.Radar;
-            case Kind.FireControl: return LineStyle.FireControl;
-            case Kind.Esm: return LineStyle.Esm;
-            case Kind.Passive: return LineStyle.Passive;
-            case Kind.Active: return LineStyle.Active;
-            case Kind.Visual: return LineStyle.Visual;
-            default: return LineStyle.Mad;
-        }
-    }
-
-    public static string Key(LineStyle s, bool bright, bool live, bool fill) =>
-        "l|" + (int)s + (bright ? "b" : "d") + (live ? "l" : "x") + (fill ? "f" : "s");
-
-    public static void Parse(string key, out LineStyle style, out bool bright, out bool live, out bool fill)
-    {
-        style = (LineStyle)(key[2] - '0');
-        bright = key[3] == 'b';
-        live = key[4] == 'l';
-        fill = key[5] == 'f';
-    }
+    public const string Dashed = "6 3", Dotted = "2 3";
 
     /// <summary>Weight relative to the game's base line: a lock is drawn three times as thick, like the game's weapon vectors stand out.</summary>
-    public static float Weight(LineStyle s) => s == LineStyle.FireControl ? 3f : s == LineStyle.Radar ? 1.2f : 1f;
+    public static float Weight(Kind k) => k == Kind.FireControl ? 3f : k == Kind.Radar ? 1.2f : 1f;
 
-    public static string Dashes(LineStyle s)
+    public static string Dashes(Kind k) => k switch
     {
-        switch (s)
-        {
-            case LineStyle.Esm: return "6 3";
-            case LineStyle.Passive: return "6 3";
-            case LineStyle.Visual: return "2 3";
-            default: return null;
-        }
-    }
+        Kind.Esm or Kind.Passive => Dashed,
+        Kind.Visual => Dotted,
+        _ => null,
+    };
+
+    public static string Dashes(CoverageKind c) => c switch
+    {
+        CoverageKind.Esm => Dashed,
+        CoverageKind.Visual => Dotted,
+        _ => null,
+    };
+
+    public static string ColourKey(Kind k) => k switch
+    {
+        Kind.Radar => GameColours.Unknown,             // amber
+        Kind.FireControl => GameColours.MapRwr,        // the red of the game's radar warning vectors
+        Kind.Esm => GameColours.Friend,
+        Kind.Active => GameColours.MapUnitRange,
+        Kind.Visual => GameColours.Normal,
+        _ => GameColours.Neutral,
+    };
+
+    public static string ColourKey(CoverageKind c) => c switch
+    {
+        CoverageKind.Radar => GameColours.Unknown,
+        CoverageKind.Esm => GameColours.Friend,
+        CoverageKind.Visual => GameColours.Normal,
+        _ => GameColours.Neutral,
+    };
 }
 
-/// <summary>Colours from the game: the NTDS brushes of the application resources and the map's own resource keys, looked up from the map control.</summary>
+/// <summary>Which map path a line or ring goes into: all figures of one look share a path.</summary>
+internal readonly struct PathKey : IEquatable<PathKey>
+{
+    public readonly bool Coverage, Bright, Live, Fill;
+    public readonly int Style;          // a Kind for a line, a CoverageKind for a ring
+    public readonly int Group;          // the line's group (see LineBuilder.GroupOf); -1 for coverage
+
+    private PathKey(bool coverage, int style, bool bright, bool live, bool fill, int group)
+    {
+        Coverage = coverage; Style = style; Bright = bright; Live = live; Fill = fill; Group = group;
+    }
+
+    public static PathKey Of(LineSet.Line l) => new PathKey(false, (int)l.Kind, l.Bright, l.Live, l.Fill, l.Group);
+
+    public static PathKey Of(CoverageSet.Ring r) => new PathKey(true, (int)r.Kind, true, true, r.Fill, -1);
+
+    public bool Equals(PathKey o) =>
+        Coverage == o.Coverage && Style == o.Style && Bright == o.Bright && Live == o.Live && Fill == o.Fill && Group == o.Group;
+
+    public override bool Equals(object o) => o is PathKey k && Equals(k);
+
+    public override int GetHashCode() =>
+        (Style << 8) ^ (Group << 4) ^ (Coverage ? 1 : 0) ^ (Bright ? 2 : 0) ^ (Live ? 4 : 0) ^ (Fill ? 8 : 0);
+}
+
+/// <summary>The game's colours as one map control sees them, cached per key.</summary>
 internal sealed class Theme
 {
-    private readonly Dictionary<int, Brush> cache = new Dictionary<int, Brush>();
+    private readonly Dictionary<string, Brush> cache = new Dictionary<string, Brush>();
     private readonly FrameworkElement map;
 
     public Theme(FrameworkElement map) => this.map = map;
 
-    private Brush Find(string key, uint fallback)
+    public Brush Of(string key)
     {
-        try { if (map.TryFindResource(key) is Brush b) return b; }
-        catch (Exception) { /* fallback */ }
-        return new SolidColorBrush(Color.FromArgb((byte)(fallback >> 24), (byte)(fallback >> 16), (byte)(fallback >> 8), (byte)fallback));
-    }
-
-    public Brush Line(LineStyle s)
-    {
-        int k = (int)s;
-        if (cache.TryGetValue(k, out Brush b)) return b;
-        switch (s)
-        {
-            case LineStyle.Radar: b = Find("NTDS.UnknownColour", 0xFFFFC000); break;           // amber
-            case LineStyle.FireControl: b = Find("Map_RWR", 0xFFFF0000); break;               // the red of the game's radar warning vectors
-            case LineStyle.Esm: b = Find("NTDS.FriendColour", 0xFF2060E0); break;
-            case LineStyle.Passive: b = Find("NTDS.NeutralColour", 0xFF2FA84F); break;
-            case LineStyle.Active: b = Find("Map_UnitOnMapRange", 0xFF3B7FE0); break;
-            case LineStyle.Visual: b = Find("Brush.Foreground.Normal", 0xFF949AA1); break;
-            default: b = Find("NTDS.NeutralColour", 0xFF2FA84F); break;
-        }
-        return cache[k] = b;
-    }
-
-    private readonly Dictionary<(Brush, int), Brush> alphas = new Dictionary<(Brush, int), Brush>();
-
-    /// <summary>The brush with an opacity of its own (cached per brush and 1/64 step).</summary>
-    public Brush Alpha(Brush brush, float alpha)
-    {
-        int step = (int)Math.Round(Math.Max(0f, Math.Min(1f, alpha)) * 64f);
-        if (alphas.TryGetValue((brush, step), out Brush b)) return b;
-        Color c = (brush as SolidColorBrush)?.Color ?? Color.FromArgb(255, 200, 200, 200);
-        return alphas[(brush, step)] = new SolidColorBrush(Color.FromArgb((byte)(c.A * step / 64), c.R, c.G, c.B));
-    }
-
-    public Brush Coverage(CoverageKind c)
-    {
-        int k = 100 + (int)c;
-        if (cache.TryGetValue(k, out Brush b)) return b;
-        switch (c)
-        {
-            case CoverageKind.Radar: b = Find("NTDS.UnknownColour", 0xFFFFC000); break;
-            case CoverageKind.Esm: b = Find("NTDS.FriendColour", 0xFF2060E0); break;
-            case CoverageKind.Visual: b = Find("Brush.Foreground.Normal", 0xFF949AA1); break;
-            default: b = Find("NTDS.NeutralColour", 0xFF2FA84F); break;
-        }
-        return cache[k] = b;
+        if (!cache.TryGetValue(key, out Brush b))
+            cache[key] = b = GameColours.Find(map, key);
+        return b;
     }
 }
 
-/// <summary>Cached lines (in longitude/latitude) of the sensor lines layer, rebuilt from the snapshot about once a second.</summary>
+/// <summary>Cached lines (in longitude/latitude) of the sensor lines layer, rebuilt from the snapshot (see LineBuilder).</summary>
 internal sealed class LineSet
 {
     public sealed class Line
     {
         public ulong Key;               // unit, contact, sensor and part: the same line across snapshots
-        public LineStyle Style;
+        public Kind Kind;
         public bool Bright, Live, Fill;
         public double[] Lat, Lon;
         public string Label;
@@ -127,6 +107,24 @@ internal sealed class LineSet
     public int Version;
     /// <summary>The groups whose lines changed from Version - 1 to Version (a map one version behind redraws only these).</summary>
     public readonly HashSet<int> ChangedGroups = new HashSet<int>();
+    /// <summary>The tolerance (degrees) the lines were last compared with; MaxValue before the first build.</summary>
+    public double Tolerance = double.MaxValue;
+
+    public void Clear()
+    {
+        Lines.Clear();
+        Tolerance = double.MaxValue;
+        Version++;
+    }
+
+    public void Replace(List<Line> lines, HashSet<int> changedGroups)
+    {
+        Lines.Clear();
+        Lines.AddRange(lines);
+        ChangedGroups.Clear();
+        ChangedGroups.UnionWith(changedGroups);
+        Version++;
+    }
 }
 
 internal sealed class CoverageSet
@@ -140,7 +138,6 @@ internal sealed class CoverageSet
 
     public readonly List<Ring> Rings = new List<Ring>();
     public int Version;
-    public string Status = "";
     // The rings are built around Origin; the maps shift them each frame by how far Unit has moved since, so they stay on the unit
     // between rebuilds (a new shape comes only about every nm).
     public SeaPower.ObjectBase Unit;

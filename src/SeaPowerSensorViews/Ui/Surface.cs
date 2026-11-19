@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Noesis;
+using SeaPowerSensorViews.Data;
 
 #if FLATMAP
 namespace SeaPowerSensorViews.Ui;
@@ -10,93 +11,83 @@ namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full n
 
 /// <summary>
 /// A control that draws itself with Noesis' DrawingContext, like the game's own map controls (MapEllipse, Ruler, ...).
-/// Colours come from the game's theme: the brushes are looked up by the game's resource keys (Brush.Window.Background,
-/// Brush.Foreground.Normal, ...) once the control is in the window; the literal colours below are only the fallback with
-/// the same values as the game's dark theme.
+/// Colours come from the game's theme (<see cref="GameColours"/>), looked up once the control is in the window.
 /// </summary>
 public abstract class Surface : UserControl
 {
-    // ---- the game's theme colours (SeaPower resource keys) -------------------------------------------------------
     internal Brush Back, Header, Lines, Normal, Highlight, Emphasis, Red, Green, Blue, Button;
     internal Brush Hostile, Friendly, Neutral, Unknown;     // NTDS.* brushes
     private FontFamily family;
-    private readonly Dictionary<uint, SolidColorBrush> alphaBrushes = new Dictionary<uint, SolidColorBrush>();
     private readonly Dictionary<(Brush, int), Pen> pens = new Dictionary<(Brush, int), Pen>();
     private readonly Dictionary<(string, int, Brush), FormattedText> texts = new Dictionary<(string, int, Brush), FormattedText>();
     private bool themed;
+    private Brush ownShip;
+
+    /// <summary>Formatted texts kept for reuse; the cache starts again when it holds more (a few windows show far fewer).</summary>
+    private const int TextCacheSize = 800;
 
     protected Surface()
     {
-        Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));      // hit-testable, invisible
+        Background = GameColours.Of(0x00000000);      // hit-testable, invisible
         Loaded += (s, e) => { Theme(); Registry.Add(this); InvalidateVisual(); };
         Unloaded += (s, e) => Registry.Remove(this);
     }
 
-    /// <summary>Called by the host after a new snapshot, or every few frames when <see cref="Animated"/>.</summary>
-    internal virtual void Refresh() => InvalidateVisual();
     internal virtual bool Animated => false;
     /// <summary>Called 25 times a second for an <see cref="Animated"/> surface; the default redraws it.</summary>
     internal virtual void Animate() => InvalidateVisual();
 
-    private Brush Find(string key, uint fallbackArgb)
-    {
-        try
-        {
-            if (TryFindResource(key) is Brush b) return b;
-        }
-        catch (Exception) { /* use the fallback */ }
-        return new SolidColorBrush(Argb(fallbackArgb));
-    }
-
-    internal static Color Argb(uint v) => Color.FromArgb((byte)(v >> 24), (byte)(v >> 16), (byte)(v >> 8), (byte)v);
-
     /// <summary>A subclass that wants the phosphor-screen palette of the period radar and sonar displays instead of the game's theme.</summary>
     internal virtual bool Retro => false;
-
-    private static Brush Px(uint argb) => new SolidColorBrush(Argb(argb));
 
     private void Theme()
     {
         if (themed) return;
         themed = true;
-        Back = Find("Brush.Window.BackgroundDark", 0xFF242629);
-        Header = Find("Brush.Window.Header", 0xFF1E1F22);
-        Lines = Find("Brush.Border.Normal", 0xFF3F4147);
-        Normal = Find("Brush.Foreground.Normal", 0xFF949AA1);
-        Highlight = Find("Brush.Foreground.Highlight", 0xFFD7D7D7);
-        Emphasis = Find("Brush.Foreground.Emphasis", 0xFFD5A876);
-        Red = Find("Brush.Glyph.SeaPowerRed", 0xFFC04A3C);
-        Green = Find("Brush.Glyph.SeaPowerGreen", 0xFF63B970);
-        Blue = Find("Brush.Glyph.SeaPowerBlue", 0xFF277DCD);
-        Button = Find("Brush.Button.Background", 0xFF393D40);
-        Hostile = Find("NTDS.HostileColour", 0xFFFF0000);
-        Friendly = Find("NTDS.FriendColour", 0xFF277DCD);
-        Neutral = Find("NTDS.NeutralColour", 0xFF63B970);
-        Unknown = Find("NTDS.UnknownColour", 0xFFFFC000);
-        try { family = TryFindResource("Font.Family.Default") as FontFamily; } catch (Exception) { family = null; }
+        Back = GameColours.Find(this, GameColours.WindowBack);
+        Header = GameColours.Find(this, GameColours.WindowHeader);
+        Lines = GameColours.Find(this, GameColours.Border);
+        Normal = GameColours.Find(this, GameColours.Normal);
+        Highlight = GameColours.Find(this, GameColours.Highlight);
+        Emphasis = GameColours.Find(this, GameColours.Emphasis);
+        Red = GameColours.Find(this, GameColours.Red);
+        Green = GameColours.Find(this, GameColours.Green);
+        Blue = GameColours.Find(this, GameColours.Blue);
+        Button = GameColours.Find(this, GameColours.Button);
+        Hostile = GameColours.Find(this, GameColours.Hostile);
+        Friendly = GameColours.Find(this, GameColours.Friend);
+        Neutral = GameColours.Find(this, GameColours.Neutral);
+        Unknown = GameColours.Find(this, GameColours.Unknown);
+        try { family = TryFindResource("Font.Family.Default") as FontFamily; }
+        catch (Exception) { family = null; }   // not in a tree with the game's resources: the control's own font
         if (family == null) family = FontFamily;
-        if (Retro)
-        {
-            // a green phosphor tube: near-black ground, dim rings, bright traces; hostile and locks stay the brightest
-            Back = Px(0xFF020E06); Header = Px(0xFF03180B); Lines = Px(0xFF14502A); Normal = Px(0xFF3DA857);
-            Highlight = Px(0xFF8CFFA8); Emphasis = Px(0xFFD6FF8C); Red = Px(0xFFFFB347); Green = Px(0xFF5DFF7D);
-            Blue = Px(0xFF4FD0C0); Button = Px(0xFF0A2A14);
-            Hostile = Px(0xFFE8FF6A); Friendly = Px(0xFF6AFFB0); Neutral = Px(0xFF3DA857); Unknown = Px(0xFFB8FF9A);
-        }
+        if (Retro) Phosphor();
     }
 
-    /// <summary>The brush with another opacity (cached per colour and alpha step).</summary>
-    internal Brush Fade(Brush brush, float alpha)
+    /// <summary>A green phosphor tube: near-black ground, dim rings, bright traces; hostile and locks stay the brightest.</summary>
+    private void Phosphor()
     {
-        Color c = (brush as SolidColorBrush)?.Color ?? Color.FromArgb(255, 200, 200, 200);
-        byte a = (byte)Math.Max(0, Math.Min(255, (int)(c.A * alpha)));
-        uint key = ((uint)a << 24) | ((uint)c.R << 16) | ((uint)c.G << 8) | c.B;
-        if (!alphaBrushes.TryGetValue(key, out SolidColorBrush result))
-            alphaBrushes[key] = result = new SolidColorBrush(Color.FromArgb(a, c.R, c.G, c.B));
-        return result;
+        Back = GameColours.Of(0xFF020E06); Header = GameColours.Of(0xFF03180B); Lines = GameColours.Of(0xFF14502A);
+        Normal = GameColours.Of(0xFF3DA857); Highlight = GameColours.Of(0xFF8CFFA8); Emphasis = GameColours.Of(0xFFD6FF8C);
+        Red = GameColours.Of(0xFFFFB347); Green = GameColours.Of(0xFF5DFF7D); Blue = GameColours.Of(0xFF4FD0C0);
+        Button = GameColours.Of(0xFF0A2A14);
+        Hostile = GameColours.Of(0xFFE8FF6A); Friendly = GameColours.Of(0xFF6AFFB0); Neutral = GameColours.Of(0xFF3DA857);
+        Unknown = GameColours.Of(0xFFB8FF9A);
     }
 
-    private Brush ownShip;
+    /// <summary>The brush with another opacity.</summary>
+    internal static Brush Fade(Brush brush, float alpha) => GameColours.Faded(brush, alpha);
+
+    internal Brush RelationBrush(Relation relation) => relation switch
+    {
+        Relation.Friendly => Friendly,
+        Relation.Neutral => Neutral,
+        Relation.Hostile => Hostile,
+        _ => Unknown,
+    };
+
+    /// <summary>The faint pen of scale lines and grids.</summary>
+    internal Pen GridPen => PenOf(Fade(Lines, 0.8f), 1f);
 
     /// <summary>An own ship on a scope: a diamond and its name. The game's friendly blue is too dark on the dark ground, so the same hue 60 % towards white.</summary>
     internal void DrawOwnShip(DrawingContext dc, Point p, string name, float alpha)
@@ -114,6 +105,21 @@ public abstract class Surface : UserControl
         Draw(dc, name, p.X + 7, p.Y - 6, 10, Fade(ownShip, Math.Max(0.3f, alpha)));
     }
 
+    /// <summary>A radar contact on a scope: a square in its side's colour, a ring and "LOCK" when a fire-control radar holds it.</summary>
+    internal void DrawContact(DrawingContext dc, Point p, ContactRow cr, bool locked, float alpha, float labelAlpha)
+    {
+        dc.DrawRectangle(Fade(RelationBrush(cr.Relation), alpha), null, new Rect(p.X - 3.5f, p.Y - 3.5f, 7, 7));
+        if (locked) dc.DrawEllipse(null, PenOf(Hostile, 1.5f), p, 9, 9);
+        Draw(dc, cr.Label + (locked ? " LOCK" : ""), p.X + 7, p.Y - 6, 10, Fade(locked ? Hostile : Highlight, labelAlpha));
+    }
+
+    /// <summary>A small text on a dark box, for the measuring cursors.</summary>
+    internal void DrawTag(DrawingContext dc, string text, float x, float y, float width)
+    {
+        dc.DrawRectangle(Fade(Back, 0.85f), null, new Rect(x - 2, y - 1, width, 15));
+        Draw(dc, text, x, y, 10, Highlight);
+    }
+
     internal Pen PenOf(Brush brush, float thickness)
     {
         var key = (brush, (int)(thickness * 4f));
@@ -127,7 +133,7 @@ public abstract class Surface : UserControl
         var key = (s, (int)(size * 2f), brush);
         if (!texts.TryGetValue(key, out FormattedText t))
         {
-            if (texts.Count > 800) texts.Clear();
+            if (texts.Count > TextCacheSize) texts.Clear();
             texts[key] = t = new FormattedText(s, family ?? FontFamily, size, brush, FlowDirection.LeftToRight);
         }
         return t;
@@ -177,7 +183,6 @@ public abstract class Surface : UserControl
 
     protected abstract void Paint(DrawingContext dc, float w, float h);
 
-    // ---- geometry helpers ------------------------------------------------------------------------------------------
     internal static Point Polar(float cx, float cy, float radius, float compassDeg)
     {
         float a = compassDeg * (MathF.PI / 180f);
@@ -210,6 +215,27 @@ public abstract class Surface : UserControl
             else c.LineTo(new Point(cx, cy), true, false);
         }
         return g;
+    }
+}
+
+/// <summary>A radar or sonar screen: the period look when the setting is on.</summary>
+public abstract class TubeSurface : Surface
+{
+    internal override bool Retro => Settings.RetroLook.Value;
+}
+
+/// <summary>A measuring cursor drawn on its own layer over a screen, so a mouse move redraws a few lines, not the whole picture.</summary>
+public abstract class CursorSurface : TubeSurface
+{
+    protected Point Pointer = new Point(-1, -1);
+
+    protected CursorSurface() => Background = null;
+
+    internal void MoveTo(Point p)
+    {
+        if (p.X < 0 && Pointer.X < 0) return;
+        Pointer = p;
+        InvalidateVisual();
     }
 }
 

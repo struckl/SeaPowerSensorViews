@@ -6,12 +6,28 @@ namespace SeaPowerSensorViews.Data;
 /// <summary>How a sensor holds a contact. The letter is what the board shows.</summary>
 internal enum Kind { Radar, FireControl, Esm, Passive, Active, Visual, Mad }
 
+/// <summary>The side a contact is on, as the game's plotting table has it.</summary>
+internal enum Relation { Unknown, Friendly, Neutral, Hostile }
+
 internal static class KindInfo
 {
-    public static readonly char[] Letters = { 'R', 'F', 'E', 'S', 'A', 'V', 'M' };
-    public static readonly string[] Names =
+    /// <summary>The kinds in the order the board writes their letters into a cell.</summary>
+    public static readonly Kind[] BoardOrder = { Kind.Radar, Kind.FireControl, Kind.Esm, Kind.Passive, Kind.Active, Kind.Visual, Kind.Mad };
+
+    public static char Letter(Kind k) => k switch
     {
-        "Search radar", "Fire control radar", "ESM (bearing only)", "Passive sonar", "Active sonar", "Visual / infrared", "MAD",
+        Kind.Radar => 'R', Kind.FireControl => 'F', Kind.Esm => 'E', Kind.Passive => 'S', Kind.Active => 'A', Kind.Visual => 'V', _ => 'M',
+    };
+
+    public static string Name(Kind k) => k switch
+    {
+        Kind.Radar => "Search radar",
+        Kind.FireControl => "Fire control radar",
+        Kind.Esm => "ESM (bearing only)",
+        Kind.Passive => "Passive sonar",
+        Kind.Active => "Active sonar",
+        Kind.Visual => "Visual / infrared",
+        _ => "MAD",
     };
 
     public static bool TryMap(SensorSystem.SensorType type, out Kind kind)
@@ -29,6 +45,14 @@ internal static class KindInfo
             default: kind = Kind.Radar; return false;
         }
     }
+
+    public static Relation Of(RelationsState state) => state switch
+    {
+        RelationsState.Friendly => Relation.Friendly,
+        RelationsState.Neutral => Relation.Neutral,
+        RelationsState.Hostile => Relation.Hostile,
+        _ => Relation.Unknown,
+    };
 }
 
 /// <summary>One sensor of one own unit holding one contact: the newest track it has (or had).</summary>
@@ -52,6 +76,9 @@ internal sealed class Hit
     public int Stamp;
     public float MaxAge;
     public readonly List<KeyValuePair<float, float>> History = new List<KeyValuePair<float, float>>();   // (fix time, bearing) of each new fix, last 10 min
+
+    /// <summary>The sensor measured a range (radar, active sonar, visual, MAD); a range of a metre or less is no measurement.</summary>
+    public bool Ranged => !BearingOnly && RangeM > 1f;
 }
 
 internal sealed class SensorRow
@@ -60,9 +87,9 @@ internal sealed class SensorRow
     public string Name;
     public string Letter;           // R F E S A V M J(ECM)
     public string Detail;           // range / frequency band / mode, for the sensor panel
+    public bool SearchRadar;        // a radar that is not a fire-control radar (letter R)
     public bool On;
     public bool Inoperable;
-    public string State;
     public string Arc;              // "all round" or "-60..+60"
     public float ArcMin = -181f, ArcMax = 181f;
     public bool Active;             // radar / active sonar emitting
@@ -70,6 +97,9 @@ internal sealed class SensorRow
 
 internal sealed class Strobe
 {
+    /// <summary>Seconds a radar warning or jam strobe stays after the game last reported it; the scope fades it over this time.</summary>
+    public const float Lifetime = 8f;
+
     public float Bearing;
     public double Time;
     public bool Jam;
@@ -100,10 +130,13 @@ internal sealed class ContactRow
     public string Label;            // "T123" plus the class when the game shows it
     public string LabelClass;
     public int Listed;              // stamp of the refresh that put it into Contacts
-    public int Relation;            // 0 unknown, 1 friendly, 2 neutral, 3 hostile
+    public Relation Relation;
     public GeoPosition Plot;        // where the game's plotting table puts the contact (the map marker; its estimate, not the real object)
     public bool HasPlot;
-    public bool HasRangedFix;       // plotted, and a live track from a ranging sensor (radar, active sonar, visual, MAD) backs that position
+    public bool LiveRanged;         // a live track from a ranging sensor (radar, active sonar, visual, MAD) holds it
     public readonly List<Hit> Hits = new List<Hit>();
     public int Stamp;
+
+    /// <summary>Plotted, and a live ranged track backs that position.</summary>
+    public bool HasRangedFix => HasPlot && LiveRanged;
 }
