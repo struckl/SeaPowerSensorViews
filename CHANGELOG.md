@@ -7,6 +7,10 @@
   - Now the lines are split into groups by unit; a move redraws only its group
 - **Selected unit live, the rest calmer**: the selected unit's lines still follow every update (up to 10 a second); other units' lines move about twice a second, one group per update in turn, so no update redraws them all at once
 - **Empty shapes are removed** from the map instead of kept (they piled up over a long mission)
+- **Fixed: changing a setting no longer redraws every map line and restarts the coverage.** Each part now redraws only for the settings it reads; before, any change did it, also the radar scope's target altitude, which the scope writes back about once a second
+- **The config file is written once, a moment after the last change**, instead of on every step of an Options slider
+- **Closing the game tidies the windows and map layers first**, while the game's UI still exists (the pattern that crashed Pop-Out in Noesis on quit)
+- Changed (internal): entry point, log, host, hooks, settings, map layer entries, Options tab and package script come from the shared R.A.T.S. skeleton (`SeaPowerKeel\shared\`, compiled into the mod); every hook now goes in whole or not at all, and an error in a mission start or end handler no longer reaches the game
 - The mod folder carries this CHANGELOG.md, so R.A.T.S. Keel's What's new can show what changed when there are no Workshop notes (a local copy, the GitHub zip).
 
 ## 0.4.5 - 2026-11-12 - coverage follows the unit, in-game name

@@ -49,7 +49,14 @@ Config: `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`.
 
 ## Build
 
-`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`. Two DLLs
+`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`.
+
+- Needs the workspace around the repo: the common part of the project (references, flat-map build, deploy) and the shared
+  skeleton (entry, log, host, hooks, settings, Layers-menu entries, Options tab) come from `SeaPowerKeel\shared\`, compiled into this DLL
+- `-p:RatsWorkspace=<workspace>` builds from a clone elsewhere, `-p:RatsShared=<folder>\` against another copy of the shared folder
+- `tools\package.ps1` stages the release with the shared package steps (`-Workspace`, `-RatsShared` the same way)
+
+Two DLLs
 from one source tree - `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` (`-p:GameBuild=Flat`) for 0.8.7 - each stays off on the
 other game; checked offline against the assemblies of both; run in the game on both: 0.8.7 up to 0.2.2, the 3D-globe beta (261107) with 0.3.0.
 How the windows are hosted: [docs/windows.md](docs/windows.md); the map layers: [docs/map-layers.md](docs/map-layers.md). Test list: [docs/testing.md](docs/testing.md). Frame-time test: [tools/perf-test](tools/perf-test/README.md). Notes and plan:

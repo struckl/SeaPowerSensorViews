@@ -9,7 +9,7 @@ map, `TryLocationToView` on the globe (far-side points are dropped).
 
 | | 0.8.7 flat | 3D-globe build 26223125 |
 |---|---|---|
-| Layers menu | static `GizmoLayerManager.Instance`, `new MapLayer(number, name, true)` | `MapDisplayState.Tactical`, internal `MapLayer(MapDisplayState, in GizmoLayerManager.Entry, bool)` by reflection (`GameApi.NewLayer`) |
+| Layers menu | static `GizmoLayerManager.Instance`, `new MapLayer(number, name, true)` | `MapDisplayState.Tactical`, internal `MapLayer(MapDisplayState, in GizmoLayerManager.Entry, bool)` by reflection (`GameReflection.NewLayer`, shared skeleton) |
 | Projection to the screen | `MapBase.LocationToView` | `MapBase.TryLocationToView` |
 
 Everything else (windows, snapshot, coverage maths) is shared. Layer numbers: sensor lines 603, coverage 604 (Topo 600, Borders 601, Cities 602).
