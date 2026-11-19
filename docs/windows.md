@@ -25,7 +25,8 @@ build's XAML was not available offline) and the decompiled `SeapowerUI` sources.
 - Custom drawing (`Ui/Surface.cs`) uses `UserControl.OnRender` with a `DrawingContext`, like the game's `MapControl` classes. Brushes are
   taken from the game's resources by key at load: `Brush.Window.BackgroundDark`, `Brush.Window.Header`, `Brush.Border.Normal`,
   `Brush.Foreground.Normal/Highlight/Emphasis`, `Brush.Glyph.SeaPowerRed/Green/Blue`, `NTDS.HostileColour/FriendColour/NeutralColour/UnknownColour`,
-  font `Font.Family.Default`. The literals in `Surface.Theme` are only the fallback (same values as the dark theme).
+  font `Font.Family.Default`. Keys and fallback colours (the dark theme's values) are one table, `GameColours.cs`, shared with the
+  map layers.
 - Bottom bar buttons: `ToggleButton` with the game's `SimpleToggleButton` style and a `Brush.Item.BackgroundOver` hover, like the
   Standing Orders button; lit = text in `Brush.Foreground.Emphasis`. A sixth column is appended to `DisplayAreaGrid`.
 

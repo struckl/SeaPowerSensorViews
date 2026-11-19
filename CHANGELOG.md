@@ -11,6 +11,11 @@
 - **The config file is written once, a moment after the last change**, instead of on every step of an Options slider
 - **Closing the game tidies the windows and map layers first**, while the game's UI still exists (the pattern that crashed Pop-Out in Noesis on quit)
 - Changed (internal): entry point, log, host, hooks, settings, map layer entries, Options tab and package script come from the shared R.A.T.S. skeleton (`SeaPowerKeel\shared\`, compiled into the mod); every hook now goes in whole or not at all, and an error in a mission start or end handler no longer reaches the game
+- **Fixed: jumping to a contact that only your other units range.** A double-click on a contact's row of the board, for a contact with no plotted place, went to the unit holding it unless the clicked column's unit had a range on it (a click on the name column never had one); it now goes to where the freshest ranging unit puts it (the clicked unit's fix still comes first)
+- **Options page: the hot key hints show your keys.** "Switch the layer ... or with ..." names the key as you set it, and no key when you cleared it
+- **An old switch is folded in:** a config that still had the retired "Quick: all units" switched on now has *Units shown* = All instead (the map looks as before); the entry leaves the config file
+- A failing own-noise call of the sonar display is now written to the log once as a warning (it was silent unless Verbose log was on)
+- Changed (internal): one table each for unit conversions, game colours and the map switches (bottom-bar flyout and board map bar); one copy of the baffle test, of where the scope puts a contact, and of "held by a ranging sensor"; map paths keyed by a struct instead of a string format; the long drawing, snapshot, sonar and coverage functions split into named steps; the line, coverage and snapshot maths get their settings handed in; the window size probe and other unused code removed
 - The mod folder carries this CHANGELOG.md, so R.A.T.S. Keel's What's new can show what changed when there are no Workshop notes (a local copy, the GitHub zip).
 
 ## 0.4.5 - 2026-11-12 - coverage follows the unit, in-game name

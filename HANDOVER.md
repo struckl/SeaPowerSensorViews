@@ -70,7 +70,7 @@ circles) is possible.
 - **Extras for the scope:** `unit._rwrBearings` / `_jamBearings` (cleared each datalink cycle - snapshot before; postfix point
   `ObjectBase.RegisterRadarLockWarningSource`), fire-control state `_isGuiding / _associatedTargets`, `unit._ECMSystemsTryingToJamMe`,
   `ESM._esmObservationData`.
-- **Units:** 1 Unity unit = 67.2 m, 1 nm = 27.56 units, 1 km = 14.88 units; `RadarParameters` ranges/altitudes are in Unity units; ft > Unity
+- **Units** (in the code: `Data/Conv.cs`): 1 Unity unit = 67.2 m, 1 nm = 27.56 units, 1 km = 14.88 units; `RadarParameters` ranges/altitudes are in Unity units; ft > Unity
   units ×0.00453571. Radar horizon (4/3 earth) ~ 1.23·(√h₁ ft + √h₂ ft) nm - used in the mockups only as an approximation.
 - **Thermal layer:** Topo already has it (`SeaPowerTopo/src/SeaPowerTopo/Terrain/LayerMap.cs`).
 
