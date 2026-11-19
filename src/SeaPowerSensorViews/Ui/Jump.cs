@@ -37,7 +37,7 @@ internal static class Jump
             {
                 if (h.BearingOnly || float.IsNaN(h.RangeM) || h.Unit?.Unit == null) continue;
                 bool better = best == null
-                    || (h.Unit == prefer) != (best.Unit == prefer) ? h.Unit == prefer : h.FixTime > best.FixTime;
+                    || ((h.Unit == prefer) != (best.Unit == prefer) ? h.Unit == prefer : h.FixTime > best.FixTime);
                 if (better) best = h;
             }
             if (best == null && !cr.HasPlot)      // only bearings and no place plotted: go to the unit that holds it
