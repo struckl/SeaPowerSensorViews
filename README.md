@@ -1,163 +1,78 @@
 # Sea Power: R.A.T.S. Sensor Views
 
-*Reconnaissance, Acoustics, Terrain & Signals*
+Shows which of your units sees which contact with which sensor, for [Sea Power: Naval Combat in the Missile Age](https://store.steampowered.com/app/1286220/), in a sensor board, a radar scope and a sonar display.
 
-Shows which of your units sees which contact with which sensor, for [Sea Power: Naval Combat in the Missile Age](https://store.steampowered.com/app/1286220/).
-A sensor board, a radar scope and a sonar display open as normal game windows, and two map layers draw the sensor lines and the coverage.
+| | |
+| --- | --- |
+| Version | `0.4.5` (2026-11-12) |
+| Game | Sea Power 0.9.1 (build 261112) tested in the game; 0.8.7 flat map last run in the game with 0.2.2, newer versions checked offline |
+| Needs | a mod loader: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757), either one |
+| Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
+| Settings | Options > Sensor Views, or `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg` |
+| Feedback | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
+| Source | R.A.T.S. Source License, see `LICENSE` |
 
-- Needs a mod loader, either one: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757)
-- [Workshop page](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654)
-- [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) for bugs, ideas and questions
-- With *R.A.T.S. Pop-Out Windows* the three windows get a pop-out button and can move to a second monitor
+![Sensor board and radar scope](workshop/screenshots/02-board-and-scope.jpg)
 
-Everything is display only. The windows show what your units' sensors already report to the game's plotting table (track
-bearing, range and age estimates). They change nothing in a mission; the mission's own rules decide what a sensor can detect.
-They never show a contact's real position, only those estimates.
+Display only: the windows show what your units' sensors already report to the game's plotting table (bearing, range and age estimates), never a contact's real position. The mission's own rules decide what a sensor can detect.
 
-## What it does
+## Features
 
-### Sensor board
+- Sensor board: your units across, the contacts down, each cell lists the sensors that hold the contact and the fix age.
+- Click a cell for bearing, range and fix age per sensor; double-click a contact or unit to move the camera there.
+- Radar scope for the selected unit: sweep-painted blips, covered arc, radar horizon ring, RWR and jammer strobes, lock mark.
+- Sonar display: bearing over time with the baffle sector, a depth strip with the thermal layer, an echo plot, own torpedoes.
+- Map layer *Sensor lines (who sees what)*: a line from each unit to where each sensor puts a contact.
+- Map layer *Sensor coverage (selected unit)*: where the unit's sensors would hold an imagined target, off by default.
+- All three windows are normal game windows; with *R.A.T.S. Pop-Out Windows* they get a pop-out button for a second monitor.
 
-- Your units across, the contacts down
-- Each cell lists the sensors that hold the contact, with the age of the freshest fix:
-  - R search radar, F fire control, E ESM, S passive sonar, A active sonar, V visual / infrared, M MAD
-  - a lower-case letter means bearing only; a dimmed letter is a sensor that lost the contact a moment ago
-- Click a cell for bearing, range and fix age per sensor
-  - bearing-only contacts also get a bearing history strip and the drift per minute
-- Double-click a contact's row to move the game's camera to where your sensors put it
-  - a bearing-only contact with no plotted place goes to the unit that holds it
-  - a contact only your other units range goes to where the freshest ranging unit puts it
-- Double-click a unit's header to move the camera to that unit
-- Below the grid: the selected unit's sensors with on / off, damage, arcs and EMCON
-
-### Radar scope
-
-- Centred on the selected unit, showing only what its own radar holds
-  - contacts seen only by eye, sonar or another sensor stay off it
-  - with no search radar on (switched off, EMCON, broken) the scope is empty and says so
-- A search radar that does not look all round (a fighter's nose radar, say) has its covered arc shaded green
-- Radar contacts are painted when the sweep passes over them and fade until the next pass; a contact the radar has lost goes at the next pass
-  - the setting *Radar scope: blips appear when the sweep passes* turns this off
-- Radar horizon ring for a target altitude you set with a slider or type in as feet, up to 80,000 ft
-  - the ring is drawn only when it lies inside the scope's range; otherwise its distance is written at the bottom
-- Your other units appear as small diamonds, only where this radar would detect them (switch *Own ships*)
-- Strobes for radars warning you (RWR) and for jammers while the radar is on
-- A ring and "LOCK" mark a contact held by a fire-control radar
-- A measuring cursor shows bearing and range; *Heading up* turns the scope
-- The range changes with the mouse wheel and the - and + buttons
-
-### Sonar display
-
-- Bearing over time (relative to the bow, newest at the top) for the selected unit's sonar, with the baffle sector
-- Your own noise at its speed, and a measuring cursor (bearing, seconds ago)
-- A depth strip with the thermal layer, own depth, the array, the seabed and the contacts the sonar holds
-  - contacts are placed at the depth the track estimates, with above / below the layer
-- *Echoes* swaps the waterfall for a bearing / range plot of active sonar echoes
-  - passive sonar gives a bearing only, so it appears on the waterfall and not on that plot
-- Your own torpedoes in the water show when this sonar would hear them, so a wire-guided torpedo can be followed by ear
-  - switch: *Sonar display: own torpedoes*
-- Only what the sonar hears shows
-  - nothing new appears while it is off, broken or a towed array is retracted; older rows scroll away
-  - your own ships appear under the same rule as any contact
-- The < and > buttons switch between the unit's sonars
-
-### Sensor lines on the map
-
-- Layers menu entry *Sensor lines (who sees what)*
-- A line from each of your units to the place each of its sensors puts a contact:
-  - amber for search radar, thick red for a fire-control lock, blue for active sonar, dotted for visual
-  - ESM and passive sonar as a bearing line with a wedge
-- By default only the selected unit's lines are drawn (*Units shown*); the alternative is all units, the selected one bright and the others dimmed
-- Lines per sensor can be switched on and off, and ESM lines of contacts that a radar already tracks can be hidden
-- Only track estimates are used
-
-### Sensor coverage on the map
-
-- Layers menu entry *Sensor coverage (selected unit)*, off by default
-- Shows where the selected unit's sensors would hold an imagined target
-  - radar against the target altitude of the scope's slider, with terrain shadows
-  - ESM, visual range and passive sonar (with the dent of its baffle sector)
-- The rings follow the unit; their shape is worked out again about every nautical mile
+Full detail: [docs/features.md](docs/features.md).
 
 ## Install
 
-- Subscribe on the [Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654), and have a mod loader (see above)
-- Local copy: the mod folder is `SeaPowerSensorViews` in the game's `StreamingAssets` folder
-- Both DLLs sit in the mod folder; on each game version the other one logs that it stays off
+1. Install a mod loader, either one: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757). On the 3D-globe game builds, Anchor Chain does not start yet, so use Keel there.
+2. Subscribe to [Sea Power: R.A.T.S. Sensor Views](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) on the Workshop.
+3. Start a mission and click the radar scope icon at the right end of the bottom bar.
 
-## Opening the windows
+Manual install: put the mod folder `SeaPowerSensorViews` into the game's `StreamingAssets` folder.
 
-- One icon button (a radar scope) at the right end of the bottom bar opens a flyout
-  - the flyout has toggles for the three windows and the map switches (sensor lines, coverage, selected unit or all units, lines per sensor)
-  - the window toggles light up while their window is open
-- Hot keys:
+## Hot keys
 
 | Window or layer | Default key |
-|---|---|
+| --- | --- |
 | Sensor board | `Ctrl+Insert` |
 | Radar scope | `Ctrl+PageUp` |
 | Sonar display | `Ctrl+PageDown` |
 | Sensor lines layer | `Ctrl+Shift+PageUp` |
 | Coverage layer | `Ctrl+Shift+PageDown` |
 
-- The windows are titled R.A.T.S. Sensor Board, R.A.T.S. Radar Scope and R.A.T.S. Sonar Display, with the game's own title bar, close button and resizing
-
 ## Settings
 
-- Most are in the game's Options screen, on the *Sensor Views* tab
-- All of them are in `BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg`
-  - sections: Opening the windows, Views, Map: sensor lines, Map: coverage
-  - hot keys are written as modifiers joined with `+`, then a Unity key name; an empty value means no key
-- Defaults worth knowing:
-  - sensor lines on, for the selected unit only; coverage off
-  - lost contacts stay on the board and scope for 60 s, dimmed
-  - a contact seen only by eye or infrared counts as lost 30 s after its last sighting
-  - target altitude 100 ft, target radar cross section 10 m2
+| Setting | Default | What |
+| --- | --- | --- |
+| Sensor lines | on | lines of the selected unit only (*Units shown*), or all units |
+| Sensor coverage | off | rings for the selected unit |
+| Lost contacts stay | 60 s | dimmed on the board and scope |
+| Eye or infrared contact lost after | 30 s | after its last sighting |
+| Target altitude, radar cross section | 100 ft, 10 m2 | for the scope's horizon ring and the coverage |
 
-## Compatibility
-
-- Sea Power 0.8.7 (flat map) up to every 0.9.x; `_info.ini` declares `GreaterThanEqualToVersion=0.8.7` and `LessThanVersion=0.10.0`
-- Two DLLs from one source tree: `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` for 0.8.7
-- Run in the game:
-  - 0.8.7 (flat map): windows, bar buttons, sensor lines, coverage, cursors and the echo plot, last run with 0.2.2; later versions are checked offline there
-  - 3D-globe beta, build 261107: versions 0.3.0 to 0.4.3 (Options tab, the three windows, lines, coverage, own torpedoes, radar scope fixes)
-  - game 0.9.1, build 261112: version 0.4.5, the in-game name and the coverage ring following a moving unit
-  - 0.4.4 was checked offline against 0.9.0
-- Loaders: runs under Keel or Anchor Chain, with the same entry point
-  - on the 3D-globe builds Anchor Chain does not start yet, so there it runs under Keel
-  - Anchor Chain on 0.8.7 was checked offline only
+- All settings: `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg`; most are on the Options screen's *Sensor Views* tab. Hot keys and the rest: [docs/features.md](docs/features.md).
 
 ## Building
 
-`dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`
+- Needs the .NET SDK, a Sea Power install and the [SeaPowerKeel](https://github.com/struckl/SeaPowerKeel) repo next to this one.
+- Two game versions, two builds: `-p:GameBuild=Flat` builds `SeaPowerSensorViewsFlat.dll` for 0.8.7.
 
-- Needs the R.A.T.S. Sea Power workspace around the repo, with the Keel repo (`SeaPowerKeel`) next to it
-  - the shared project part (references, flat-map build, deploy) and the shared skeleton (entry, log, host, hooks, settings, Layers menu entries, Options tab) come from `SeaPowerKeel\shared\` and are compiled into this DLL
-- `-p:RatsWorkspace=<workspace>` builds from a clone elsewhere; `-p:RatsShared=<folder>\` uses another copy of the shared folder
-- `-p:GameBuild=Flat` builds `SeaPowerSensorViewsFlat.dll` for 0.8.7
-- `tools\package.ps1` stages the release with the shared package steps (`-Workspace` and `-RatsShared` work the same way)
+```
+dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>
+```
 
-## Layout
+Details and the repo layout: [docs/building.md](docs/building.md). Windows: [docs/windows.md](docs/windows.md); map layers: [docs/map-layers.md](docs/map-layers.md); tests: [docs/testing.md](docs/testing.md); notes: [HANDOVER.md](HANDOVER.md).
 
-| Path | What |
-|---|---|
-| `src/SeaPowerSensorViews/Ui/` | the three windows, the bottom-bar flyout, the Options tab rows |
-| `src/SeaPowerSensorViews/Map/` | the sensor lines and coverage layers |
-| `src/SeaPowerSensorViews/Data/` | what is read from the game's plotting table |
-| `src/SeaPowerSensorViews/Settings.cs` | the config entries and their change counters |
-| `docs/windows.md` | how the windows are hosted |
-| `docs/map-layers.md` | the map layers |
-| `docs/testing.md` | the in-game test list |
-| `tools/perf-test/` | frame-time test ([README](tools/perf-test/README.md)) |
-| `workshop/` | Workshop description, pictures, change note |
-| [HANDOVER.md](HANDOVER.md) | notes and plan |
+## Credits and license
 
-## Feedback
-
-- Bugs, ideas and questions: the [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews)
-
-## Licenses and credits
-
-- [R.A.T.S. Source License](LICENSE): read it, fork it, send fixes; no re-uploads, no reuse in other projects
+- [R.A.T.S. Source License](LICENSE): read it, fork it, send fixes; no re-uploads, no reuse in other projects.
+- Works with [R.A.T.S. Pop-Out Windows](https://github.com/struckl/SeaPowerPopOut). No game files are changed.
+- Not affiliated with Triassic Games or MicroProse.
 
 *R.A.T.S. - Ratte's Assorted Tactical Systems*
