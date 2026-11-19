@@ -212,7 +212,8 @@ internal sealed class MapView
         }
         if (Map.ActualWidth < 2 || Map.ActualHeight < 2)
             return;
-        if (settingsVersion != Settings.Version)
+        bool settingsChanged = settingsVersion != Settings.MapLook.Version;
+        if (settingsChanged)
         {
             linesFit.Valid = coverageFit.Valid = false;
             // styles (weight, opacity of the dimmed lines) are fixed when a path is made: make them again
@@ -223,8 +224,7 @@ internal sealed class MapView
             linesVersion = coverageVersion = -1;
         }
         double now = UnityEngine.Time.unscaledTimeAsDouble;
-        bool settingsChanged = settingsVersion != Settings.Version;
-        settingsVersion = Settings.Version;
+        settingsVersion = Settings.MapLook.Version;
         bool view = viewDirty;
         viewDirty = false;
         bool linesData = showLines && lines.Version != linesVersion;

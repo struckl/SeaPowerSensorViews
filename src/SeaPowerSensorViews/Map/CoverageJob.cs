@@ -80,7 +80,7 @@ internal sealed class CoverageJob
             Uid = unit.Uid,
             Lat = (int)Math.Round(pos._latitude * 60.0 / 1.0),       // 1 arc minute = 1 nm
             Lon = (int)Math.Round(pos._longitude * 60.0 * Math.Cos(pos._latitude * Math.PI / 180.0)),
-            Settings = Settings.Version,
+            Settings = Settings.CoverageInputs.Version,
             Altitude = (int)Settings.CoverageAltitude.Value,
         };
         if (!running && now >= nextStart && (!haveShown || !key.Equals(shown)))

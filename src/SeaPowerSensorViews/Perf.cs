@@ -16,7 +16,7 @@ internal static class Perf
     private static int frames;
     private static long windowStart;
 
-    public static long Start() => Settings.VerboseLog.Value ? Stopwatch.GetTimestamp() : 0;
+    public static long Start() => ModSettings.Verbose ? Stopwatch.GetTimestamp() : 0;
 
     public static void Stop(Part part, long start)
     {
@@ -28,7 +28,7 @@ internal static class Perf
     /// <summary>Once per frame from the host.</summary>
     public static void Frame()
     {
-        if (!Settings.VerboseLog.Value) return;
+        if (!ModSettings.Verbose) return;
         long now = Stopwatch.GetTimestamp();
         if (windowStart == 0) windowStart = now;
         frames++;

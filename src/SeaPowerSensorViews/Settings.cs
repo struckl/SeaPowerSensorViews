@@ -1,15 +1,14 @@
-using System.IO;
-using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
 
 namespace SeaPowerSensorViews;
 
-/// <summary>BepInEx config at <c>BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg</c>.</summary>
+/// <summary>
+/// The mod's entries in its BepInEx config, BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg (the file and the General
+/// section: ModSettings in the shared skeleton).
+/// </summary>
 internal static class Settings
 {
-    public static ConfigEntry<bool> Enabled;
-    public static ConfigEntry<bool> VerboseLog;
     public static ConfigEntry<bool> BarButtons;
     public static ConfigEntry<string> BoardKey;
     public static ConfigEntry<string> ScopeKey;
@@ -17,7 +16,6 @@ internal static class Settings
     public static ConfigEntry<float> MemorySeconds;
     public static ConfigEntry<bool> FollowSelection;
 
-    // map layers
     public static ConfigEntry<bool> LinesVisible;
     public static ConfigEntry<string> LinesWho;
     public static ConfigEntry<float> DimOpacity;
@@ -39,20 +37,33 @@ internal static class Settings
     public static ConfigEntry<string> VisualSize;
     public static ConfigEntry<int> Rays;
 
-    /// <summary>Bumped whenever a setting changes, so the map layers know to rebuild.</summary>
-    public static int Version;
+    /// <summary>
+    /// Change counters per area, so a change redraws only what reads it (one counter for every setting threw away all map lines
+    /// and restarted the coverage on any change, also the scope's target altitude, written back about once a second):
+    /// - LineData: what goes into the sensor lines (all lines are compared again at once)
+    /// - MapLook: how lines and coverage are drawn (every map path is made again)
+    /// - CoverageInputs: what the coverage is worked out from (a new coverage job; the altitude has its own place in the job's key)
+    /// </summary>
+    public static ChangeCounter LineData, MapLook, CoverageInputs;
 
     public const string AllUnits = "All, selected bright", SelectedOnly = "Selected only";
     private const int Layout = 2;          // 2 = 0.3.0: "Units shown" defaults to the selected unit only
-    private static ConfigEntry<int> layoutVersion;
 
-    public static void Init()
+    /// <summary>From ModSettings.Open: binds the entries, runs the one-time changes, sets up the change counters.</summary>
+    public static void Bind(ConfigFile file)
     {
-        string path = Path.Combine(Paths.ConfigPath, Plugin.Guid + ".cfg");
-        bool existed = File.Exists(path);
-        var file = new ConfigFile(path, saveOnInit: true);
-        Enabled = file.Bind("1. General", "Enable mod", true, "Master switch. Needs a restart.");
-        VerboseLog = file.Bind("1. General", "Verbose log", false, "Write debug detail to BepInEx/LogOutput.log.");
+        BindWindows(file);
+        BindLines(file);
+        BindCoverage(file);
+        Migrate(file);
+        LineData = ChangeCounter.Of(LinesVisible, LinesWho, LinesAllUnits, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm,
+            LostLines, WedgeNm, MemorySeconds, VisualLifetime);
+        MapLook = ChangeCounter.Of(DimOpacity, LineWidth, ZoomedWedges, LinesVisible, CoverageVisible);
+        CoverageInputs = ChangeCounter.Of(CoverageVisible, CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows, TargetRcs, VisualSize, Rays);
+    }
+
+    private static void BindWindows(ConfigFile file)
+    {
         BarButtons = file.Bind("2. Opening the windows", "Bottom bar buttons", true,
             "Three small toggle buttons (Board, Scope, Sonar) at the right end of the bottom bar, next to the game's own window toggles.");
         BoardKey = file.Bind("2. Opening the windows", "Sensor board key", "Ctrl+Insert",
@@ -65,7 +76,24 @@ internal static class Settings
                 new AcceptableValueRange<float>(0f, 600f)));
         FollowSelection = file.Bind("3. Views", "Follow the selected unit", true,
             "The scope, the sonar display and the board's sensor panel show the unit selected in the game. Off = the unit clicked on the board.");
+        ZoomAnimation = file.Bind("3. Views", "Radar scope: zoom animation", true,
+            "On: when the range changes (mouse wheel, - and + buttons) the contacts glide to the new scale in about a quarter of a second instead of jumping. Off: they jump.");
+        VisualLifetime = file.Bind("3. Views", "Visual contact lifetime (s)", 30f,
+            new ConfigDescription("A contact held only by eyes or infrared counts as lost this many seconds after its last sighting (it then fades " +
+                "for the 'lost contact memory' time). 0 = as long as the game keeps the track (its own maximum age, which can be long).",
+                new AcceptableValueRange<float>(0f, 600f)));
+        RetroLook = file.Bind("3. Views", "Radar and sonar: period look", true,
+            "On: the radar scope and the sonar display look like the green phosphor tubes of the period - dark ground, dim rings, bright traces, a sweep with a glowing trail. Off: the game's own colours (as in 0.3.0). Applies to windows opened afterwards.");
+        RealisticSweep = file.Bind("3. Views", "Radar scope: blips appear when the sweep passes", true,
+            "On: a radar contact is painted on the scope only when the sweep passes over it and then fades until the next pass, like a real " +
+            "radar. Off: contacts are always shown at their latest position, as in version 0.3.0.");
+        SonarOwnTorpedoes = file.Bind("3. Views", "Sonar display: own torpedoes", true,
+            "On: your own torpedoes in the water show on the sonar display when that sonar would hear them (same noise, baffles and " +
+            "threshold as an enemy torpedo), so a wire-guided torpedo can be followed by ear. Off: only ships, as in 0.4.2.");
+    }
 
+    private static void BindLines(ConfigFile file)
+    {
         LinesVisible = file.Bind("4. Map: sensor lines", "Show sensor lines", true,
             "The 'Sensor lines' entry of the map's Layers menu (kept in step with it). Lines from each own unit to each contact it holds, " +
             "from the track estimates only.");
@@ -94,21 +122,10 @@ internal static class Settings
         HideTrackedEsm = file.Bind("4. Map: sensor lines", "Hide ESM of tracked contacts", true,
             "Flyout / board switch. An ESM bearing line and cone is left out for a contact that a radar " +
             "(or other ranging sensor) holds as a live track: the game has linked the emission to that contact, so the cone adds nothing.");
-        ZoomAnimation = file.Bind("3. Views", "Radar scope: zoom animation", true,
-            "On: when the range changes (mouse wheel, - and + buttons) the contacts glide to the new scale in about a quarter of a second instead of jumping. Off: they jump.");
-        VisualLifetime = file.Bind("3. Views", "Visual contact lifetime (s)", 30f,
-            new ConfigDescription("A contact held only by eyes or infrared counts as lost this many seconds after its last sighting (it then fades " +
-                "for the 'lost contact memory' time). 0 = as long as the game keeps the track (its own maximum age, which can be long).",
-                new AcceptableValueRange<float>(0f, 600f)));
-        RetroLook = file.Bind("3. Views", "Radar and sonar: period look", true,
-            "On: the radar scope and the sonar display look like the green phosphor tubes of the period - dark ground, dim rings, bright traces, a sweep with a glowing trail. Off: the game's own colours (as in 0.3.0). Applies to windows opened afterwards.");
-        RealisticSweep = file.Bind("3. Views", "Radar scope: blips appear when the sweep passes", true,
-            "On: a radar contact is painted on the scope only when the sweep passes over it and then fades until the next pass, like a real " +
-            "radar. Off: contacts are always shown at their latest position, as in version 0.3.0.");
-        SonarOwnTorpedoes = file.Bind("3. Views", "Sonar display: own torpedoes", true,
-            "On: your own torpedoes in the water show on the sonar display when that sonar would hear them (same noise, baffles and " +
-            "threshold as an enemy torpedo), so a wire-guided torpedo can be followed by ear. Off: only ships, as in 0.4.2.");
+    }
 
+    private static void BindCoverage(ConfigFile file)
+    {
         CoverageVisible = file.Bind("5. Map: coverage", "Show coverage", false,
             "The 'Sensor coverage' entry of the map's Layers menu (kept in step with it). For the unit selected in the game: where its sensors " +
             "would hold an imagined target - radar against the target altitude below with terrain shadows, ESM, visual, passive sonar.");
@@ -126,18 +143,19 @@ internal static class Settings
             new ConfigDescription("Size class of the imagined target for the visual ring.", new AcceptableValueList<string>("VerySmall", "Small", "SemiSmall", "Meager", "Medium", "SemiLarge", "Large", "VeryLarge")));
         Rays = file.Bind("5. Map: coverage", "Rays", 72,
             new ConfigDescription("Bearings the coverage polygons are sampled at.", new AcceptableValueRange<int>(24, 180)));
+    }
 
-        // One-time change for configs from before 0.3.0: they hold the old default "All", which made the map very busy (and slow)
-        // with many units. A player who wants all lines sets it back once.
-        layoutVersion = file.Bind("9. Internal", "Settings layout", existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
-        if (layoutVersion.Value < 2 && LinesWho.Value == AllUnits)
+    // One-time change for configs from before 0.3.0: they hold the old default "All", which made the map very busy (and slow)
+    // with many units. A player who wants all lines sets it back once.
+    private static void Migrate(ConfigFile file)
+    {
+        ConfigEntry<int> layoutVersion = file.Bind("9. Internal", "Settings layout", ModSettings.Existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
+        ModSettings.Migrate(layoutVersion, (Layout, () =>
         {
+            if (LinesWho.Value != AllUnits) return;
             LinesWho.Value = SelectedOnly;
             ModLog.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
-        }
-        if (layoutVersion.Value < Layout) layoutVersion.Value = Layout;
-
-        file.SettingChanged += (s, e) => Version++;
+        }));
     }
 
     /// <summary>Parses "Ctrl+Shift+F6"; false when empty or unreadable.</summary>

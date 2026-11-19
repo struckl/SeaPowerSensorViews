@@ -3,92 +3,27 @@ using SeaPowerSensorViews.Ui;
 #else
 using SeaPowerSensorViews.Globe.Ui;
 #endif
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using HarmonyLib;
 
 namespace SeaPowerSensorViews;
 
 /// <summary>
-/// Every game method the mod hooks, in two stages; all targets of a stage are resolved before anything is patched.
-/// - <c>MainGameViewModel.OnStart</c> / <c>GameMain.OnDestroy</c> - mission UI ready / mission unloading.
-/// - <c>MapControl.RenderedLayer.OnRender</c> - runs every frame for the map control that shows the live map; hands the
-/// map over so the sensor-line and coverage layers can be laid into it. Applied once NoesisGUI runs (patching it earlier
-/// would run Noesis dependency-property registration before Noesis exists - a native crash), see <see cref="Host"/>.
-/// All three resolve in both games' Seapower-Scripts.dll with the same signature (tools/hook-check).
+/// Every game method the mod hooks (HookRegistry, in the shared skeleton):
+/// - MainGameViewModel.OnStart / GameMain.OnDestroy - mission UI ready / mission unloading (MissionHooks), at load.
+/// - MapControl.RenderedLayer.OnRender - runs every frame for the map control that shows the live map; hands the map over so the
+/// sensor-line and coverage layers can be laid into it. Applied once NoesisGUI runs (patching it earlier would run Noesis
+/// dependency-property registration before Noesis exists - a native crash).
+/// - OptionsMenuView..ctor - the Sensor Views tab of the Options menu (OptionsPage), also once NoesisGUI runs; optional.
+/// All resolve in both games' Seapower-Scripts.dll with the same signature (tools/hook-check).
 /// </summary>
 internal static class Hooks
 {
-    private sealed class Hook
+    public static void Declare()
     {
-        public string Type, Method, Prefix, Postfix;
-        public Type[] Args;                   // null = unique by name
+        MissionHooks.Declare();
+        HookRegistry.Add("Map", HookStage.AfterNoesis, "no sensor lines or coverage on the map")
+            .Hook("MapControl.RenderedLayer", "OnRender", null, typeof(Hooks), postfix: nameof(MapRendered));
+        OptionsPage.Declare("Sensor Views", OptionsRows.Fill);
     }
 
-    private static readonly Hook[] GameHooks =
-    {
-        new Hook { Type = "SeapowerUI.ViewModels.MainGameViewModel", Method = "OnStart", Args = Type.EmptyTypes, Postfix = nameof(MissionReady) },
-        new Hook { Type = "SeaPower.GameMain", Method = "OnDestroy", Args = Type.EmptyTypes, Prefix = nameof(MissionUnloading) },
-    };
-
-    private static readonly Hook[] MapHooks =
-    {
-        new Hook { Type = "MapControl.RenderedLayer", Method = "OnRender", Postfix = nameof(MapRendered) },
-    };
-
-    private static readonly Hook[] OptionsHooks =
-    {
-        new Hook { Type = "SeapowerUI.OptionsMenuView", Method = ".ctor", Args = Type.EmptyTypes, Postfix = nameof(OptionsViewCreated) },
-    };
-
-    private static Harmony harmony;
-
-    public static bool ApplyGameHooks(Harmony instance)
-    {
-        harmony = instance;
-        return Apply(GameHooks, "mod inactive");
-    }
-
-    public static bool ApplyMapHooks() => harmony != null && Apply(MapHooks, "no sensor lines or coverage on the map");
-
-    /// <summary>The settings page in the Options menu; applied with the map hooks (once NoesisGUI runs), on its own.</summary>
-    public static bool ApplyOptionsHooks() => harmony != null && Apply(OptionsHooks, "the settings are only in the config file");
-
-    private static bool Apply(Hook[] hooks, string consequence)
-    {
-        var resolved = new List<(Hook hook, MethodBase target)>();
-        foreach (Hook hook in hooks)
-        {
-            Type type = AccessTools.TypeByName(hook.Type);
-            MethodBase target = type == null ? null
-                : hook.Method == ".ctor" ? AccessTools.Constructor(type, hook.Args)
-                : AccessTools.Method(type, hook.Method, hook.Args);
-            if (target == null)
-            {
-                ModLog.Error(hook.Type + "." + hook.Method + " not found (game updated?) - " + consequence + ".");
-                return false;
-            }
-            resolved.Add((hook, target));
-        }
-        foreach ((Hook hook, MethodBase target) in resolved)
-        {
-            harmony.Patch(target,
-                prefix: hook.Prefix == null ? null : new HarmonyMethod(AccessTools.Method(typeof(Hooks), hook.Prefix)),
-                postfix: hook.Postfix == null ? null : new HarmonyMethod(AccessTools.Method(typeof(Hooks), hook.Postfix)));
-        }
-        return true;
-    }
-
-    private static void MissionReady() => Host.Instance?.MissionReady();
-
-    private static void MissionUnloading() => Host.Instance?.MissionEnded();
-
-    private static void MapRendered(object __instance) => Host.Instance?.MapRendered(__instance);
-
-    private static void OptionsViewCreated(object __instance)
-    {
-        try { OptionsPage.ViewCreated(__instance); }
-        catch (Exception ex) { ModLog.Warn("options page: " + ex.Message); }
-    }
+    private static void MapRendered(object __instance) => Map.MapSet.Rendered(__instance);
 }

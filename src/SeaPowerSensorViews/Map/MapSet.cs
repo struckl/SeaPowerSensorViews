@@ -111,15 +111,15 @@ internal static class MapSet
                 // Every snapshot (up to 10 a second while the game runs). Twice a second let the lines trail a moving unit visibly,
                 // more so at higher time compression; Build still leaves the paths alone unless a line moved a pixel.
                 bool pictureDue = pic.Version != linesPictureVersion && realNow >= linesNextAt;
-                if (pictureDue || Settings.Version != linesSettings || selUid != linesSelection || finer)
+                // settings that change the lines, a new selection or a closer zoom draw everything at once
+                bool all = Settings.LineData.Version != linesSettings || selUid != linesSelection || finer;
+                if (pictureDue || all)
                 {
                     linesNextAt = realNow + 0.09;
                     linesPictureVersion = pic.Version;
-                    // Other units' lines follow one group per build in turn (each about twice a second); settings, a new selection
-                    // or a closer zoom draw everything at once.
-                    bool all = Settings.Version != linesSettings || selUid != linesSelection || finer;
+                    // Other units' lines follow one group per build in turn (each about twice a second).
                     dueGroup = (dueGroup + 1) % LineBuilder.SharedGroups;
-                    linesSettings = Settings.Version;
+                    linesSettings = Settings.LineData.Version;
                     linesSelection = selUid;
                     long tl = Perf.Start();
                     LineBuilder.Build(pic, selected, Lines, tolerance, all, dueGroup);
