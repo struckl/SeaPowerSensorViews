@@ -119,10 +119,14 @@ internal sealed class LineSet
         public bool Bright, Live, Fill;
         public double[] Lat, Lon;
         public string Label;
+        /// <summary>Which map paths the line goes into (see <see cref="LineBuilder.GroupOf"/>): only groups that changed are drawn again.</summary>
+        public int Group;
     }
 
     public readonly List<Line> Lines = new List<Line>();
     public int Version;
+    /// <summary>The groups whose lines changed from Version - 1 to Version (a map one version behind redraws only these).</summary>
+    public readonly HashSet<int> ChangedGroups = new HashSet<int>();
 }
 
 internal sealed class CoverageSet

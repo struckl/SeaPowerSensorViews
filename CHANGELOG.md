@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Fixed: the Sensor lines layer cost a lot of FPS with many units** (10-40 FPS with ~20 units in view, board post #2)
+  - Cause: since 0.4.5 a move of any unit redrew every line on the map, up to 10 times a second (all lines of one style were one shape)
+  - Now the lines are split into groups by unit; a move redraws only its group
+- **Selected unit live, the rest calmer**: the selected unit's lines still follow every update (up to 10 a second); other units' lines move about twice a second, one group per update in turn, so no update redraws them all at once
+- **Empty shapes are removed** from the map instead of kept (they piled up over a long mission)
 - The mod folder carries this CHANGELOG.md, so R.A.T.S. Keel's What's new can show what changed when there are no Workshop notes (a local copy, the GitHub zip).
 
 ## 0.4.5 – 2026-11-12 – coverage follows the unit, in-game name

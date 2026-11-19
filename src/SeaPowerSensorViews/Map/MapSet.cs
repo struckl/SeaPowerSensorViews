@@ -20,6 +20,7 @@ internal static class MapSet
     private static bool active;
     private static int linesPictureVersion = -1, linesSettings = -1, linesSelection = -1;
     private static double linesNextAt;
+    private static int dueGroup;
     private static int errors;
 
     public static bool LinesOn => linesLayer != null ? linesLayer.Visible : Settings.LinesVisible.Value;
@@ -114,10 +115,14 @@ internal static class MapSet
                 {
                     linesNextAt = realNow + 0.09;
                     linesPictureVersion = pic.Version;
+                    // Other units' lines follow one group per build in turn (each about twice a second); settings, a new selection
+                    // or a closer zoom draw everything at once.
+                    bool all = Settings.Version != linesSettings || selUid != linesSelection || finer;
+                    dueGroup = (dueGroup + 1) % LineBuilder.SharedGroups;
                     linesSettings = Settings.Version;
                     linesSelection = selUid;
                     long tl = Perf.Start();
-                    LineBuilder.Build(pic, selected, Lines, tolerance);
+                    LineBuilder.Build(pic, selected, Lines, tolerance, all, dueGroup);
                     Perf.Stop(Perf.Part.Lines, tl);
                 }
             }

@@ -16,33 +16,53 @@ internal static class LineBuilder
     private const float KmPerMeter = 0.001f;
 
     private static readonly List<LineSet.Line> Fresh = new List<LineSet.Line>();
+    private static readonly List<LineSet.Line> Merged = new List<LineSet.Line>();
+    private static readonly HashSet<int> Groups = new HashSet<int>();
     private static readonly Comparison<LineSet.Line> ByKey = (a, b) => a.Key.CompareTo(b.Key);
+
+    /// <summary>Groups of other units' lines; the selected unit's lines have a group of their own.</summary>
+    public const int SharedGroups = 6, SelectedGroup = SharedGroups;
 
     /// <summary>The tolerance the current lines were last compared with (degrees); see <see cref="Build"/>.</summary>
     public static double LastTolerance = double.MaxValue;
 
     /// <summary>
-    /// Builds the lines; the set's version (which makes every map rebuild its paths) only moves when a line came, went, changed its
-    /// style or label, or moved by more than <paramref name="tolerance"/> degrees (about one screen pixel at the map's zoom, from
-    /// <see cref="MapSet"/>). The track estimates wander by a few dozen metres even in a paused game; a fixed grid rebuilt every
-    /// map path once a second for that. Compared against the lines last built, so slow drift is drawn once it adds up to a pixel.
+    /// The map paths a line goes into. Noesis draws a changed path again whole (every dash of it), so with one path per style every
+    /// moving unit redrew every line on the map up to 10 times a second (FPS 10-40 with ~20 units, board post #2). The selected
+    /// unit's lines get a group of their own, the other units are spread over a few groups: a move redraws only its group.
     /// </summary>
-    public static void Build(SensorPicture pic, UnitRow selected, LineSet set, double tolerance)
+    public static int GroupOf(UnitRow unit, bool selectedUnit) => selectedUnit ? SelectedGroup : (int)((uint)unit.Uid % SharedGroups);
+
+    /// <summary>
+    /// Builds the lines; the set's version (which makes every map draw the changed groups again) only moves when a line came, went,
+    /// changed its style or label, or moved by more than <paramref name="tolerance"/> degrees (about one screen pixel at the map's
+    /// zoom, from <see cref="MapSet"/>). The track estimates wander by a few dozen metres even in a paused game; a fixed grid rebuilt
+    /// every map path once a second for that. Compared against the lines last built, so slow drift is drawn once it adds up to a pixel.
+    /// Lines that only moved and are not the selected unit's keep their old place until their group's turn: one shared group per
+    /// build (<paramref name="dueGroup"/>, round robin), so each follows about twice a second and no build redraws them all at
+    /// once (a VM test 2026-11-19 saw 4 of 4 groups in 40 % of the builds when they all came due together). The selected unit's
+    /// lines follow every snapshot. <paramref name="all"/> (settings, selection, zoom) takes every change at once.
+    /// </summary>
+    public static void Build(SensorPicture pic, UnitRow selected, LineSet set, double tolerance, bool all, int dueGroup)
     {
         Fresh.Clear();
         Fill(pic, selected, Fresh);
         Fresh.Sort(ByKey);
         LastTolerance = tolerance;
-        int changed = Changed(set.Lines, Fresh, tolerance, out string first);
+        Merged.Clear();
+        Groups.Clear();
+        int changed = Merge(set.Lines, Fresh, tolerance, all, dueGroup, out string first);
         if (changed == 0 && set.Version > 0) return;
-        ModLog.Debug($"lines rebuilt: {Fresh.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved; first: {first ?? "-"}");
+        ModLog.Debug($"lines rebuilt: {Merged.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved in {Groups.Count} group(s); first: {first ?? "-"}");
         set.Lines.Clear();
-        set.Lines.AddRange(Fresh);
+        set.Lines.AddRange(Merged);
+        set.ChangedGroups.Clear();
+        set.ChangedGroups.UnionWith(Groups);
         set.Version++;
     }
 
-    /// <summary>How many lines differ (both lists sorted by key); 0 = nothing worth drawing again.</summary>
-    private static int Changed(List<LineSet.Line> old, List<LineSet.Line> now, double tol, out string first)
+    /// <summary>Merges the new lines into <see cref="Merged"/> (both lists sorted by key); returns how many differ, 0 = nothing to draw.</summary>
+    private static int Merge(List<LineSet.Line> old, List<LineSet.Line> now, double tol, bool all, int dueGroup, out string first)
     {
         first = null;
         int changed = 0, i = 0, j = 0;
@@ -51,19 +71,28 @@ internal static class LineBuilder
             LineSet.Line a = i < old.Count ? old[i] : null, b = j < now.Count ? now[j] : null;
             if (a != null && b != null && a.Key == b.Key)
             {
-                if (!Same(a, b, tol)) { changed++; first ??= Describe(b); }
+                if (Same(a, b, tol)) Merged.Add(a);
+                else if (!all && a.Group != SelectedGroup && a.Group != dueGroup && b.Group == a.Group && SameShape(a, b)) Merged.Add(a);   // only moved: on its turn
+                else
+                {
+                    Merged.Add(b);
+                    changed++; first ??= Describe(b);
+                    Groups.Add(a.Group); Groups.Add(b.Group);
+                }
                 i++; j++;
             }
-            else if (b == null || (a != null && a.Key < b.Key)) { changed++; first ??= "gone " + Describe(a); i++; }
-            else { changed++; first ??= "new " + Describe(b); j++; }
+            else if (b == null || (a != null && a.Key < b.Key)) { changed++; first ??= "gone " + Describe(a); Groups.Add(a.Group); i++; }
+            else { Merged.Add(b); changed++; first ??= "new " + Describe(b); Groups.Add(b.Group); j++; }
         }
         return changed;
     }
 
+    private static bool SameShape(LineSet.Line a, LineSet.Line b) =>
+        a.Style == b.Style && a.Bright == b.Bright && a.Live == b.Live && a.Fill == b.Fill && a.Label == b.Label && a.Lat.Length == b.Lat.Length;
+
     private static bool Same(LineSet.Line a, LineSet.Line b, double tol)
     {
-        if (a.Style != b.Style || a.Bright != b.Bright || a.Live != b.Live || a.Fill != b.Fill || a.Label != b.Label
-            || a.Lat.Length != b.Lat.Length)
+        if (a.Group != b.Group || !SameShape(a, b))
             return false;
         for (int k = 0; k < a.Lat.Length; k++)
             if (Math.Abs(a.Lat[k] - b.Lat[k]) > tol || Math.Abs(a.Lon[k] - b.Lon[k]) > tol)
@@ -87,7 +116,7 @@ internal static class LineBuilder
     }
 
     /// <summary>A line along a bearing from <paramref name="fromKm"/> to <paramref name="toKm"/> out of the origin, a chord every ~25 nm.</summary>
-    private static LineSet.Line MakeLine(GeoPosition origin, float bearing, float fromKm, float toKm, ulong key, LineStyle style, bool bright, bool live, string label)
+    private static LineSet.Line MakeLine(GeoPosition origin, float bearing, float fromKm, float toKm, ulong key, LineStyle style, bool bright, bool live, string label, int group)
     {
         int steps = Math.Max(1, Math.Min(10, (int)Math.Ceiling((toKm - fromKm) / 46f)));
         var lat = new double[steps + 1];
@@ -98,7 +127,7 @@ internal static class LineBuilder
             GeoPosition p = d <= 0f ? origin : origin.OffsetByDistanceOnHeadingUnity(d, bearing);
             lat[i] = p._latitude; lon[i] = p._longitude;
         }
-        return new LineSet.Line { Key = key, Style = style, Bright = bright, Live = live, Lat = lat, Lon = lon, Label = label };
+        return new LineSet.Line { Key = key, Style = style, Bright = bright, Live = live, Lat = lat, Lon = lon, Label = label, Group = group };
     }
     private static bool KindShown(Kind k)
     {
@@ -136,6 +165,7 @@ internal static class LineBuilder
                 if (onlySelected && !bright) continue;
                 if (!h.Live && !lost) continue;
                 GeoPosition origin = h.Unit.Unit.getGeoPosition();
+                int group = GroupOf(h.Unit, selected != null && ReferenceEquals(h.Unit, selected));
                 LineStyle style = LineStyles.Of(h.Kind);
                 if (!h.BearingOnly && !float.IsNaN(h.RangeM) && h.RangeM > 1f)
                 {
@@ -152,9 +182,9 @@ internal static class LineBuilder
                     bool uncertain = errKm > 0.1f && errKm > 0.03f * km;
                     float solidKm = uncertain ? Math.Max(0.05f * km, km - errKm) : km;
                     string label = h.Kind == Kind.FireControl ? cr.Label + " LOCK" : cr.Label;
-                    lines.Add(MakeLine(origin, bearing, 0f, solidKm, KeyOf(h.Unit, cr, h, 0), style, bright, h.Live, label));
+                    lines.Add(MakeLine(origin, bearing, 0f, solidKm, KeyOf(h.Unit, cr, h, 0), style, bright, h.Live, label, group));
                     if (uncertain)
-                        lines.Add(MakeLine(origin, bearing, solidKm, km + errKm, KeyOf(h.Unit, cr, h, 3), style, false, h.Live, null));                }
+                        lines.Add(MakeLine(origin, bearing, solidKm, km + errKm, KeyOf(h.Unit, cr, h, 3), style, false, h.Live, null, group));                }
                 else
                 {
                     float half = Math.Max(1f, Math.Min(15f, h.BearingError));
@@ -173,14 +203,14 @@ internal static class LineBuilder
                     // the wedge, filled
                     lines.Add(new LineSet.Line
                     {
-                        Key = KeyOf(h.Unit, cr, h, 1), Style = style, Bright = bright, Live = h.Live, Fill = true,
+                        Key = KeyOf(h.Unit, cr, h, 1), Style = style, Bright = bright, Live = h.Live, Fill = true, Group = group,
                         Lat = new[] { origin._latitude, a._latitude, m._latitude, b._latitude },
                         Lon = new[] { origin._longitude, a._longitude, m._longitude, b._longitude },
                     });
                     // the bearing line down its middle, labelled at the far end
                     lines.Add(new LineSet.Line
                     {
-                        Key = KeyOf(h.Unit, cr, h, 2), Style = style, Bright = bright, Live = h.Live,
+                        Key = KeyOf(h.Unit, cr, h, 2), Style = style, Bright = bright, Live = h.Live, Group = group,
                         Lat = new[] { origin._latitude, m._latitude },
                         Lon = new[] { origin._longitude, m._longitude },
                         Label = (h.Kind == Kind.Esm ? "ESM " : "S ") + cr.Label,

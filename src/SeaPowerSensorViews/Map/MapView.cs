@@ -243,9 +243,11 @@ internal sealed class MapView
             SetClip();
         if (showLines && (settingsChanged || linesData || linesView))
         {
+            // Only the data moved on by one version and the panel sits untransformed where it was built: draw only the changed groups.
+            bool partial = !settingsChanged && !linesView && lines.Version == linesVersion + 1 && linesFit.Valid && Untransformed(linesFit);
             linesVersion = lines.Version;
             long t = Perf.Start();
-            BuildLines(lines);
+            BuildLines(lines, partial ? lines.ChangedGroups : null);
             Anchor(linesFit);
             Perf.Stop(Perf.Part.MapBuild, t);
         }
@@ -286,6 +288,8 @@ internal sealed class MapView
     }
 
     private bool Settled(Fit fit, double now) => fit.SettleAt > 0 && now >= fit.SettleAt;
+
+    private static bool Untransformed(Fit fit) => fit.Scale.ScaleX == 1f && fit.Shift.X == 0f && fit.Shift.Y == 0f;
 
     /// <summary>Records where the anchors are now (the paths were just projected) and clears the panel's transform.</summary>
     private void Anchor(Fit fit)
@@ -446,7 +450,13 @@ internal sealed class MapView
         return pair.context;
     }
 
-    private void Commit(Dictionary<string, Path> paths, MapPanel panel, Func<string, Path> make)
+    private readonly List<string> emptied = new List<string>();
+
+    /// <summary>
+    /// Puts the geometries just built into their paths. With <paramref name="only"/> the build covered only those groups: paths of
+    /// other groups keep what they show. A path left without geometry is taken out of the panel.
+    /// </summary>
+    private void Commit(Dictionary<string, Path> paths, MapPanel panel, Func<string, Path> make, HashSet<int> only = null)
     {
         foreach (var kv in open)
         {
@@ -459,9 +469,22 @@ internal sealed class MapView
             }
             path.Data = kv.Value.geometry;
         }
+        emptied.Clear();
         foreach (var kv in paths)
-            if (!open.ContainsKey(kv.Key)) kv.Value.Data = null;
+            if (!open.ContainsKey(kv.Key) && (only == null || only.Contains(GroupOfKey(kv.Key)))) emptied.Add(kv.Key);
+        foreach (string key in emptied)
+        {
+            panel.Children.Remove(paths[key]);
+            paths.Remove(key);
+        }
         open.Clear();
+    }
+
+    /// <summary>The line group a path key ends in ("l|..|3"); -1 for keys without one (coverage).</summary>
+    private static int GroupOfKey(string key)
+    {
+        int bar = key.LastIndexOf('|');
+        return bar > 1 && int.TryParse(key.Substring(bar + 1), out int g) ? g : -1;
     }
 
     private TextBlock Label(string text, float x, float y, Brush brush, float opacity)
@@ -491,36 +514,47 @@ internal sealed class MapView
 
     // ---- sensor lines ----------------------------------------------------------------------------------------------------
 
-    private void BuildLines(LineSet set)
+    private void BuildLines(LineSet set, HashSet<int> only = null)
     {
         open.Clear();
         labelsUsed = 0;
         foreach (LineSet.Line line in set.Lines)
         {
-            string key = LineStyles.Key(line.Style, line.Bright, line.Live, line.Fill);
-            StreamGeometryContext c = Context(key);
             bool started = false;
             float lastX = 0, lastY = 0, firstX = 0, firstY = 0;
-            run.Clear();
-            for (int i = 0; i < line.Lat.Length; i++)
+            if (only != null && !only.Contains(line.Group))
             {
-                if (!Project(line.Lat[i], line.Lon[i], out float x, out float y))
-                {
-                    Emit(c, line.Fill);
-                    continue;
-                }
-                run.Add(new Point(x, y));
-                if (!started) { firstX = x; firstY = y; }
-                lastX = x; lastY = y;
+                // Its paths stay as they are; only its label is placed again (labels are laid out for all lines in one go).
+                if (string.IsNullOrEmpty(line.Label) || !line.Bright) continue;
+                int n = line.Lat.Length - 1;
+                if (!Project(line.Lat[0], line.Lon[0], out firstX, out firstY) || !Project(line.Lat[n], line.Lon[n], out lastX, out lastY)) continue;
                 started = true;
             }
-            // zoomed in so far that a wedge (origin, edge, middle, edge) is longer than the screen: its bearing line alone
-            if (line.Fill && !Settings.ZoomedWedges.Value && run.Count >= 3)
+            else
             {
-                float dx = run[2].X - run[0].X, dy = run[2].Y - run[0].Y, limit = Math.Max(Map.ActualWidth, Map.ActualHeight);
-                if (dx * dx + dy * dy > limit * limit) run.Clear();
+                string key = LineStyles.Key(line.Style, line.Bright, line.Live, line.Fill) + "|" + line.Group;
+                StreamGeometryContext c = Context(key);
+                run.Clear();
+                for (int i = 0; i < line.Lat.Length; i++)
+                {
+                    if (!Project(line.Lat[i], line.Lon[i], out float x, out float y))
+                    {
+                        Emit(c, line.Fill);
+                        continue;
+                    }
+                    run.Add(new Point(x, y));
+                    if (!started) { firstX = x; firstY = y; }
+                    lastX = x; lastY = y;
+                    started = true;
+                }
+                // zoomed in so far that a wedge (origin, edge, middle, edge) is longer than the screen: its bearing line alone
+                if (line.Fill && !Settings.ZoomedWedges.Value && run.Count >= 3)
+                {
+                    float dx = run[2].X - run[0].X, dy = run[2].Y - run[0].Y, limit = Math.Max(Map.ActualWidth, Map.ActualHeight);
+                    if (dx * dx + dy * dy > limit * limit) run.Clear();
+                }
+                Emit(c, line.Fill);
             }
-            Emit(c, line.Fill);
             if (!string.IsNullOrEmpty(line.Label) && started && line.Bright
                 && lastX >= 0 && lastY >= 0 && lastX <= Map.ActualWidth && lastY <= Map.ActualHeight)
             {
@@ -531,7 +565,7 @@ internal sealed class MapView
                 Label(line.Label, fx + 4, fy - 8, b, 1f);
             }
         }
-        Commit(linePaths, linesPanel, key => MakeLinePath(key));
+        Commit(linePaths, linesPanel, key => MakeLinePath(key), only);
         EndLabels();
     }
 
