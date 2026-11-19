@@ -1,4 +1,4 @@
-# Acoustic ID (ACID) – what to take as inspiration
+# Acoustic ID (ACID) - what to take as inspiration
 
 Looked at 2026-11-03: Workshop item 3825453562 "ACID - Acoustic ID" by KillerFox2S (needs Anchor Chain), description page and
 the author's v1.1.0 announcement. No licence stated: ideas only, no code, no look copied. Its change notes were not readable (Steam

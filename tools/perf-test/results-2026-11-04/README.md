@@ -28,7 +28,7 @@ The mod's own timing (*Verbose log*, ms per frame, average over 10 s):
 
 - **The noise is about ±5 %.** *idle_pan* has every layer and window off, so the mod does nothing in that case, yet it
   measured 5.6 % faster in the after run. The gains in *lines_pan* (+3.4 %) and *sonar_hover* (+1.6 %) are inside that
-  noise. Only *everything* (+7.6 %, p95 19.1 → 17.3 ms) is clearly larger.
+  noise. Only *everything* (+7.6 %, p95 19.1 -> 17.3 ms) is clearly larger.
 - **On this PC and in this mission, Sensor Views was never a heavy cost.** Its own code took at most about 0.2 ms per frame
   before and about 0.03 ms after. With everything open it costs about 3-5 fps compared with *idle_pan* (before: -5 fps,
   after: -4 fps). Most of the drop from *idle* to *everything* comes from the moving map, which is the game's own cost:

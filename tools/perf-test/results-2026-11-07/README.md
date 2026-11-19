@@ -30,7 +30,7 @@ Zoom reference (`zr`, final build, same session):
   freeze; single frames still reached 100-140 ms, about once a second.
 - **Fix 2:** the verbose log showed the lines rebuilt once a second in a paused game - the change check depended on the order
   of the contacts. It no longer does, and the margin is half a view instead of a whole one. Frames stay under about 50 ms.
-- What is left zoomed in is about 10 fps (95 → 85) with the lines on: the map is covered by long lines and filled bearing wedges.
+- What is left zoomed in is about 10 fps (95 -> 85) with the lines on: the map is covered by long lines and filled bearing wedges.
 - The track estimates still move by a few dozen metres per second in a paused game (log), so the lines are rebuilt about once a
   second; at zoom 8 that costs nothing measurable.
 - Not measured: the 3D-globe build, missions with many more units and sensors.

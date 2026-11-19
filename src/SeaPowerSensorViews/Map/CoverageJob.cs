@@ -9,17 +9,15 @@ namespace SeaPowerSensorViews.Map;
 /// <summary>
 /// Sensor coverage of the unit selected in the game against an imagined target (never a real contact): the same maths the game's
 /// own Sensor Info window uses for its range graphs.
-/// <list type="bullet">
-/// <item>Radar: radar equation for a target of the chosen RCS, capped by the radar's maximum range, the radar horizon against the
+/// - Radar: radar equation for a target of the chosen RCS, capped by the radar's maximum range, the radar horizon against the
 /// target altitude and the radar's altitude band; then, per ray, the first place the terrain blocks the line of sight
 /// (<c>TerrainUtils.IsLineOfSightBetween</c>, which uses shared static state and Unity physics - main thread only, so a few rays per
-/// frame).</item>
-/// <item>ESM: the game's closed form for an emitter like the unit's own search radar, capped by the horizon times the ESM's
-/// over-horizon multiplier.</item>
-/// <item>Visual: <c>SensorUtils.CalculateMaxVisualRange</c> for the chosen size class, capped by the visual horizon.</item>
-/// <item>Passive sonar: the game's own passive range estimate for the sonar and the unit's noise at its speed; a hull sonar loses
-/// the sector of its baffles (the game ignores contacts in them).</item>
-/// </list>
+/// frame).
+/// - ESM: the game's closed form for an emitter like the unit's own search radar, capped by the horizon times the ESM's
+/// over-horizon multiplier.
+/// - Visual: <c>SensorUtils.CalculateMaxVisualRange</c> for the chosen size class, capped by the visual horizon.
+/// - Passive sonar: the game's own passive range estimate for the sonar and the unit's noise at its speed; a hull sonar loses
+/// the sector of its baffles (the game ignores contacts in them).
 /// The arithmetic is trivial (a few hundred operations), so there is no worker thread; the only expensive part is the terrain
 /// check and that cannot leave the main thread. A new job starts when the unit, its place (about 1 nm), the target altitude or a
 /// setting changes, at most once a second; the previous result stays on the map until the new one is done.

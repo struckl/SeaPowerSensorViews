@@ -12,12 +12,10 @@ namespace SeaPowerSensorViews;
 
 /// <summary>
 /// Every game method the mod hooks, in two stages; all targets of a stage are resolved before anything is patched.
-/// <list type="bullet">
-/// <item><c>MainGameViewModel.OnStart</c> / <c>GameMain.OnDestroy</c> - mission UI ready / mission unloading.</item>
-/// <item><c>MapControl.RenderedLayer.OnRender</c> - runs every frame for the map control that shows the live map; hands the
+/// - <c>MainGameViewModel.OnStart</c> / <c>GameMain.OnDestroy</c> - mission UI ready / mission unloading.
+/// - <c>MapControl.RenderedLayer.OnRender</c> - runs every frame for the map control that shows the live map; hands the
 /// map over so the sensor-line and coverage layers can be laid into it. Applied once NoesisGUI runs (patching it earlier
-/// would run Noesis dependency-property registration before Noesis exists - a native crash), see <see cref="Host"/>.</item>
-/// </list>
+/// would run Noesis dependency-property registration before Noesis exists - a native crash), see <see cref="Host"/>.
 /// All three resolve in both games' Seapower-Scripts.dll with the same signature (tools/hook-check).
 /// </summary>
 internal static class Hooks

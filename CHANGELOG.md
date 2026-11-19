@@ -9,7 +9,7 @@
 - **Empty shapes are removed** from the map instead of kept (they piled up over a long mission)
 - The mod folder carries this CHANGELOG.md, so R.A.T.S. Keel's What's new can show what changed when there are no Workshop notes (a local copy, the GitHub zip).
 
-## 0.4.5 – 2026-11-12 – coverage follows the unit, in-game name
+## 0.4.5 - 2026-11-12 - coverage follows the unit, in-game name
 
 Run in the game on 0.9.1 (build 261112) on 2026-11-12: the name in Keel's list, and an E-2C's coverage ring staying centred on it over about 30 nm (Red Sea Breakout). 0.8.7 checked offline only.
 
@@ -17,7 +17,7 @@ Run in the game on 0.9.1 (build 261112) on 2026-11-12: the name in Keel's list, 
 - **Fix: the coverage rings trailed a moving unit.** The rings (visual, ESM, radar, sonar) were drawn around the place the unit had when they were last worked out, and that happens only after it moves about a nautical mile, so a fast helicopter or jet flew out of the middle of its own circle. They now move with the unit every frame; the shape is still worked out again every nm or so.
 - **Fix: the sensor lines lagged behind.** The lines were redrawn at most twice a second, so at speed or with time compression their start sat behind the unit's marker. They now follow every update of the sensor picture (up to 10 a second), and are still left alone when nothing moved by a pixel.
 
-## 0.4.4 – 2026-11-11 – declared for game 0.9.0
+## 0.4.4 - 2026-11-11 - declared for game 0.9.0
 
 - **Declared for game 0.9.0.** The mod's `_info.ini` now says it fits 0.8.7 up to every 0.9.x, so the game no longer lists it as "not declared to be compatible", and Steam hands this and later updates to 0.9.0 players (the game skips Workshop updates whose declaration does not fit its version). Checked offline against 0.9.0 (build 261111): every game type, member, Harmony target and by-name lookup the mod uses is there; not run in the game on 0.9.0 yet.
 
@@ -55,7 +55,7 @@ Run in the game on the globe beta (build 261107) on 2026-11-09, Intro 02 Narvik 
 - **Fix: a bearing line stayed on the sensor's old bearing after a ping.** Once radar, active sonar or another ranging sensor gives a live position, the ESM and passive sonar lines of that contact point at it.
 - **Fix: passive sonar showed the exact range.** The game's passive track carries a range value that is the true distance (or nothing), and the Echoes plot, the board and the scope read it. Passive sonar is bearing-only everywhere now: it no longer appears on the Echoes plot, the board shows a lower-case S with the bearing history, the scope draws a bearing line. A passive contact the game has plotted still jumps to its map marker on double-click.
 
-## 0.4.0 – 2026-11-09 – one button with a flyout, click a contact on the radar to jump to it, snappier map layers
+## 0.4.0 - 2026-11-09 - one button with a flyout, click a contact on the radar to jump to it, snappier map layers
 
 Run in the game on the globe beta (build 261107) on 2026-11-09: the bottom-bar button and its flyout, the three windows from it, the map switches, coverage with terrain shadows, a click on a contact and on an own ship on the radar scope. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
@@ -121,7 +121,7 @@ Run in the game on the globe beta (build 261107) on 2026-11-09: the bottom-bar b
     waterfall is drawn as one shape per colour and brightness step instead of one rectangle per dot.
   - The sensor snapshot keeps each unit's sensor rows and only reads their switches each second; it no longer builds every
     row and its texts again.
-  - Result on the test PC (Gulf of Sidra, everything open, map moving): 73.9/71.9 fps → 80.9/76.0 fps; the mod's own time per frame
+  - Result on the test PC (Gulf of Sidra, everything open, map moving): 73.9/71.9 fps -> 80.9/76.0 fps; the mod's own time per frame
     went from about 0.2 ms to 0.03 ms. Most single cases are within the test's noise (about 5 %). The 3D-globe build compiles
     and passes the compat check but was not run in the game.
 - `tools/perf-test`: the repeatable frame-time test (runner, cases, README).

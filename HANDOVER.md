@@ -1,4 +1,4 @@
-# Sea Power Sensor Views – handover
+# Sea Power Sensor Views - handover
 
 Written 2026-10-30 by the Claude session that did the analysis (it is switching accounts; this file is everything the next
 session needs). Read this file first, then `docs/`, then open `mockups/index.html` in a browser.
@@ -16,8 +16,8 @@ per-bearing sonar range (instead of the game's single passive estimate with a ba
 - 2026-10-28, after seeing the Steam Workshop mod *Better TacMap* (item 3768036424, author Bananaduck): "I think we can build
   something like that and build on that or expand it, with all the overlays and radar and so on."
 - Before that, the idea that started it: when a ship is selected it has radar / sonar / ESM, and it is hard to see **which ship
-  sees what with which sensor**. With the Pop-Out Windows mod there is now a whole second monitor to fill with views – "something
-  like a radar or sonar view" – and I should bring my own ideas.
+  sees what with which sensor**. With the Pop-Out Windows mod there is now a whole second monitor to fill with views - "something
+  like a radar or sonar view" - and I should bring my own ideas.
 - I analysed what is possible (section 4, `docs/`), drew five mockups (`mockups/`) and recommended a **new mod next to Better
   TacMap, not built on its code** (section 3). Working title: **Sea Power: Rats Sensor Views**, folder/repo/install folder
   `SeaPowerSensorViews`, plugin GUID `dev.sewerlabs.seapowersensorviews` (follow the naming rule in `../mods.json`).
@@ -28,34 +28,34 @@ per-bearing sonar range (instead of the game's single passive estimate with a ba
 |---|---|---|---|---|
 | 1 | **Sensor board** | grid: your units × contacts; each cell lists the sensors holding that contact (R radar, F fire control, E ESM, S passive sonar, A active sonar, V visual/IR) with fix age and "bearing only"; below it the selected unit's sensors (on/off, EMCON, channels, arcs) | a game window (pop-out-able) | low |
 | 2 | **Sensor lines on the map** | thin lines from each own unit to each contact it holds, styled by sensor; ESM / passive sonar bearing wedges; fire-control lock thick red; the selected unit's lines bright, others dimmed | map overlay | medium (globe projection) |
-| 3 | **Radar scope** | ship-centred scope, contacts fading with fix age, blind arc, radar-horizon ring that follows a target-altitude slider, strobes for radars painting you (RWR) and jammers, lock marker | a game window | low–medium |
+| 3 | **Radar scope** | ship-centred scope, contacts fading with fix age, blind arc, radar-horizon ring that follows a target-altitude slider, strobes for radars painting you (RWR) and jammers, lock marker | a game window | low - medium |
 | 4 | **Sonar display** | bearing-over-time waterfall (traces brighten with signal excess, baffle sector shaded, own speed raises the noise floor), depth strip (surface, layer, own depth, towed array, seabed) | a game window | medium |
 | 5 | **Coverage on the map** | for the selected unit: radar coverage against a chosen target altitude with terrain shadows, ESM listening range, visual range, passive sonar range with a baffle dent | map overlay (reuse Topo's overlay renderer) | high |
 
-Order I recommended: **1 → 3 → 4 → 2 → 5**. Windows first because they do not touch the map, so the 3D-globe change does not affect
+Order I recommended: **1 -> 3 -> 4 -> 2 -> 5**. Windows first because they do not touch the map, so the 3D-globe change does not affect
 them and they pop out to monitor 3 for free; the map parts last because they need the globe-specific work Borders/Topo already did.
 
 **Fair-play rule (important):** only show what the player's side actually knows. `TrackComponent.TrueTargetPosition` is
-ground truth – never display it. Use the track's bearing/range estimates. Predictions against an *imagined* target (coverage,
+ground truth - never display it. Use the track's bearing/range estimates. Predictions against an *imagined* target (coverage,
 radar horizon, sonar range) are fine: the game's own Sensor Info window already does exactly that.
 
-## 3. Better TacMap – why alongside, not on top
+## 3. Better TacMap - why alongside, not on top
 
 Details in `docs/better-tacmap.md`. Short version: by Bananaduck, ~5,600 subscribers, needs Anchor Chain. Right-click threat circles
 and firing arcs, info labels (TTG, depth, speed, altitude), distress beacons, waypoint TTG, intercept solver, scaled ship
-silhouettes. **No licence stated → all rights reserved; do not copy or fork its code** (a decompiled copy exists in
+silhouettes. **No licence stated -> all rights reserved; do not copy or fork its code** (a decompiled copy exists in
 `E:\Project\Mods\Sea Power Lab\_decomp\ws_BetterTacMap` for understanding only). It plugs into the game's map layer system, which
-changed in the globe build, and Steam shows "removed … incompatible with Sea Power" banners on its page (an anonymous fetch could not
-tell whether it is live). It covers weapons/kinematics; Sensor Views covers sensors/detection – complementary, almost no overlap
+changed in the globe build, and Steam shows "removed ... incompatible with Sea Power" banners on its page (an anonymous fetch could not
+tell whether it is live). It covers weapons/kinematics; Sensor Views covers sensors/detection - complementary, almost no overlap
 (only weapon-range circles and a small "above/below the layer" note for submarines). Later a combined view (coverage next to threat
 circles) is possible.
 
-## 4. What the game offers (verified in code – details in `docs/recon-*.md`)
+## 4. What the game offers (verified in code - details in `docs/recon-*.md`)
 
 - **Contacts:** every unit has its own `PlottingTable` (`unit.PlottingTable`), one more is shared per side. A contact is a `Vehicle`;
   its tracks (`TrackComponent`) record `Source` (the unit), `Sensor` (which sensor system), `SensorType`, `Epoch`, `MaxAge`,
   bearing / range / altitude estimates with error. So "who sees what with which sensor" is directly readable. Each `ISensor` is also an
-  `IObservable<Entity>` (`Sonar.Subscribe`, `SensorSystemVisual.Subscribe`, …) – subscribe to get every track live, read it inside
+  `IObservable<Entity>` (`Sonar.Subscribe`, `SensorSystemVisual.Subscribe`, ...) - subscribe to get every track live, read it inside
   `OnNext`. Fusion and TMA run in Burst/ECS (not patchable); all scans and range maths are managed C#.
 - **Detection maths is callable for an imagined target:** `RadarCalculator.GetFCRDetectionRange(...)` (radar equation + jamming),
   `RadarCalculator.getRadarHorizon(radarY, targetY, visual, terrainAlt)`, `SensorUtils.CalculateMaxVisualRange(...)`, ESM closed form in
@@ -67,14 +67,14 @@ circles) is possible.
   `_mountObject.transform.eulerAngles.y` is a live bearing); sonar "max range" fields are cosmetic (detection is pure signal excess, no
   ping interval); there is **no sonar waterfall anywhere in the game**; the map bearing fans for passive sonar/ESM exist but are off
   behind `DM_Sensors._allowTMAFans` (default false).
-- **Extras for the scope:** `unit._rwrBearings` / `_jamBearings` (cleared each datalink cycle – snapshot before; postfix point
+- **Extras for the scope:** `unit._rwrBearings` / `_jamBearings` (cleared each datalink cycle - snapshot before; postfix point
   `ObjectBase.RegisterRadarLockWarningSource`), fire-control state `_isGuiding / _associatedTargets`, `unit._ECMSystemsTryingToJamMe`,
   `ESM._esmObservationData`.
-- **Units:** 1 Unity unit = 67.2 m, 1 nm = 27.56 units, 1 km = 14.88 units; `RadarParameters` ranges/altitudes are in Unity units; ft → Unity
-  units ×0.00453571. Radar horizon (4/3 earth) ≈ 1.23·(√h₁ ft + √h₂ ft) nm – used in the mockups only as an approximation.
+- **Units:** 1 Unity unit = 67.2 m, 1 nm = 27.56 units, 1 km = 14.88 units; `RadarParameters` ranges/altitudes are in Unity units; ft > Unity
+  units ×0.00453571. Radar horizon (4/3 earth) ~ 1.23·(√h₁ ft + √h₂ ft) nm - used in the mockups only as an approximation.
 - **Thermal layer:** Topo already has it (`SeaPowerTopo/src/SeaPowerTopo/Terrain/LayerMap.cs`).
 
-## 5. Verification status – read before trusting any line number
+## 5. Verification status - read before trusting any line number
 
 The two research reports (`docs/recon-radar-esm-visual.md`, `docs/recon-sonar.md`) were written by sub-agents from the decompiled
 **0.8.7** sources; I spot-checked these entry points and they exist in **both** `_gamerefs/decomp-0.8.7` and `_gamerefs/decomp-beta`
@@ -82,7 +82,7 @@ The two research reports (`docs/recon-radar-esm-visual.md`, `docs/recon-sonar.md
 `TerrainUtils.IsLineOfSightBetween(GeoPosition,…)`, `SensorInfoViewModel`, `ObjectBaseParameters._sonarSystems`,
 `ObjectBase.PlottingTable`, `ObjectBase._rwrBearings`, `Environment.getLayerHeight`, `DM_Sensors._allowTMAFans`,
 `Sonar.Subscribe(IObserver<Entity>)`. **Line numbers moved by roughly +30 in the globe build.** Everything else in the reports is
-unverified; re-check each member you use against **both** decompiles, and – per the workspace lesson – check hook targets and fields **by
+unverified; re-check each member you use against **both** decompiles, and - per the workspace lesson - check hook targets and fields **by
 reflection**, not only by compiling (a field that became a property compiles fine and breaks at run time).
 
 ## 6. Rules that apply (full text: `../CLAUDE.md`, `../docs/both-versions.md`)
@@ -109,43 +109,43 @@ reflection**, not only by compiling (a field that became a property compiles fin
 - Style he likes: lead with the answer and a recommendation, research things himself instead of handing lookups back, trust what he
   names ("assume it exists, look it up").
 
-## 7. Plan (proposed – confirm with him before the outward steps)
+## 7. Plan (proposed - confirm with him before the outward steps)
 
-**M0 – scaffold (no game needed).** Copy the layout of the smallest sibling (`../SeaPowerPopOut`: `src/`, `tools/package.ps1`, `docs/`,
+**M0 - scaffold (no game needed).** Copy the layout of the smallest sibling (`../SeaPowerPopOut`: `src/`, `tools/package.ps1`, `docs/`,
 `workshop/`, `CHANGELOG.md`, `LICENSE` MIT, `README.md`), `git init -b main` with the noreply identity, register in `../mods.json`,
 build for both games, `modtool compat` green. Create the GitHub repo **private** only after he agrees.
 
-**M1 – data layer + sensor board window.** `SensorPicture` (read-only snapshot of tracks per own unit per sensor, refreshed ~1 Hz, uses
+**M1 - data layer + sensor board window.** `SensorPicture` (read-only snapshot of tracks per own unit per sensor, refreshed ~1 Hz, uses
 `PlottingTable.VehicleForObject(c).CurrentTracks()` and filters `TrackComponent.Sensor == sensorSystem.InstanceEntity`; optional
 `Subscribe` on sensors) and the board window. **First thing to research:** how a mod adds a *new* window type to the game's `WindowHost`
 (a view-model class + a `DataTemplate` registered in the main view's resources + `WindowHostCommands.OpenWindowCommand`; see
 `../SeaPowerPopOut/src/SeaPowerPopOut/PopOutScreen.cs` (it keys everything on the content's view-model type name, so any new window
 should get the pop-out button for free), `../SeaPowerPopOut/src/SeaPowerPopOut/SmartWindows/`, and Radio's `WhyNot/QueueOverlay.cs` as precedent for an own window; fall
 back to Noesis elements laid over the map as Topo's `Ui/MapDecoration.cs` does). Also decide how it is opened (a bottom-bar toggle? a key? an
-entry in the unit's context menu?). Likely one DLL for both game versions – prove it with `compat`.
+entry in the unit's context menu?). Likely one DLL for both game versions - prove it with `compat`.
 
-**M2 – radar scope** (own window; sweep decoration + age fade; RWR/jam strobes; horizon ring from `getRadarHorizon`).
+**M2 - radar scope** (own window; sweep decoration + age fade; RWR/jam strobes; horizon ring from `getRadarHorizon`).
 
-**M3 – sonar display** (waterfall from `RawPassiveSonarReadings` / sonar `Subscribe`; baffle sector from `SonarParameters._baffles`; depth
+**M3 - sonar display** (waterfall from `RawPassiveSonarReadings` / sonar `Subscribe`; baffle sector from `SonarParameters._baffles`; depth
 strip from `Environment.getLayerHeight`, sub depth, towed-array state).
 
-**M4 – map lines** (two builds; draw like Borders' `Map/ProjectedLines.cs` / Topo's overlay; Layers-menu entry via Topo's `GameApi.NewLayer`;
+**M4 - map lines** (two builds; draw like Borders' `Map/ProjectedLines.cs` / Topo's overlay; Layers-menu entry via Topo's `GameApi.NewLayer`;
 possibly switch on the game's own bearing fans via `DM_Sensors._allowTMAFans`).
 
-**M5 – coverage overlays** (reuse Topo's `OverlayRenderer`/`Cutout`; compute rays on a worker thread, terrain via `IsLineOfSightBetween` on the
+**M5 - coverage overlays** (reuse Topo's `OverlayRenderer`/`Cutout`; compute rays on a worker thread, terrain via `IsLineOfSightBetween` on the
 main thread in slices; ≤1 Hz refresh).
 
-**Release:** package, README/CHANGELOG, `modtool check lint compat`, tests in the game on his go (flat and globe), Workshop hidden → public on his OK.
+**Release:** package, README/CHANGELOG, `modtool check lint compat`, tests in the game on his go (flat and globe), Workshop hidden -> public on his OK.
 
 Performance notes from the research: each sensor scan is O(all objects); coverage = 360 bearings × ~8 raycasts, recompute at ~1 Hz or on
-change; sonar `Evaluate` ×36k for 360° × 100 ranges → worker thread, but sample `TerrainUtils.GetHeightAt` and `Environment` getters on the main
-thread first; `Environment.getXLayerAttenuation()` reseeds `UnityEngine.Random` – call once and cache.
+change; sonar `Evaluate` ×36k for 360° × 100 ranges -> worker thread, but sample `TerrainUtils.GetHeightAt` and `Environment` getters on the main
+thread first; `Environment.getXLayerAttenuation()` reseeds `UnityEngine.Random` - call once and cache.
 
 ## 8. Open questions for Lukas
 
-1. Go for the new mod and start with the board (M0–M1)? (my recommendation: yes)
+1. Go for the new mod and start with the board (M0 - M1)? (my recommendation: yes)
 2. Name: "Sea Power: Rats Sensor Views" OK?
-3. How should the board / scope open – bottom-bar toggle, a key, the unit's context menu?
+3. How should the board / scope open - bottom-bar toggle, a key, the unit's context menu?
 4. Should map lines show for all own units or only the selected one by default? (mockup: selected bright, others dimmed)
 
 ## 9. State of related work (so you do not redo it)
@@ -153,9 +153,9 @@ thread first; `Environment.getXLayerAttenuation()` reseeds `UnityEngine.Random` 
 - **SeaPowerTopo** (public, 1.4.1, Workshop 3826122523) already contains everything built in the preceding conversation: pre-drawn mission-area
   layers, parallel colouring, the submarine thermal-layer / keel-clearance overlay (`Terrain/LayerMap.cs`, `Render/Cutout.cs`, `OverlayRenderer.cs`) and the
   globe/flat split (`GameApi.cs`). The old copies in `E:\Project\Mods\Sea Power Lab\…\worktrees\…` (branches `claude/topo-wide-surround`, `claude/popout-free-windows`) are superseded.
-- **SeaPowerPopOut** (public, Workshop 3826396311): see-through pop-out monitor, pointer fix, wide resize corners, snapping – in its repo.
+- **SeaPowerPopOut** (public, Workshop 3826396311): see-through pop-out monitor, pointer fix, wide resize corners, snapping - in its repo.
 - **SeaPowerBorders** public since 2026-10-28; **SeaPowerRadio** hotfix 1.0.5 live. Memory notes of these live in
-  `C:\Users\sgtmr\.claude\projects\E--Project-Mods-Sea-Power\memory\` (`sea-power-workspace.md`, `game-update-2026-10-27.md`, `both-game-versions-rule.md`, …).
+  `C:\Users\sgtmr\.claude\projects\E--Project-Mods-Sea-Power\memory\` (`sea-power-workspace.md`, `game-update-2026-10-27.md`, `both-game-versions-rule.md`, ...).
 - Game-testing helpers: `../tools/game-driver/`, Shot Director (in `../SeaPowerTopo/tools/shot-director`), notes in `../docs/game-testing.md`.
 
 ## 10. Files in this folder
