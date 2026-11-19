@@ -15,16 +15,20 @@ internal static class OptionsRows
     public static void Fill(OptionsBuilder b)
     {
         b.Note("Changes apply at once and are kept by the mod (Accept and Revert on this page do not affect them). " +
-            "Hot keys and further settings: BepInEx\\config\\dev.sewerlabs.seapowersensorviews.cfg.");
+            "Hot keys and further settings: BepInEx\\config\\" + ModInfo.Guid + ".cfg.");
         Lines(b);
         Coverage(b);
         Windows(b);
     }
 
+    /// <summary>" or with KEY" for the hot key as the player has set it; nothing when there is none.</summary>
+    private static string KeyHint(BepInEx.Configuration.ConfigEntry<string> key) =>
+        string.IsNullOrWhiteSpace(key.Value) ? "" : " or with " + key.Value;
+
     private static void Lines(OptionsBuilder b)
     {
         b.Header("Sensor lines on the map");
-        b.Note("Switch the layer itself in the map's Layers menu or with Ctrl+Shift+PageUp.");
+        b.Note("Switch the layer itself in the map's Layers menu" + KeyHint(Settings.LinesKey) + ".");
         b.Choice("Units shown", Settings.LinesWho, new[] { Settings.SelectedOnly, Settings.AllUnits },
             "Selected only: the lines of the unit you have selected (nothing while no unit is selected). All: every own unit's lines, the selected unit's bright. With many units, all lines are a lot to draw.");
         b.Check("Hide ESM of tracked contacts", Settings.HideTrackedEsm,
@@ -44,7 +48,7 @@ internal static class OptionsRows
     private static void Coverage(OptionsBuilder b)
     {
         b.Header("Coverage of the selected unit");
-        b.Note("Switch the layer in the map's Layers menu or with Ctrl+Shift+PageDown.");
+        b.Note("Switch the layer in the map's Layers menu" + KeyHint(Settings.CoverageKey) + ".");
         b.Check("Radar", Settings.CoverRadar, "Search radar coverage against the target altitude (the scope's slider).");
         b.Check("Terrain shadows", Settings.TerrainShadows, "Cut the radar coverage where terrain blocks the line of sight.");
         b.Check("ESM", Settings.CoverEsm, "ESM listening range against an emitter like the unit's own search radar.");

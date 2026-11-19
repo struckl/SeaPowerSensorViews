@@ -17,10 +17,15 @@ internal static class Program
         var module = ModuleDefinition.ReadModule(Path.Combine(dir, "Seapower-Scripts.dll"), new ReaderParameters { AssemblyResolver = resolver });
         int bad = 0;
 
-        // Harmony targets (Hooks.cs): type, method, expected parameter list ("" = none; null = any, unique by name)
+        // Harmony targets (Hooks.cs, MissionHooks and OptionsPage of the shared skeleton): type, method, expected parameter list
+        // ("" = none; null = any, unique by name). Keep in step with Hooks.cs: the hooks are found by name at run time.
         bad += Method(module, "SeapowerUI.ViewModels.MainGameViewModel", "OnStart", "");
         bad += Method(module, "SeaPower.GameMain", "OnDestroy", "");
         bad += Method(module, "MapControl.RenderedLayer", "OnRender", null);
+        bad += Method(module, "SeapowerUI.OptionsMenuView", ".ctor", "");
+        bad += Report("TerrainUtils.GetHeightAt with a GeoPosition first (bound by reflection in Terrain.cs)",
+            module.Types.FirstOrDefault(t => t.Name == "TerrainUtils")?.Methods.Any(m => m.Name == "GetHeightAt" && m.Parameters.Count > 0
+                && m.Parameters[0].ParameterType.Name == "GeoPosition") == true);
 
         // reflection lookups of GameApi.NewLayer (globe build only): GizmoLayerManager.Entry and MapLayer(MapDisplayState, in Entry, bool)
         TypeDefinition manager = module.GetType("SeaPower.LiveMap.GizmoLayerManager") ?? module.Types.FirstOrDefault(t => t.Name == "GizmoLayerManager");

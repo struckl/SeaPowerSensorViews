@@ -150,18 +150,6 @@ public sealed class BoardView : UserControl
     }
 }
 
-/// <summary>How the windows write ages and bearings.</summary>
-internal static class Fmt
-{
-    public static string Age(double seconds)
-    {
-        int s = (int)Math.Max(0, seconds);
-        return s < 60 ? s + "s" : (s / 60) + ":" + (s % 60).ToString("00");
-    }
-
-    public static string Compass(float deg) => ((int)Math.Round(SensorPicture.Wrap360(deg)) % 360).ToString("000");
-}
-
 public sealed class BoardSurface : Surface
 {
     private const float LabelW = 170f, HeaderH = 40f, RowH = 20f;

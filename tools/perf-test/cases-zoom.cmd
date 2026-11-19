@@ -1,4 +1,4 @@
-# Zoom reference (run.ps1 -Cases cases-zoom.cmd): the same zoom levels with the sensor lines off and on, to tell the game's own
+# Zoom reference (run.ps1 -CaseFile cases-zoom.cmd): the same zoom levels with the sensor lines off and on, to tell the game's own
 # cost of a zoomed-in map from the mod's.
 sv win 0 off
 sv win 1 off

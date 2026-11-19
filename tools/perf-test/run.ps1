@@ -26,6 +26,7 @@ function WaitLog([string]$text, [int]$max, [int]$from) {
 function Lines { if (Test-Path $logFile) { (Get-Content $logFile).Count } else { 0 } }
 
 & $driver start
+# game.ps1 start returns at Keel's ready line; a Shot Director load right after that crashes the game, so the menu settles first.
 Start-Sleep 10
 $n = Lines
 Send @('load missions/NATO/Action in the Gulf of Sidra 1986.ini', 'waitload', 'wait 8', 'play', 'wait 3', 'press Start mission', 'wait 2',

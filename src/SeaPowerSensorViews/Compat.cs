@@ -13,7 +13,7 @@ internal static class Compat
 {
     private static MethodInfo ownNoise;
     private static ParameterInfo[] ownNoiseParams;
-    private static bool resolved;
+    private static bool resolved, failed;
 
     public static float OwnNoiseDb(float baseNoise, int rafting, float speedKts, float flowNoise, SonarParameters.SonarType type,
         float additionalNoise, float cavitationIntensity, float cavitationNoise)
@@ -42,7 +42,9 @@ internal static class Compat
         try { return (float)ownNoise.Invoke(null, args); }
         catch (Exception ex)
         {
-            ModLog.Debug("OwnNoiseDB: " + ex.Message);
+            // It fails the same way on every call (once a second while the sonar display is open): said once.
+            if (!failed) ModLog.Warn("SonarAcoustics.OwnNoiseDB failed - the sonar display shows no own noise: " + (ex.InnerException ?? ex).Message);
+            failed = true;
             return float.NaN;
         }
     }
