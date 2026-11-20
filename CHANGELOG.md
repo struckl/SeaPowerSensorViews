@@ -36,8 +36,8 @@ Run in the game on 0.9.1 (build 261112) on 2026-11-12: the name in Keel's list, 
 ## 0.4.3 - 2026-11-10 - own torpedoes on sonar, radar scope fixes for aircraft, game build 261107
 
 Run in the game on build 0.8.7-261107 (globe) on 2026-11-09, Showdown off Guam - Blue, under Keel: an F-4E with its radar switched on shows
-no "SEARCH RADAR OFF" and its 120-degree arc shaded in front of the aircraft (`docs/test-2026-11-09/`); a Mk-48 fired from the Guardfish on the
-wire and showed on the Guardfish's sonar display as a trace curving out from the bow, with an "own" depth mark (`docs/test-2026-11-09/`).
+no "SEARCH RADAR OFF" and its 120-degree arc shaded in front of the aircraft; a Mk-48 fired from the Guardfish on the
+wire and showed on the Guardfish's sonar display as a trace curving out from the bow, with an "own" depth mark.
 With the torpedo selected the sonar display stays on the Guardfish; the new depth strip was run there too. The flat build for 0.8.7 passes the offline checks, not run in the game.
 
 - **Fix: "SEARCH RADAR OFF" on aircraft whose radar is on.** The scope asked whether the radar could make contacts right now, which also depends on the unit's control state and a pending switch request; on fighters' directed-search radars (F-4 AN/APQ-120, F-15C AN/APG-63) that read "off" while the game's own panel showed the radar on. The scope now uses the same on/off switch as the game's panel.

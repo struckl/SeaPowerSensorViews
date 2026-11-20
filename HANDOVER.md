@@ -8,7 +8,7 @@ reviewed and pushed. M4 (sensor lines) and M5 (coverage) are `Map/` (`MapSet`, `
 entries (`LayerEntry`, `GameApi`); they needed the two-build split, so the mod now ships `SeaPowerSensorViews.dll` (globe) and `SeaPowerSensorViewsFlat.dll`
 (0.8.7) from one tree, version 0.2.0. `modtool compat/check/lint` are green; `tools/hook-check` confirms the Harmony targets and reflection lookups in both
 games. No GitHub release, no Workshop item. Hosting of the windows: `docs/windows.md`; map layers: `docs/map-layers.md`; what to look at first in the game:
-`docs/testing.md` ("Not verified offline"). Open: the coverage uses the game's own range maths for imagined targets only (no worker thread needed); a true
+the private test checklist ("Not verified offline"). Open: the coverage uses the game's own range maths for imagined targets only (no worker thread needed); a true
 per-bearing sonar range (instead of the game's single passive estimate with a baffle dent) would be the next refinement.
 
 ## 1. What Lukas wants (his words, shortened)
