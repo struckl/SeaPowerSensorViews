@@ -16,7 +16,7 @@ public class Plugin : IAnchorChainMod
 {
     public const string Guid = "dev.sewerlabs.seapowersensorviews";
     public const string Name = "R.A.T.S. Sensor Views";
-    public const string Version = "0.4.5";
+    public const string Version = "0.5.0";
 
 #if FLATMAP
     // Both loaders skip a plugin whose GUID they have already seen, so the two builds register under different ones.

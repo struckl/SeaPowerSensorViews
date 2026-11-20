@@ -7,7 +7,7 @@
     <AssemblyName>SeaPowerSensorViews</AssemblyName>
     <RootNamespace>SeaPowerSensorViews</RootNamespace>
     <Product>Sensor board, radar scope and sonar display as game windows.</Product>
-    <Version>0.4.5</Version>
+    <Version>0.5.0</Version>
     <RatsUseLayers>true</RatsUseLayers>
     <RatsUseOptionsPage>true</RatsUseOptionsPage>
     <RatsWorkspace Condition="'$(RatsWorkspace)' == ''">$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), mods.json))</RatsWorkspace>

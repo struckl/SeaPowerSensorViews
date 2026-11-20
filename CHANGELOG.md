@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-11-20 - typed altitude works, 80,000 ft limit, shared skeleton
 
 - **The scope's target altitude runs up to 80,000 ft everywhere:** the entry box, the slider and the config range share one limit (the box took 100,000 ft, the slider stopped at 60,000 ft, the config at 80,000 ft)
 - **A typed target altitude is taken:** it applies while typing, and Enter or leaving the box writes the clamped value back (the box swallowed Enter, so a typed value stayed unused)
