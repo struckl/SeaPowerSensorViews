@@ -6,9 +6,9 @@ Build notes and the layout of the repo. Short form in the [README](../README.md)
 
 `dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>`
 
-- Needs the R.A.T.S. Sea Power workspace around the repo, with the Keel repo (`SeaPowerKeel`) next to it
-  - the shared project part (references, flat-map build, deploy) and the shared skeleton (entry, log, host, hooks, settings, Layers menu entries, Options tab) come from `SeaPowerKeel\shared\` and are compiled into this DLL
-- `-p:RatsWorkspace=<workspace>` builds from a clone elsewhere; `-p:RatsShared=<folder>\` uses another copy of the shared folder
+- Needs the R.A.T.S. Sea Power workspace around the repo, with the R.A.T.S. Shared repo (`SeaPowerShared`) next to it
+  - the shared project part (references, flat-map build, deploy) and the shared skeleton (entry, log, host, hooks, settings, Layers menu entries, Options tab) come from `SeaPowerShared` and are compiled into this DLL
+- `-p:RatsWorkspace=<workspace>` builds from a clone elsewhere; `-p:RatsShared=<folder>\` uses another copy of the shared repo
 - `-p:GameBuild=Flat` builds `SeaPowerSensorViewsFlat.dll` for 0.8.7
 - `tools\package.ps1` stages the release with the shared package steps (`-Workspace` and `-RatsShared` work the same way)
 
