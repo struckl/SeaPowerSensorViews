@@ -90,8 +90,10 @@ public sealed class ScopeView : UserControl
         bar.Children.Add(new TextBlock { Text = "ft", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
         bar.Children.Add(headingUp);
         bar.Children.Add(friends);
-        altBox.KeyDown += (s, e) => { if (e.Key == Key.Enter) { CommitAltitude(); e.Handled = true; } };
-        altBox.LostFocus += (s, e) => CommitAltitude();
+        // Preview, not KeyDown: the TextBox uses up Enter itself, so KeyDown never saw it (VM test 2026-11-20). A click on
+        // the scope does not take the logical focus, so the keyboard focus leaving is the second commit point.
+        altBox.PreviewKeyDown += (s, e) => { if (e.Key == Key.Enter || e.Key == Key.Return) { CommitAltitude(); e.Handled = true; } };
+        altBox.LostKeyboardFocus += (s, e) => CommitAltitude();
         friends.Click += (s, e) => { if (Win != null && !syncing) Win.ShowFriends = friends.IsChecked == true; Registry.RefreshAll(); };
         horizon.Click += (s, e) => { if (Win != null && !syncing) Win.ShowHorizon = horizon.IsChecked == true; Registry.RefreshAll(); };
         headingUp.Click += (s, e) => { if (Win != null && !syncing) Win.HeadingUp = headingUp.IsChecked == true; Registry.RefreshAll(); };
