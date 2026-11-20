@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **The scope's target altitude runs up to 80,000 ft everywhere:** the entry box, the slider and the config range share one limit (the box took 100,000 ft, the slider stopped at 60,000 ft, the config at 80,000 ft)
-- **A typed target altitude is taken:** Enter and leaving the box now apply it (the box swallowed Enter, so a typed value stayed unused)
+- **A typed target altitude is taken:** it applies while typing, and Enter or leaving the box writes the clamped value back (the box swallowed Enter, so a typed value stayed unused)
 - **The tip of 'Hide ESM of tracked contacts' says where the switch is:** on the board and in the bottom-bar flyout, not the Layers menu
 - **Fixed: the Sensor lines layer cost a lot of FPS with many units** (10-40 FPS with ~20 units in view, board post #2)
   - Cause: since 0.4.5 a move of any unit redrew every line on the map, up to 10 times a second (all lines of one style were one shape)

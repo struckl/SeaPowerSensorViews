@@ -30,14 +30,23 @@ public sealed class ScopeView : UserControl
 
     private ScopeWindow Win => DataContext as ScopeWindow;
 
-    /// <summary>Takes the number typed into the altitude box (feet).</summary>
-    private void CommitAltitude()
+    /// <summary>Takes the number typed into the altitude box (feet). Typing applies it at once (box text left alone,
+    /// so the caret stays); Enter or leaving the box also writes the clamped value back into the box.</summary>
+    private void CommitAltitude(bool rewriteBox)
     {
         ScopeWindow w = Win;
         if (w == null || syncing) return;
         if (float.TryParse(altBox.Text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ft) && !float.IsNaN(ft))
             w.TargetAltitudeFt = Math.Max(0f, Math.Min(Settings.MaxTargetAltitudeFt, ft));
-        Sync();
+        if (rewriteBox)
+        {
+            Sync();
+            return;
+        }
+        syncing = true;                            // the slider follows; its ValueChanged must not rewrite the box
+        try { altitude.Value = (float)SliderOf(w.TargetAltitudeFt); }
+        finally { syncing = false; }
+        Registry.RefreshAll();
     }
 
     public ScopeView()
@@ -90,10 +99,13 @@ public sealed class ScopeView : UserControl
         bar.Children.Add(new TextBlock { Text = "ft", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
         bar.Children.Add(headingUp);
         bar.Children.Add(friends);
-        // Preview, not KeyDown: the TextBox uses up Enter itself, so KeyDown never saw it (VM test 2026-11-20). A click on
-        // the scope does not take the logical focus, so the keyboard focus leaving is the second commit point.
-        altBox.PreviewKeyDown += (s, e) => { if (e.Key == Key.Enter || e.Key == Key.Return) { CommitAltitude(); e.Handled = true; } };
-        altBox.LostKeyboardFocus += (s, e) => CommitAltitude();
+        // Enter: the TextBox uses up KeyDown and in the VM test even PreviewKeyDown never saw it (2026-11-20), so the
+        // value also applies while typing, and KeyUp is a third look for Enter. A click on the scope does not take the
+        // logical focus, so the keyboard focus leaving is the other commit point.
+        altBox.TextChanged += (s, e) => CommitAltitude(rewriteBox: false);
+        altBox.PreviewKeyDown += (s, e) => { if (IsEnter(e.Key)) { CommitAltitude(rewriteBox: true); e.Handled = true; } };
+        altBox.KeyUp += (s, e) => { if (IsEnter(e.Key)) CommitAltitude(rewriteBox: true); };
+        altBox.LostKeyboardFocus += (s, e) => CommitAltitude(rewriteBox: true);
         friends.Click += (s, e) => { if (Win != null && !syncing) Win.ShowFriends = friends.IsChecked == true; Registry.RefreshAll(); };
         horizon.Click += (s, e) => { if (Win != null && !syncing) Win.ShowHorizon = horizon.IsChecked == true; Registry.RefreshAll(); };
         headingUp.Click += (s, e) => { if (Win != null && !syncing) Win.HeadingUp = headingUp.IsChecked == true; Registry.RefreshAll(); };
@@ -107,6 +119,8 @@ public sealed class ScopeView : UserControl
         };
         return bar;
     }
+
+    private static bool IsEnter(Key key) => key == Key.Enter || key == Key.Return;
 
     private void OnWindowChanged() { if (!syncing) Sync(); }
 
