@@ -4,12 +4,13 @@ Shows which of your units sees which contact with which sensor, for [Sea Power: 
 
 | | |
 | --- | --- |
+| Questions | [R.A.T.S. Discord](https://discord.gg/CzuHd4f8Yf): help, ideas, talk; the first place to ask |
 | Version | `0.5.0` (2026-11-20) |
 | Game | Sea Power 0.9.1 (build 261112) tested in the game; 0.8.7 flat map last run in the game with 0.2.2, newer versions checked offline |
 | Needs | a mod loader: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757), either one |
 | Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
 | Settings | Options > Sensor Views, or `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg` |
-| Feedback | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
+| Bug reports | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
 | Source | R.A.T.S. Source License, see `LICENSE` |
 
 ![Sensor board and radar scope](workshop/screenshots/02-board-and-scope.jpg)
