@@ -4,7 +4,7 @@ Shows which of your units sees which contact with which sensor, for [Sea Power: 
 
 | | |
 | --- | --- |
-| Version | `0.4.5` (2026-11-12) |
+| Version | `0.5.0` (2026-11-20) |
 | Game | Sea Power 0.9.1 (build 261112) tested in the game; 0.8.7 flat map last run in the game with 0.2.2, newer versions checked offline |
 | Needs | a mod loader: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757), either one |
 | Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
