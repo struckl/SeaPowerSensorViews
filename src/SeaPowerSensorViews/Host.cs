@@ -1,17 +1,13 @@
 using System;
 using SeaPower;
 using SeaPowerSensorViews.Data;
-#if FLATMAP
-using SeaPowerSensorViews.Ui;
-#else
 using SeaPowerSensorViews.Globe.Ui;
-#endif
 using UnityEngine;
 
 namespace SeaPowerSensorViews;
 
 /// <summary>Lives on a hidden object: sets the windows up when a mission's UI is ready, refreshes the snapshot while a window is open, hot keys.</summary>
-internal sealed class Host : ModHost
+internal sealed class Host : RigHost
 {
     /// <summary>The main view comes a moment after the mission start: looked for every SetupRetry s, SetupTries times.</summary>
     private const float SetupRetry = 0.5f;
@@ -35,7 +31,7 @@ internal sealed class Host : ModHost
     protected override void OnMissionReady()
     {
         try { Map.MapSet.MissionReady(); }
-        catch (Exception ex) { ModLog.Error("map layers off for this mission: " + ex); }
+        catch (Exception ex) { Rig.Log.Error("map layers off for this mission: " + ex); }
         setupPending = true;
         tries = 0;
         nextTry = 0f;
@@ -46,9 +42,9 @@ internal sealed class Host : ModHost
         setupPending = false;
         active = false;
         try { Map.MapSet.MissionEnded(); }
-        catch (Exception ex) { ModLog.Error("mission end (map): " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Error("mission end (map): " + ex.Message); }
         try { Kit.Teardown(); }
-        catch (Exception ex) { ModLog.Error("mission end: " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Error("mission end: " + ex.Message); }
         SensorPicture.Current.Reset();
     }
 
@@ -80,12 +76,12 @@ internal sealed class Host : ModHost
         try
         {
             if (Kit.Setup()) { setupPending = false; active = true; }
-            else if (++tries > SetupTries) { setupPending = false; ModLog.Warn("The main game view never appeared - sensor windows are off for this mission."); }
+            else if (++tries > SetupTries) { setupPending = false; Rig.Log.Warn("The main game view never appeared - sensor windows are off for this mission."); }
         }
         catch (Exception ex)
         {
             setupPending = false;
-            ModLog.Error("window setup failed, sensor windows are off for this mission: " + ex);
+            Rig.Log.Error("window setup failed, sensor windows are off for this mission: " + ex);
         }
     }
 

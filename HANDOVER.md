@@ -5,9 +5,9 @@ session needs). Read this file first, then `docs/`, then open `mockups/index.htm
 
 **Status (2026-11-03): M0-M5 are written, nothing is run in the game.** M0-M3 (scaffold, `SensorPicture`, board / scope / sonar windows) were
 reviewed and pushed. M4 (sensor lines) and M5 (coverage) are `Map/` (`MapSet`, `MapView`, `LineBuilder`, `CoverageJob`, `Styles`) plus the Layers-menu
-entries (`LayerEntry`, `GameApi`); they needed the two-build split, so the mod now ships `SeaPowerSensorViews.dll` (globe) and `SeaPowerSensorViewsFlat.dll`
-(0.8.7) from one tree, version 0.2.0. `modtool compat/check/lint` are green; `tools/hook-check` confirms the Harmony targets and reflection lookups in both
-games. No GitHub release, no Workshop item. Hosting of the windows: `docs/windows.md`; map layers: `docs/map-layers.md`; what to look at first in the game:
+entries (`LayerEntry`, `GameApi`). The mod is one DLL, `SeaPowerSensorViews.dll`, for the game's current main version (since 0.6.0; the two-build
+split of the early versions is gone). `modtool compat/check/lint` are green; `tools/hook-check` confirms the Harmony targets and reflection lookups.
+No GitHub release, no Workshop item. Hosting of the windows: `docs/windows.md`; map layers: `docs/map-layers.md`; what to look at first in the game:
 the private test checklist ("Not verified offline"). Open: the coverage uses the game's own range maths for imagined targets only (no worker thread needed); a true
 per-bearing sonar range (instead of the game's single passive estimate with a baffle dent) would be the next refinement.
 
@@ -88,14 +88,10 @@ reflection**, not only by compiling (a field that became a property compiles fin
 ## 6. Rules that apply (full text: `../CLAUDE.md`, `../docs/both-versions.md`)
 
 - Start in `E:\Project\Mods\Sea Power`, run `python tools/modtool.py status` first. Game folder holds the **globe build 26223125** since
-  2026-10-27; the flat 0.8.7 refs are in `_gamerefs\SeaPower-0.8.7-public`.
-- **Both game versions (his rule):** one DLL if nothing referenced differs, else two builds of one tree (`-p:GameBuild=Flat`,
-  `FLATMAP`, `…Flat.dll`, plugin GUID `<guid>.flatmap`, entry gate on `Type.GetType("SeapowerUI.MapDisplayState, Seapower-Scripts")`,
-  body in a `[NoInlining] Start()`). A DLL that stays off must still be class-loadable on the other game (use `object`/`Delegate`
-  fields, see Topo's `GameApi.cs`). `python tools/modtool.py compat` must pass before any release; never claim "works on both" in a
-  public text before an in-game test.
-- **Anchor Chain 1.1.0 does not start on the globe build** (AnchorChain#19; our fix is PR #20, unmerged). Globe testing needs Topo's
-  dev shim (`SeaPowerTopo/tools/anchorchain-beta-shim`). On 0.8.7 everything loads normally.
+  2026-10-27.
+- **One build, the game's current main version only** (his rule 2026-11-21). `python tools/modtool.py compat` must pass before any
+  release; never claim a game version works in a public text before an in-game test.
+- **Anchor Chain 1.1.0 does not start on the globe build** (AnchorChain#19; our fix is PR #20, unmerged). R.A.T.S. Keel is the loader now.
 - **The game is his.** Never start/close it, never send clicks/keys without his OK; he plays while you work and tests himself. Other
   sessions share the game ("taking the game now" / "done"). Never pop up windows or send simulated keys while he works. Load missions
   only from a settled main menu. Notes: `docs/game-testing.md` in the workspace.
@@ -113,7 +109,7 @@ reflection**, not only by compiling (a field that became a property compiles fin
 
 **M0 - scaffold (no game needed).** Copy the layout of the smallest sibling (`../SeaPowerPopOut`: `src/`, `tools/package.ps1`, `docs/`,
 `workshop/`, `CHANGELOG.md`, `LICENSE` MIT, `README.md`), `git init -b main` with the noreply identity, register in `../mods.json`,
-build for both games, `modtool compat` green. Create the GitHub repo **private** only after he agrees.
+build, `modtool compat` green. Create the GitHub repo **private** only after he agrees.
 
 **M1 - data layer + sensor board window.** `SensorPicture` (read-only snapshot of tracks per own unit per sensor, refreshed ~1 Hz, uses
 `PlottingTable.VehicleForObject(c).CurrentTracks()` and filters `TrackComponent.Sensor == sensorSystem.InstanceEntity`; optional
@@ -122,20 +118,20 @@ build for both games, `modtool compat` green. Create the GitHub repo **private**
 `../SeaPowerPopOut/src/SeaPowerPopOut/PopOutScreen.cs` (it keys everything on the content's view-model type name, so any new window
 should get the pop-out button for free), `../SeaPowerPopOut/src/SeaPowerPopOut/SmartWindows/`, and Radio's `WhyNot/QueueOverlay.cs` as precedent for an own window; fall
 back to Noesis elements laid over the map as Topo's `Ui/MapDecoration.cs` does). Also decide how it is opened (a bottom-bar toggle? a key? an
-entry in the unit's context menu?). Likely one DLL for both game versions - prove it with `compat`.
+entry in the unit's context menu?). One DLL - prove it with `compat`.
 
 **M2 - radar scope** (own window; sweep decoration + age fade; RWR/jam strobes; horizon ring from `getRadarHorizon`).
 
 **M3 - sonar display** (waterfall from `RawPassiveSonarReadings` / sonar `Subscribe`; baffle sector from `SonarParameters._baffles`; depth
 strip from `Environment.getLayerHeight`, sub depth, towed-array state).
 
-**M4 - map lines** (two builds; draw like Borders' `Map/ProjectedLines.cs` / Topo's overlay; Layers-menu entry via Topo's `GameApi.NewLayer`;
+**M4 - map lines** (draw like Borders' `Map/ProjectedLines.cs` / Topo's overlay; Layers-menu entry via Topo's `GameApi.NewLayer`;
 possibly switch on the game's own bearing fans via `DM_Sensors._allowTMAFans`).
 
 **M5 - coverage overlays** (reuse Topo's `OverlayRenderer`/`Cutout`; compute rays on a worker thread, terrain via `IsLineOfSightBetween` on the
 main thread in slices; ≤1 Hz refresh).
 
-**Release:** package, README/CHANGELOG, `modtool check lint compat`, tests in the game on his go (flat and globe), Workshop hidden -> public on his OK.
+**Release:** package, README/CHANGELOG, `modtool check lint compat`, tests in the game on his go, Workshop hidden -> public on his OK.
 
 Performance notes from the research: each sensor scan is O(all objects); coverage = 360 bearings × ~8 raycasts, recompute at ~1 Hz or on
 change; sonar `Evaluate` ×36k for 360° × 100 ranges -> worker thread, but sample `TerrainUtils.GetHeightAt` and `Environment` getters on the main

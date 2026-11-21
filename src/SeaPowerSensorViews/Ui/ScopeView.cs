@@ -4,11 +4,7 @@ using Noesis;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>Radar scope window content: a small tool row (range, horizon, target altitude) over the scope.</summary>
 public sealed class ScopeView : UserControl
@@ -267,7 +263,7 @@ internal static class ScopeRadar
                     return true;
             }
         }
-        catch (Exception ex) { ModLog.Debug("Scope own-ship radar check: " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Debug("Scope own-ship radar check: " + ex.Message); }
         return false;
     }
 
@@ -337,7 +333,7 @@ public sealed class ScopeSurface : TubeSurface
         }
 
         public void Log() =>
-            ModLog.Debug("Scope click at " + Click.X.ToString("0") + "," + Click.Y.ToString("0") + ": " + Candidates + " on the scope, nearest " +
+            Rig.Log.Debug("Scope click at " + Click.X.ToString("0") + "," + Click.Y.ToString("0") + ": " + Candidates + " on the scope, nearest " +
                          (Nearest == float.MaxValue ? "-" : Math.Sqrt(Nearest).ToString("0") + " px") + " -> " +
                          (Contact != null ? Contact.Label : Unit != null ? Unit.Name : "nothing"));
     }
@@ -348,8 +344,8 @@ public sealed class ScopeSurface : TubeSurface
         ScopeWindow win = Win;
         SensorPicture pic = SensorPicture.Current;
         UnitRow unit = win?.Subject();
-        if (win == null || unit == null || !pic.InMission) { ModLog.Debug("Scope click: no window, unit or mission."); return; }
-        if (!ScopeGeometry.Of(win, unit, (float)ActualWidth, (float)ActualHeight, out ScopeGeometry g)) { ModLog.Debug("Scope click: no geometry."); return; }
+        if (win == null || unit == null || !pic.InMission) { Rig.Log.Debug("Scope click: no window, unit or mission."); return; }
+        if (!ScopeGeometry.Of(win, unit, (float)ActualWidth, (float)ActualHeight, out ScopeGeometry g)) { Rig.Log.Debug("Scope click: no geometry."); return; }
         Point click = e.GetPosition(this);
         var picker = new Picker { Click = click, Best = PickRadius * PickRadius, Nearest = float.MaxValue };
         foreach (ContactRow cr in pic.Contacts)

@@ -9,9 +9,9 @@ namespace SeaPowerSensorViews.Map;
 /// <summary>
 /// The two layers on one map control: two <see cref="MapPanel"/>s laid into the map (sensor lines, coverage), each holding a few
 /// Noesis <see cref="Path"/>s in screen pixels and a canvas of labels. The geometry is kept as longitude/latitude and
-/// projected through the map (<c>LocationToView</c> on the flat map, <c>TryLocationToView</c> on the globe, where far-side points
-/// are left out) whenever the view or the data changes - the same screen-space method as the Borders mod uses on the globe,
-/// used for both map kinds here because the lines run between arbitrary points, not along a lon/lat tile grid.
+/// projected through the map (<c>TryLocationToView</c>, which leaves out the far side of the globe) whenever the view or the data
+/// changes - the same screen-space method as the Borders mod uses, here because the lines run between arbitrary points, not
+/// along a lon/lat tile grid.
 /// </summary>
 internal sealed class MapView
 {
@@ -24,7 +24,7 @@ internal sealed class MapView
     private const double ViewBuildInterval = 0.016;
     /// <summary>A zoomed panel is rebuilt this long (s) after the zoom stopped, so strokes and labels get their size back.</summary>
     private const double SettleDelay = 0.3;
-    /// <summary>The projection probes stay below this latitude (the flat map's projection runs away towards the pole).</summary>
+    /// <summary>The projection probes stay below this latitude (a map projection runs away towards the pole).</summary>
     private const double MaxProbeLatitude = 80.0;
 
     public readonly MapBase Map;
@@ -55,10 +55,10 @@ internal sealed class MapView
 
     /// <summary>
     /// Where a panel's paths were projected: three anchor places and their screen points at that time. When the view only moved or
-    /// zoomed (the anchors' new points are the old ones scaled and shifted, as on the flat map), the panel gets a scale + shift
+    /// zoomed (the anchors' new points are the old ones scaled and shifted), the panel gets a scale + shift
     /// transform instead of a rebuild - projecting every point again and Noesis tessellating every stroke again was the cost of a
     /// moving map. A zoomed panel is rebuilt once the view has been still for a moment, so strokes and labels get their size back.
-    /// On the globe a rotation is not a scale + shift: those views are rebuilt as before.
+    /// A rotation of the globe is not a scale + shift: those views are rebuilt.
     /// </summary>
     private sealed class Fit
     {
@@ -139,7 +139,7 @@ internal sealed class MapView
                 viewDirty = false;
             }
         }
-        catch (Exception ex) { ModLog.Debug("map view follow: " + ex.Message); }   // the next Update rebuilds what this missed
+        catch (Exception ex) { Rig.Log.Debug("map view follow: " + ex.Message); }   // the next Update rebuilds what this missed
         FollowUnit();
     }
 
@@ -157,22 +157,16 @@ internal sealed class MapView
         }
         catch (Exception ex)
         {
-            ModLog.Debug("map detach: " + ex.Message);
+            Rig.Log.Debug("map detach: " + ex.Message);
         }
     }
 
     private bool Project(double lat, double lon, out float x, out float y)
     {
         var g = new GeoPosition(lat, lon);
-#if FLATMAP
-        Point p = Map.LocationToView(g);
-        x = p.X; y = p.Y;
-        return Math.Abs(x) < 1e7f && Math.Abs(y) < 1e7f;
-#else
         bool visible = Map.TryLocationToView(g, out Point p);
         x = p.X; y = p.Y;
         return visible && Math.Abs(x) < 1e7f && Math.Abs(y) < 1e7f;
-#endif
     }
 
     private bool ProjectTriple(double lat, double lon, double step, out Triple t)

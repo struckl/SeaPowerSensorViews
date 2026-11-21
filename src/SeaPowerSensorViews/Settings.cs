@@ -5,7 +5,7 @@ namespace SeaPowerSensorViews;
 
 /// <summary>
 /// The mod's entries in its BepInEx config, BepInEx/config/dev.sewerlabs.seapowersensorviews.cfg (the file and the General
-/// section: ModSettings in the shared skeleton).
+/// section: Rig.Settings in R.A.T.S. Rigging).
 /// </summary>
 internal static class Settings
 {
@@ -52,17 +52,17 @@ internal static class Settings
     // 2 = 0.3.0: "Units shown" defaults to the selected unit only; 3: the old quick switch "Quick: all units" is folded into it
     private const int Layout = 3;
 
-    /// <summary>From ModSettings.Open: binds the entries, runs the one-time changes, sets up the change counters.</summary>
+    /// <summary>From Rigging's settings open: binds the entries, runs the one-time changes, sets up the change counters.</summary>
     public static void Bind(ConfigFile file)
     {
         BindWindows(file);
         BindLines(file);
         BindCoverage(file);
         Migrate(file);
-        LineData = ChangeCounter.Of(LinesVisible, LinesWho, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm,
+        LineData = ChangeCounter.Of(file, LinesVisible, LinesWho, LinesRadar, LinesEsm, LinesVisual, LinesSonar, HideTrackedEsm,
             LostLines, WedgeNm, MemorySeconds, VisualLifetime);
-        MapLook = ChangeCounter.Of(DimOpacity, LineWidth, ZoomedWedges, LinesVisible, CoverageVisible);
-        CoverageInputs = ChangeCounter.Of(CoverageVisible, CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows, TargetRcs, VisualSize, Rays);
+        MapLook = ChangeCounter.Of(file, DimOpacity, LineWidth, ZoomedWedges, LinesVisible, CoverageVisible);
+        CoverageInputs = ChangeCounter.Of(file, CoverageVisible, CoverRadar, CoverEsm, CoverVisual, CoverSonar, TerrainShadows, TargetRcs, VisualSize, Rays);
     }
 
     private static void BindWindows(ConfigFile file)
@@ -148,8 +148,8 @@ internal static class Settings
 
     private static void Migrate(ConfigFile file)
     {
-        ConfigEntry<int> layoutVersion = file.Bind("9. Internal", "Settings layout", ModSettings.Existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
-        ModSettings.Migrate(layoutVersion, (2, () => SelectedOnlyDefault()), (3, () => FoldQuickAllUnits(file)));
+        ConfigEntry<int> layoutVersion = file.Bind("9. Internal", "Settings layout", Rig.Settings.Existed ? 1 : Layout, "Used by the mod to update old settings. Do not change.");
+        RigSettings.Migrate(layoutVersion, (2, () => SelectedOnlyDefault()), (3, () => FoldQuickAllUnits(file)));
     }
 
     // Configs from before 0.3.0 hold the old default "All", which made the map very busy (and slow) with many units. A player who
@@ -158,7 +158,7 @@ internal static class Settings
     {
         if (LinesWho.Value != AllUnits) return;
         LinesWho.Value = SelectedOnly;
-        ModLog.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
+        Rig.Log.Info("Settings: 'Units shown' is now 'Selected only' (the new default); set it back to 'All, selected bright' to see every unit's lines.");
     }
 
     // No switch sets "Quick: all units" any more, but a config could still hold it switched on, which

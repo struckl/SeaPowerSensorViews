@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 - unreleased - needs R.A.T.S. Rigging, one build for the current game
+
+- **New required item: R.A.T.S. Rigging**, the part the R.A.T.S. mods share (start, settings, hooks, mission events). A copy comes with this mod for now, so nothing has to be done; a notice on the main menu offers the Workshop item.
+- Changed: one build for the game's current main version (0.9.x). The 0.8.7 flat-map build, `SeaPowerSensorViewsFlat.dll` and the `.flatmap` plugin id are gone; the Workshop metadata says 0.9.0 or newer.
+- Changed (internal): the shared skeleton is no longer compiled into the DLL; Sensor Views uses R.A.T.S. Rigging's library. Config sections, keys and defaults, the log source, the Harmony id, the layer names and every in-game text are unchanged.
+
 ## 0.5.0 - 2026-11-20 - typed altitude works, 80,000 ft limit, shared skeleton
 
 - **The scope's target altitude runs up to 80,000 ft everywhere:** the entry box, the slider and the config range share one limit (the box took 100,000 ft, the slider stopped at 60,000 ft, the config at 80,000 ft)

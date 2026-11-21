@@ -58,7 +58,7 @@ internal sealed class SensorPicture
         lastRefreshReal = realNow;
         nextRefresh = realNow + interval;
         try { Refresh(limits); }
-        catch (Exception ex) { ModLog.Error("sensor picture: " + ex); return false; }
+        catch (Exception ex) { Rig.Log.Error("sensor picture: " + ex); return false; }
         return true;
     }
 

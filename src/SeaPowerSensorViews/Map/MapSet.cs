@@ -36,8 +36,8 @@ internal static class MapSet
     public static void MissionReady()
     {
         active = true;
-        linesLayer ??= new LayerEntry(603, "SEWERLABS_SENSOR_LINES", "Sensor lines (who sees what)", Settings.LinesVisible);
-        coverageLayer ??= new LayerEntry(604, "SEWERLABS_SENSOR_COVERAGE", "Sensor coverage (selected unit)", Settings.CoverageVisible);
+        linesLayer ??= new LayerEntry(Rig.Log, 603, "SEWERLABS_SENSOR_LINES", "Sensor lines (who sees what)", Settings.LinesVisible);
+        coverageLayer ??= new LayerEntry(Rig.Log, 604, "SEWERLABS_SENSOR_COVERAGE", "Sensor coverage (selected unit)", Settings.CoverageVisible);
         linesLayer.EnsureRegistered();
         coverageLayer.EnsureRegistered();
         Coverage.Reset();
@@ -71,17 +71,17 @@ internal static class MapSet
             try
             {
                 Views.Add(new MapView(map));
-                ModLog.Info("Sensor lines and coverage laid into a map.");
+                Rig.Log.Info("Sensor lines and coverage laid into a map.");
             }
             catch (Exception ex)
             {
                 Undecoratable.Add(map);
-                ModLog.Warn("Could not add the sensor layers to a map: " + ex.Message);
+                Rig.Log.Warn("Could not add the sensor layers to a map: " + ex.Message);
             }
         }
         catch (Exception ex)
         {
-            if (errors++ < 5) ModLog.Error("map layers: " + ex);
+            if (errors++ < 5) Rig.Log.Error("map layers: " + ex);
         }
     }
 
@@ -113,7 +113,7 @@ internal static class MapSet
         }
         catch (Exception ex)
         {
-            if (errors++ < 5) ModLog.Error("map update: " + ex);
+            if (errors++ < 5) Rig.Log.Error("map update: " + ex);
         }
     }
 

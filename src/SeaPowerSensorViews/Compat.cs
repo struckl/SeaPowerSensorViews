@@ -5,9 +5,9 @@ using SeaPower;
 namespace SeaPowerSensorViews;
 
 /// <summary>
-/// Calls that differ between the flat 0.8.7 and the globe build, bound at run time so one DLL serves both.
-/// SonarAcoustics.OwnNoiseDB gained four optional parameters in the globe build (a compiled call with 8 arguments
-/// is a different method there); the first eight are the same on both.
+/// Calls bound at run time, so a game update that changes a signature does not break the DLL.
+/// SonarAcoustics.OwnNoiseDB has four optional parameters after its first eight: a compiled call has to pass them all, so it is
+/// found by reflection and called with the game's own defaults for the rest.
 /// </summary>
 internal static class Compat
 {
@@ -31,7 +31,7 @@ internal static class Compat
                     ownNoiseParams = p;
                 }
             }
-            if (ownNoise == null) ModLog.Warn("SonarAcoustics.OwnNoiseDB not found (game updated?) - the sonar display shows no own noise.");
+            if (ownNoise == null) Rig.Log.Warn("SonarAcoustics.OwnNoiseDB not found (game updated?) - the sonar display shows no own noise.");
         }
         if (ownNoise == null) return float.NaN;
         var args = new object[ownNoiseParams.Length];
@@ -43,7 +43,7 @@ internal static class Compat
         catch (Exception ex)
         {
             // It fails the same way on every call (once a second while the sonar display is open): said once.
-            if (!failed) ModLog.Warn("SonarAcoustics.OwnNoiseDB failed - the sonar display shows no own noise: " + (ex.InnerException ?? ex).Message);
+            if (!failed) Rig.Log.Warn("SonarAcoustics.OwnNoiseDB failed - the sonar display shows no own noise: " + (ex.InnerException ?? ex).Message);
             failed = true;
             return float.NaN;
         }

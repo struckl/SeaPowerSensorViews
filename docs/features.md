@@ -96,11 +96,11 @@ Everything the mod does, in full. The short list is in the [README](../README.md
 
 ## Compatibility in detail
 
-- Sea Power 0.8.7 (flat map) up to every 0.9.x; `_info.ini` declares `GreaterThanEqualToVersion=0.8.7` and `LessThanVersion=0.10.0`
-- Two DLLs from one source tree: `SeaPowerSensorViews.dll` for the 3D-globe build and `SeaPowerSensorViewsFlat.dll` for 0.8.7
+- Sea Power 0.9.0 up to every 0.9.x; `_info.ini` declares `GreaterThanEqualToVersion=0.9.0` and `LessThanVersion=0.10.0`
+- One DLL, `SeaPowerSensorViews.dll`, built for the game's current main version (0.9.3, build 261116)
 - Run in the game:
-  - 0.8.7 (flat map): windows, bar buttons, sensor lines, coverage, cursors and the echo plot, last run with 0.2.2; later versions are checked offline there
   - 3D-globe beta, build 261107: versions 0.3.0 to 0.4.3 (Options tab, the three windows, lines, coverage, own torpedoes, radar scope fixes)
   - game 0.9.1, build 261112: version 0.4.5, the in-game name and the coverage ring following a moving unit
   - 0.4.4 was checked offline against 0.9.0
 - Loader: R.A.T.S. Keel; the entry point is Anchor Chain's, which Keel carries on
+- Also needs R.A.T.S. Rigging, the part the R.A.T.S. mods share; a copy comes with this mod for now

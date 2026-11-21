@@ -5,9 +5,9 @@ using SeaPower;
 namespace SeaPowerSensorViews;
 
 /// <summary>
-/// Terrain height at a place, for every game build: <c>TerrainUtils.GetHeightAt</c> gained parameters over time (0.8.7 and the
-/// first globe beta: (GeoPosition, bool, bool); globe beta 261107: one more bool), so a direct call compiled against one build
-/// fails on the other. The method is found once by reflection and called with its own defaults for everything after the place.
+/// Terrain height at a place: <c>TerrainUtils.GetHeightAt</c> gained parameters over time (globe beta 261107 added one more bool),
+/// so a direct call compiled against one game build fails on the next. The method is found once by reflection and called with
+/// its own defaults for everything after the place.
 /// </summary>
 internal static class Terrain
 {
@@ -31,7 +31,7 @@ internal static class Terrain
         }
         catch (Exception ex)
         {
-            if (!reported) ModLog.Warn("terrain height: " + (ex.InnerException ?? ex).Message);
+            if (!reported) Rig.Log.Warn("terrain height: " + (ex.InnerException ?? ex).Message);
             reported = true;
             return float.NaN;
         }
@@ -48,7 +48,7 @@ internal static class Terrain
             object[] a = Defaults(ps);
             if (a != null && (method == null || ps.Length < method.GetParameters().Length)) { method = m; args = a; }
         }
-        if (method == null) ModLog.Warn("TerrainUtils.GetHeightAt not found (game update?) - the sonar display shows no seabed depth.");
+        if (method == null) Rig.Log.Warn("TerrainUtils.GetHeightAt not found (game update?) - the sonar display shows no seabed depth.");
     }
 
     /// <summary>Arguments for everything after the place; null when a parameter has no default and is not a bool.</summary>

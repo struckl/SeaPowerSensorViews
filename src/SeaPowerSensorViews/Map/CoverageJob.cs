@@ -251,7 +251,7 @@ internal sealed class CoverageJob
             if (shadows)
             {
                 try { limit[rayIndex] = Shadow(rayIndex); }
-                catch (Exception ex) { ModLog.Debug("terrain check: " + ex.Message); limit[rayIndex] = radarMax[rayIndex]; }
+                catch (Exception ex) { Rig.Log.Debug("terrain check: " + ex.Message); limit[rayIndex] = radarMax[rayIndex]; }
             }
             rayIndex++;
             done++;

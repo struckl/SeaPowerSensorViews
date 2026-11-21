@@ -3,11 +3,7 @@ using System.Collections.Generic;
 using Noesis;
 using SeaPowerSensorViews.Data;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>
 /// A control that draws itself with Noesis' DrawingContext, like the game's own map controls (MapEllipse, Ruler, ...).
@@ -178,7 +174,7 @@ public abstract class Surface : UserControl
     private static int errors;
     private static void Report(Exception ex)
     {
-        if (errors++ < 5) ModLog.Error("draw: " + ex);
+        if (errors++ < 5) Rig.Log.Error("draw: " + ex);
     }
 
     protected abstract void Paint(DrawingContext dc, float w, float h);

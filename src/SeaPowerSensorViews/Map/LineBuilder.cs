@@ -56,7 +56,7 @@ internal static class LineBuilder
         Groups.Clear();
         int changed = Merge(set.Lines, Fresh, tolerance, all, dueGroup, out string first);
         if (changed == 0 && set.Version > 0) return;
-        ModLog.Debug($"lines rebuilt: {Merged.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved in {Groups.Count} group(s); first: {first ?? "-"}");
+        Rig.Log.Debug($"lines rebuilt: {Merged.Count} lines (were {set.Lines.Count}), {changed} new, changed or moved in {Groups.Count} group(s); first: {first ?? "-"}");
         set.Replace(Merged, Groups);
     }
 

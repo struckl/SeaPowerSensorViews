@@ -3,11 +3,7 @@ using System.Collections.Generic;
 using Noesis;
 using SeapowerUI;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>
 /// Puts the three windows into the game's own window system.
@@ -102,7 +98,7 @@ internal static class Kit
         catch (Exception ex)
         {
             // A game build without the no-scroll window layout: the plain one still works, only with scroll bars.
-            ModLog.Warn("Window template with the game's no-scroll layout failed (" + ex.Message + "); using the default window layout.");
+            Rig.Log.Warn("Window template with the game's no-scroll layout failed (" + ex.Message + "); using the default window layout.");
             dict = Dictionary(dynamicTemplate: false);
         }
         main.Resources.MergedDictionaries.Add(dict);
@@ -114,11 +110,11 @@ internal static class Kit
         if (Settings.BarButtons.Value)
         {
             try { AddBarButtons(main); Sync(); }
-            catch (Exception ex) { ModLog.Warn("Bottom bar buttons not added (" + ex.Message + ") - use the hot keys."); }
+            catch (Exception ex) { Rig.Log.Warn("Bottom bar buttons not added (" + ex.Message + ") - use the hot keys."); }
         }
         // No CanExecuteChanged subscription: the game's commands re-query on every mouse move and key press, and a Sync each
         // time cost three tree walks per input event. The host syncs twice a second, and Open/Close update at once.
-        ModLog.Info("Windows registered: sensor board, radar scope, sonar display" + (Settings.BarButtons.Value ? " (bottom bar buttons added)." : "."));
+        Rig.Log.Info("Windows registered: sensor board, radar scope, sonar display" + (Settings.BarButtons.Value ? " (bottom bar buttons added)." : "."));
         return true;
     }
 
@@ -149,10 +145,10 @@ internal static class Kit
             try
             {
                 frame.Visibility = frame.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-                ModLog.Debug("Flyout " + (FlyoutOpen ? "opened" : "closed") + ".");
+                Rig.Log.Debug("Flyout " + (FlyoutOpen ? "opened" : "closed") + ".");
                 Sync();
             }
-            catch (Exception ex) { ModLog.Error("Flyout click: " + ex); }
+            catch (Exception ex) { Rig.Log.Error("Flyout click: " + ex); }
         };
 
         var strip = (StackPanel)GUI.ParseXaml("<StackPanel " + Ns + " Orientation='Horizontal'/>");
@@ -167,7 +163,7 @@ internal static class Kit
         Grid.SetColumn(frame, 0);
         Grid.SetColumnSpan(frame, newColumn + 1);
         grid.Children.Add(frame);
-        ModLog.Debug("Flyout panel added: grid rows " + grid.RowDefinitions.Count + ", columns " + (newColumn + 1) + ".");
+        Rig.Log.Debug("Flyout panel added: grid rows " + grid.RowDefinitions.Count + ", columns " + (newColumn + 1) + ".");
     }
 
     private static ToggleButton BarButton()
@@ -200,7 +196,7 @@ internal static class Kit
             entry.Chip = MakeChip(entry.Text, entry.Window.Title + " (" + HotKeyText(entry.Window) + ")");
             Entry captured = entry;
             // The click decides, from the window's real state; the check mark is only ever set by Sync (events from it are ignored).
-            entry.Chip.Button.Click += (s, e) => { ModLog.Debug("Chip clicked: " + captured.Text); Toggle(captured.Window); };
+            entry.Chip.Button.Click += (s, e) => { Rig.Log.Debug("Chip clicked: " + captured.Text); Toggle(captured.Window); };
             windowsRow.Children.Add(entry.Chip.Button);
         }
         panel.Children.Add(windowsRow);
@@ -283,14 +279,14 @@ internal static class Kit
 
     private static void Open(Entry e)
     {
-        if (view == null || IsOpen(e)) { ModLog.Debug("Open " + e.Text + ": already open or no view"); return; }
+        if (view == null || IsOpen(e)) { Rig.Log.Debug("Open " + e.Text + ": already open or no view"); return; }
         try
         {
             WindowHostCommands.OpenWindowCommand.Execute(e.Window, view);
             e.Open = IsOpen(e);
-            ModLog.Debug("Open " + e.Text + ": executed, open now = " + e.Open);
+            Rig.Log.Debug("Open " + e.Text + ": executed, open now = " + e.Open);
         }
-        catch (Exception ex) { ModLog.Error("Open " + e.Text + ": " + ex); }
+        catch (Exception ex) { Rig.Log.Error("Open " + e.Text + ": " + ex); }
         Sync();
     }
 
@@ -323,7 +319,7 @@ internal static class Kit
             {
                 bool wasOpen = e.Open;
                 bool open = e.Open = IsOpen(e);
-                if (wasOpen != open) ModLog.Debug("Window " + e.Text + " is now " + (open ? "open" : "closed") + " (seen by sync).");
+                if (wasOpen != open) Rig.Log.Debug("Window " + e.Text + " is now " + (open ? "open" : "closed") + " (seen by sync).");
                 if (e.Chip == null) continue;
                 if (e.Chip.Button.IsChecked != open) e.Chip.Button.IsChecked = open;
                 e.Chip.Light(open);

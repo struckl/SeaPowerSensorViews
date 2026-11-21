@@ -4,11 +4,7 @@ using System.Text;
 using Noesis;
 using SeaPowerSensorViews.Data;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>Sensor board window content: legend line, the unit x contact grid, and the selected unit's sensors.</summary>
 public sealed class BoardView : UserControl
@@ -131,8 +127,8 @@ public sealed class BoardView : UserControl
         };
         Grid.SetRow(legend, 1);
         Grid mapBar;
-        try { mapBar = BuildMapBar(); ModLog.Debug("Board: map bar built."); }
-        catch (Exception ex) { ModLog.Error("Board map bar failed, board opens without it: " + ex); mapBar = new Grid(); }
+        try { mapBar = BuildMapBar(); Rig.Log.Debug("Board: map bar built."); }
+        catch (Exception ex) { Rig.Log.Error("Board map bar failed, board opens without it: " + ex); mapBar = new Grid(); }
         Grid.SetRow(mapBar, 0);
         var board = new BoardSurface { Margin = new Thickness(0, 0, 0, 4) };
         Grid.SetRow(board, 2);
@@ -143,8 +139,8 @@ public sealed class BoardView : UserControl
         grid.Children.Add(board);
         grid.Children.Add(panel);
         Content = grid;
-        ModLog.Debug("Board: view built.");
-        Loaded += (s, e) => { try { Sync(); } catch (Exception ex) { ModLog.Error("Board sync: " + ex); } };
+        Rig.Log.Debug("Board: view built.");
+        Loaded += (s, e) => { try { Sync(); } catch (Exception ex) { Rig.Log.Error("Board sync: " + ex); } };
         DataContextChanged += (s, e) => Sync();
         board.MouseEnter += (s, e) => Sync();      // catches a change made in the Layers menu or by hot key
     }

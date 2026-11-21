@@ -2,26 +2,24 @@
 
 Both layers are paths in screen pixels laid into the map control (`Map/MapView.cs`), the way Borders draws its lines on the globe: the
 geometry is kept as longitude/latitude, projected through the map on every change of the view or the data, and drawn as a few Noesis
-`Path`s in a `MapPanel` right after the graticule (below the unit icons). One method for both map kinds: `MapBase.LocationToView` on the flat
-map, `TryLocationToView` on the globe (far-side points are dropped).
+`Path`s in a `MapPanel` right after the graticule (below the unit icons). The projection is `MapBase.TryLocationToView` (far-side points are dropped).
 
-## Where the two games differ (why two DLLs)
+## What the map code binds to
 
-| | 0.8.7 flat | 3D-globe build 26223125 |
-|---|---|---|
-| Layers menu | static `GizmoLayerManager.Instance`, `new MapLayer(number, name, true)` | `MapDisplayState.Tactical`, internal `MapLayer(MapDisplayState, in GizmoLayerManager.Entry, bool)` by reflection (`GameReflection.NewLayer`, shared skeleton) |
-| Projection to the screen | `MapBase.LocationToView` | `MapBase.TryLocationToView` |
+| | |
+|---|---|
+| Layers menu | `MapDisplayState.Tactical`, internal `MapLayer(MapDisplayState, in GizmoLayerManager.Entry, bool)` by reflection (`GameReflection.NewLayer`, R.A.T.S. Rigging's `LayerEntry`) |
+| Projection to the screen | `MapBase.TryLocationToView` |
 
-Everything else (windows, snapshot, coverage maths) is shared. Layer numbers: sensor lines 603, coverage 604 (Topo 600, Borders 601, Cities 602).
-Plugin GUID of the flat build: `dev.sewerlabs.seapowersensorviews.flatmap`; entry gate on `Type.GetType("SeapowerUI.MapDisplayState, Seapower-Scripts")`.
+Layer numbers: sensor lines 603, coverage 604 (Topo 600, Borders 601, Cities 602).
 
-## Hooks (checked by reflection in both games: `tools/hook-check`)
+## Hooks (checked by reflection: `tools/hook-check`)
 
 - `MainGameViewModel.OnStart()`, `GameMain.OnDestroy()` - mission ready / ending.
 - `MapControl.RenderedLayer.OnRender(DrawingContext)` (postfix, once NoesisGUI runs) - hands over the map control that shows the live map.
-- Reflection: `GizmoLayerManager+Entry`, `MapLayer(MapDisplayState, ref Entry, bool)` (globe), `SonarAcoustics.OwnNoiseDB` (any overload, filled with its defaults).
+- Reflection: `GizmoLayerManager+Entry`, `MapLayer(MapDisplayState, ref Entry, bool)`, `SonarAcoustics.OwnNoiseDB` (any overload, filled with its defaults).
 
-`dotnet run --project tools/hook-check -c Release -- --against "<...>\Managed"` for each game; both print "all present".
+`dotnet run --project tools/hook-check -c Release -- --against "<...>\Managed"` prints "all present".
 
 ## Look
 

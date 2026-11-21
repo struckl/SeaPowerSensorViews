@@ -5,9 +5,9 @@ Shows which of your units sees which contact with which sensor, for [Sea Power: 
 | | |
 | --- | --- |
 | Questions | [R.A.T.S. Discord](https://discord.gg/CzuHd4f8Yf): help, ideas, talk; the first place to ask |
-| Version | `0.5.0` (2026-11-20) |
-| Game | Sea Power 0.9.1 (build 261112) tested in the game; 0.8.7 flat map last run in the game with 0.2.2, newer versions checked offline |
-| Needs | [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader |
+| Version | `0.6.0` (unreleased) |
+| Game | Sea Power 0.9.3 (build 261116), the current main version; checked offline |
+| Needs | [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader, and R.A.T.S. Rigging, the part the R.A.T.S. mods share (a copy comes with this mod for now) |
 | Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
 | Settings | Options > Sensor Views, or `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg` |
 | Bug reports | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
@@ -61,8 +61,8 @@ Manual install: put the mod folder `SeaPowerSensorViews` into the game's `Stream
 
 ## Building
 
-- Needs the .NET SDK, a Sea Power install and the [SeaPowerKeel](https://github.com/struckl/SeaPowerKeel) repo next to this one.
-- Two game versions, two builds: `-p:GameBuild=Flat` builds `SeaPowerSensorViewsFlat.dll` for 0.8.7.
+- Needs the .NET SDK, a Sea Power install and the SeaPowerRigging repo (R.A.T.S. Rigging) next to this one.
+- One build for the game's current main version.
 
 ```
 dotnet build src/SeaPowerSensorViews -c Release -p:Deploy=false -p:ManagedDir=<Sea Power_Data\Managed>

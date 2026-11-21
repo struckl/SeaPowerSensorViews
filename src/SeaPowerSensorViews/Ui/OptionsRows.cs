@@ -1,13 +1,9 @@
 using System;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>
-/// The rows of the Sensor Views tab in the game's Options menu (the tab itself: OptionsPage in the shared skeleton). Hot keys
+/// The rows of the Sensor Views tab in the game's Options menu (the tab itself: Rig.Options, in R.A.T.S. Rigging). Hot keys
 /// and the rarer settings stay in the config file.
 /// </summary>
 internal static class OptionsRows
@@ -15,7 +11,7 @@ internal static class OptionsRows
     public static void Fill(OptionsBuilder b)
     {
         b.Note("Changes apply at once and are kept by the mod (Accept and Revert on this page do not affect them). " +
-            "Hot keys and further settings: BepInEx\\config\\" + ModInfo.Guid + ".cfg.");
+            "Hot keys and further settings: BepInEx\\config\\" + Plugin.Guid + ".cfg.");
         Lines(b);
         Coverage(b);
         Windows(b);

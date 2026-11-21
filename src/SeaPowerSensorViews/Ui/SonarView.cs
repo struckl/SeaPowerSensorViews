@@ -4,11 +4,7 @@ using Noesis;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>Sonar display window content: sonar chooser over the waterfall and depth strip.</summary>
 public sealed class SonarView : UserControl
@@ -111,7 +107,7 @@ internal static class SonarSampler
             }
             CollectOwnTorpedoes(ears);
         }
-        catch (Exception ex) { ModLog.Debug("Sonar own-ship check: " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Debug("Sonar own-ship check: " + ex.Message); }
     }
 
     /// <summary>An own ship or submarine a sonar can hear at all (an intercept receiver only one that pings).</summary>

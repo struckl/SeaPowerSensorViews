@@ -2,11 +2,7 @@ using System;
 using SeaPower;
 using SeaPowerSensorViews.Data;
 
-#if FLATMAP
-namespace SeaPowerSensorViews.Ui;
-#else
-namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: the two builds must not share these names
-#endif
+namespace SeaPowerSensorViews.Globe.Ui;     // Noesis finds XAML types by full name across all loaded DLLs: a leftover DLL of an older release must not share these names
 
 /// <summary>Double click on the sensor board: bring the game's camera to the unit or contact.</summary>
 internal static class Jump
@@ -17,9 +13,9 @@ internal static class Jump
         {
             if (row?.Unit == null || row.Unit.IsDestroyed || !Singleton<RenderPosition>.InstanceExists()) return;
             Singleton<RenderPosition>.Instance.switchToObject(row.Unit, true);
-            ModLog.Debug("Jump to unit " + row.Name + ".");
+            Rig.Log.Debug("Jump to unit " + row.Name + ".");
         }
-        catch (Exception ex) { ModLog.Warn("Jump to unit failed: " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Warn("Jump to unit failed: " + ex.Message); }
     }
 
     /// <summary>
@@ -43,9 +39,9 @@ internal static class Jump
             RenderPosition cam = Singleton<RenderPosition>.Instance;
             cam.detachCameraFromTarget();
             cam.setGlobalPosition(at);
-            ModLog.Debug("Jump to contact " + cr.Label + ".");
+            Rig.Log.Debug("Jump to contact " + cr.Label + ".");
         }
-        catch (Exception ex) { ModLog.Warn("Jump to contact failed: " + ex.Message); }
+        catch (Exception ex) { Rig.Log.Warn("Jump to contact failed: " + ex.Message); }
     }
 
     /// <summary>The preferred unit's ranged fix if it has one, else the freshest ranged fix of any unit; null when no sensor ranges it.</summary>
