@@ -7,7 +7,7 @@ Shows which of your units sees which contact with which sensor, for [Sea Power: 
 | Questions | [R.A.T.S. Discord](https://discord.gg/CzuHd4f8Yf): help, ideas, talk; the first place to ask |
 | Version | `0.5.0` (2026-11-20) |
 | Game | Sea Power 0.9.1 (build 261112) tested in the game; 0.8.7 flat map last run in the game with 0.2.2, newer versions checked offline |
-| Needs | a mod loader: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757), either one |
+| Needs | [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader |
 | Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
 | Settings | Options > Sensor Views, or `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg` |
 | Bug reports | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
@@ -31,7 +31,7 @@ Full detail: [docs/features.md](docs/features.md).
 
 ## Install
 
-1. Install a mod loader, either one: [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) or [Anchor Chain](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757). On the 3D-globe game builds, Anchor Chain does not start yet, so use Keel there.
+1. Install [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader.
 2. Subscribe to [Sea Power: R.A.T.S. Sensor Views](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) on the Workshop.
 3. Start a mission and click the radar scope icon at the right end of the bottom bar.
 

@@ -103,6 +103,4 @@ Everything the mod does, in full. The short list is in the [README](../README.md
   - 3D-globe beta, build 261107: versions 0.3.0 to 0.4.3 (Options tab, the three windows, lines, coverage, own torpedoes, radar scope fixes)
   - game 0.9.1, build 261112: version 0.4.5, the in-game name and the coverage ring following a moving unit
   - 0.4.4 was checked offline against 0.9.0
-- Loaders: runs under Keel or Anchor Chain, with the same entry point
-  - on the 3D-globe builds Anchor Chain does not start yet, so there it runs under Keel
-  - Anchor Chain on 0.8.7 was checked offline only
+- Loader: R.A.T.S. Keel; the entry point is Anchor Chain's, which Keel carries on
