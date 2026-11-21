@@ -1,8 +1,4 @@
-0.5.0: much less FPS cost for sensor lines, a working altitude box.
-- Fixed: the Sensor lines layer cost 10-40 FPS with about 20 units in view (board post #2): the selected unit stays live, the others update in turn
-- Fixed: changing a setting no longer redraws every line and restarts the coverage
-- The scope's target altitude goes up to 80,000 ft in the box, the slider and the config
-- Fixed: a typed altitude is taken (applies while typing; Enter or leaving the box writes the clamped value back)
-- Fixed: jumping to a contact that only your other units range
-- Options page: the hot key hints show your keys
-- Empty map shapes are removed instead of piling up; closing the game tidies the windows first
+0.6.0: needs R.A.T.S. Rigging, one build for the current game.
+- Needs the new Workshop item R.A.T.S. Rigging, the part the R.A.T.S. mods share; a copy comes with this mod, so nothing has to be done, and a notice on the main menu offers the item
+- One build for the game's current main version (0.9.x); the 0.8.7 flat-map build is gone
+- Inside: the shared code is the Rigging library; every setting, text and key is unchanged
