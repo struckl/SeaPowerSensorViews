@@ -7,7 +7,7 @@ Shows which of your units sees which contact with which sensor, for [Sea Power: 
 | Questions | [R.A.T.S. Discord](https://discord.gg/CzuHd4f8Yf): help, ideas, talk; the first place to ask |
 | Version | `0.6.0` (unreleased) |
 | Game | Sea Power 0.9.3 (build 261116), the current main version; run in the test VM |
-| Needs | [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader, and [R.A.T.S. Rigging](https://steamcommunity.com/sharedfiles/filedetails/?id=RIGGING_ID), the part the R.A.T.S. mods share (a copy comes with this mod for now) |
+| Needs | [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader, and [R.A.T.S. Rigging](https://steamcommunity.com/sharedfiles/filedetails/?id=3843688859), the part the R.A.T.S. mods share (a copy comes with this mod for now) |
 | Get it | [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) (about 280 KB) |
 | Settings | Options > Sensor Views, or `BepInEx\config\dev.sewerlabs.seapowersensorviews.cfg` |
 | Bug reports | [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/sensorviews) |
@@ -32,7 +32,7 @@ Full detail: [docs/features.md](docs/features.md).
 ## Install
 
 1. Install [R.A.T.S. Keel](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459), the mod loader.
-2. Subscribe to [Sea Power: R.A.T.S. Sensor Views](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) on the Workshop; Steam offers its required item [R.A.T.S. Rigging](https://steamcommunity.com/sharedfiles/filedetails/?id=RIGGING_ID) with it.
+2. Subscribe to [Sea Power: R.A.T.S. Sensor Views](https://steamcommunity.com/sharedfiles/filedetails/?id=3833019654) on the Workshop; Steam offers its required item [R.A.T.S. Rigging](https://steamcommunity.com/sharedfiles/filedetails/?id=3843688859) with it.
 3. If you already have the mod, do nothing: a copy of Rigging comes with it for now, and a notice on the main menu offers the Rigging item.
 4. Start a mission and click the radar scope icon at the right end of the bottom bar.
 
