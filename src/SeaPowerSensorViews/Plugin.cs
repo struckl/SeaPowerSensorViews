@@ -13,7 +13,7 @@ public class Plugin : IAnchorChainMod
 {
     public const string Guid = "dev.sewerlabs.seapowersensorviews";
     public const string Name = "R.A.T.S. Sensor Views";
-    public const string Version = "0.6.0";
+    public const string Version = "0.6.1";
 
     public void TriggerEntryPoint() => Start();
 
