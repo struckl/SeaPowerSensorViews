@@ -74,7 +74,7 @@ Details and the repo layout: [docs/building.md](docs/building.md). Windows: [doc
 ## Credits and license
 
 - [R.A.T.S. Source License](LICENSE): read it, fork it, send fixes; no re-uploads, no reuse in other projects.
-- Works with [R.A.T.S. Pop-Out Windows](https://github.com/SEARATS/SeaPowerPopOut). No game files are changed.
+- Works with [R.A.T.S. Pop-Out Windows](https://github.com/struckl/SeaPowerPopOut). No game files are changed.
 - Not affiliated with Triassic Games or MicroProse.
 
 *R.A.T.S. - Ratte's Assorted Tactical Systems*
