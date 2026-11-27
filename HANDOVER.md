@@ -91,7 +91,7 @@ reflection**, not only by compiling (a field that became a property compiles fin
   2026-10-27.
 - **One build, the game's current main version only** (his rule 2026-11-21). `python tools/modtool.py compat` must pass before any
   release; never claim a game version works in a public text before an in-game test.
-- **Anchor Chain 1.1.0 does not start on the globe build** (AnchorChain#19; our fix is PR #20, unmerged). R.A.T.S. Keel is the loader now.
+- **Anchor Chain 1.1.0 does not start on the globe build** (AnchorChain#19; our fix is PR #20, unmerged). Keel is the loader now.
 - **The game is his.** Never start/close it, never send clicks/keys without his OK; he plays while you work and tests himself. Other
   sessions share the game ("taking the game now" / "done"). Never pop up windows or send simulated keys while he works. Load missions
   only from a settled main menu. Notes: `docs/game-testing.md` in the workspace.
